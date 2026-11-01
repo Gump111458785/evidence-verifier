@@ -1,3 +1,7 @@
+# v0.3.0 纯API交付
+
+新增独立[纯API入口与预留配置](../api_edition/README.md)，使用远程Chat Completions及正文搜索API。无需权重、GPU或训练。10项mock/回环合同通过；未配置真实API，未测厂商端到端、准确率或费用。原研究版及下列历史交付保留。
+
 # v0.2.0 增量交付
 
 新增对话取证插件，见[操作与边界](conversation-sidecar.md)。侧栏报告7项fixture合同和本机HTTP Origin/未配置状态检查已通过，页面已目视。未安装扩展，三站点实机兼容及真实模型效果未验证。以下保留v0.1.0历史交付清单。

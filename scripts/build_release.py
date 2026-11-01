@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'app/scripts'))
 from build_extension import build as build_extension
 
-EXCLUDED = {'__pycache__', '.git', '.venv', 'node_modules', 'dist', 'build', 'runtime', 'runs', 'checkpoints', 'outputs'}
+EXCLUDED = {'__pycache__', '.git', '.venv', '.venv-api', 'node_modules', 'dist', 'build', 'runtime', 'runs', 'checkpoints', 'outputs'}
 
 
 def include(path):
@@ -21,6 +21,8 @@ def include(path):
         return False
     if path.is_symlink():
         raise ValueError('Source delivery must not contain symlinks')
+    if path.name=='config.local.json':
+        return False
     if path.name.startswith('.env') and path.name != '.env.example':
         return False
     return not (path.name == '.DS_Store' or path.suffix in {'.pyc', '.sqlite', '.sqlite3', '.db', '.log', '.pem', '.key', '.pt', '.pth', '.bin', '.safetensors'} or '-wal' in path.name or '-shm' in path.name)
@@ -34,7 +36,7 @@ def bundle(output, files, prefix):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--version', default='0.2.1')
+    parser.add_argument('--version', default='0.3.0')
     parser.add_argument('--out', type=Path, default=ROOT/'dist')
     parser.add_argument('--wheel', action='store_true', help='Use existing setuptools/wheel only')
     args = parser.parse_args()
@@ -49,11 +51,13 @@ def main():
         subprocess.run([sys.executable, '-m', 'pip', 'wheel', '--no-index', '--disable-pip-version-check', '--no-deps', '--no-build-isolation',
                         str(ROOT/'sdk'), '--wheel-dir', str(out)], check=True)
     files = []
-    for folder in ('app', 'sdk', 'docs', 'scripts', '.github'):
+    for folder in ('app', 'sdk', 'docs', 'scripts', '.github', 'api_edition'):
         files += [p for p in (ROOT/folder).rglob('*') if p.is_file() and include(p)]
     files += [ROOT/name for name in ('README.md', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'CHANGELOG.md', '.gitignore', '.env.example')]
     bundle(out/f'evidence-verifier-{args.version}-source.zip', files, 'evidence-verifier')
     bundle(out/'evidence-verifier-sdk-0.2.0-source.zip', [p for p in files if p.is_relative_to(ROOT/'sdk')], 'evidence-verifier')
+    api_files=[p for p in files if not str(p.relative_to(ROOT)).startswith(('app/training.py','app/torch_training.py','app/tests/test_training.py','app/vendor/evpilot/run_relation_v7_suite.py','app/configs/sft'))]
+    bundle(out/f'evidence-verifier-api-{args.version}-source.zip',api_files,'evidence-verifier')
     manifest = {'version': args.version, 'profile': 'engineering_demo_delivery',
                 'model_inference_performed': False, 'training_executed': False,
                 'assets': {p.name: {'bytes': p.stat().st_size, 'sha256': hashlib.sha256(p.read_bytes()).hexdigest()}

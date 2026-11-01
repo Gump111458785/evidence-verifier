@@ -19,6 +19,10 @@
 
 **v0.2.0 新增主流AI对话取证插件；默认工作台仍是工程演示。** 默认无需 GPU、模型或第三方 Python 包，可回放两个教学场景和历史开发诊断。教学场景中的事实抽取与语义判断为预设，引用位置和联合绑定由程序计算；真实模型接入、训练及效果评测的状态见[交付说明](docs/delivery.md)。
 
+## 纯 API 版本（v0.3.0）
+
+新增独立入口 `api_edition/run.py`，预留规划、抽取、核验、智能体和正文搜索API配置，不需要本地权重、GPU或训练环境。[配置与启动](api_edition/README.md)。原研究版保持独立；默认示例未配置API，不能将其视为真实模型结果。
+
 ## 快速开始
 
 需要 Python 3.10+，以及 Python 自带且支持 FTS5 的 SQLite。
@@ -85,7 +89,7 @@ scripts/              离线交付构建
 ## 构建交付
 
 ```bash
-python3 scripts/build_release.py --version 0.2.1 --out dist
+python3 scripts/build_release.py --version 0.3.0 --out dist
 # 若本机已有 setuptools / wheel，可另加 --wheel 构建客户端 wheel。
 ```
 

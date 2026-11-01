@@ -1,0 +1,12 @@
+{
+  "roles": {
+    "planner": {"base_url": "", "model": "", "api_key_env": "EV_API_PLANNER_KEY", "response_format": "json_schema", "send_seed": false},
+    "extractor": {"base_url": "", "model": "", "api_key_env": "EV_API_EXTRACTOR_KEY", "response_format": "json_schema", "send_seed": false},
+    "verifier": {"base_url": "", "model": "", "api_key_env": "EV_API_VERIFIER_KEY", "response_format": "json_schema", "send_seed": false},
+    "agent": {"base_url": "", "model": "", "api_key_env": "EV_API_AGENT_KEY", "response_format": "json_object", "send_seed": false}
+  },
+  "search": {"endpoint": "", "api_key_env": "EV_API_SEARCH_KEY", "revision": "", "max_results": 3},
+  "timeout_seconds": 90,
+  "max_response_bytes": 2000000,
+  "extension_id": ""
+}

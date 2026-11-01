@@ -20,7 +20,7 @@ jobs:
         with:
           node-version: '22'
       - name: Python syntax
-        run: python -m compileall -q app sdk/src scripts
+        run: python -m compileall -q app sdk/src scripts api_edition
       - name: JavaScript syntax
         run: |
           node --check app/static/app.js
@@ -32,8 +32,12 @@ jobs:
         run: python scripts/check_publication.py
       - name: Sidecar report contracts (fixtures, no models)
         run: python -m unittest discover -s app/tests -p test_sidecar.py
+      - name: Pure API contracts (mock and loopback only)
+        run: |
+          python api_edition/run.py --check
+          python -m unittest discover -s api_edition/tests -p test_provider.py
       - name: Build offline delivery
-        run: python scripts/build_release.py --version 0.2.1 --out dist
+        run: python scripts/build_release.py --version 0.3.0 --out dist
       - uses: actions/upload-artifact@v4
         with:
           name: evidence-verifier-delivery

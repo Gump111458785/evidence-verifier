@@ -268,7 +268,9 @@ class Handler(BaseHTTPRequestHandler):
                     with corpus_db() as c:
                         count = c.execute('SELECT count(*) FROM docs').fetchone()[0]
                     corpus_scope = 'musique_dev_passages'
-                return self.send({'ok': True, 'live_configured': inference_configuration()['configured'],
+                if os.environ.get('EV_EDITION')=='pure_api':
+                    count,corpus_scope=0,'api_search_raw_content_not_local_index'
+                return self.send({'ok': True, 'edition': os.environ.get('EV_EDITION','research_workbench'), 'api_profile': json.loads(os.environ.get('EV_API_PROFILE_STATUS','null')), 'live_configured': inference_configuration()['configured'],
                     'agent': AgentService.configuration(), 'planner': PlanService.configuration(), 'workflow': workflows().configuration(),
                     'corpus_docs': count, 'corpus_scope': corpus_scope, 'scope': ARCHIVE['scope'], 'archive_sha256': ARCHIVE['source_sha256']})
             if path.path.startswith('/api/verifications/'):
@@ -533,7 +535,7 @@ class Handler(BaseHTTPRequestHandler):
                     if not parent or parent['state'] != 'completed':
                         raise ValueError('Parent run must be completed')
                     parent = json.loads(parent['result'])
-                    if parent['source'] not in ('archived_v7', 'live_vllm') or parent['mode'] != 'split':
+                    if parent['source'] not in ('archived_v7', 'live_vllm', 'remote_api') or parent['mode'] != 'split':
                         raise ValueError('Plan checks require independently verified split facts')
                     spec.update(evidence=parent['input']['evidence'], archived_output=parent['output'], model=parent['model'],
                                 archive_sha256=parent.get('archive_sha256'), parent_provenance={

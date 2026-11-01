@@ -1,0 +1,2 @@
+# CPU-only JSON schema validation. No torch / transformers / peft / vLLM.
+jsonschema>=4.18,<5

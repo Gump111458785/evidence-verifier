@@ -105,6 +105,8 @@ def live(row, mode, cache_get, cache_put, event):
                 event(stage, 'invalid_output', {'raw': raw, 'error': str(exc)[:1000], 'usage': reply.get('usage', {})})
                 raise ValueError('Invalid model output at ' + stage) from exc
             record = {'status': 'ok', 'raw': raw, 'parsed': parsed, 'usage': reply.get('usage', {})}
+            if os.environ.get('EV_EDITION')=='pure_api':
+                record.update(api_role=reply.get('ev_api_role'),provider_model=reply.get('ev_api_model'))
             # Persist validation before releasing followers: no gap between single-flight and cache.
             cache_put(key, record)
             return record
@@ -147,6 +149,6 @@ def live(row, mode, cache_get, cache_put, event):
         if not errors:
             result['prediction'] = kernel.match_target(row['relation'],
                 [(f['fact'], f['verification']['parsed']) for f in facts])
-    return {'source': 'live_vllm', 'input': row, 'output': result, 'model': model,
+    return {'source': 'remote_api' if os.environ.get('EV_EDITION')=='pure_api' else 'live_vllm', 'input': row, 'output': result, 'model': model,
             'mode': mode, 'usage': usage, 'usage_complete': usage_complete, 'kernel_sha256': version,
             'model_revision': model_revision, 'cache_scope': 'pinned_revision' if model_revision else 'execution_only'}
