@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
+import re
 from pathlib import Path
 import sqlite3
 import threading
@@ -22,6 +23,7 @@ from curation import CurationService, CurationError
 from workflows import WorkflowService, WorkflowError
 from verification_api import VerificationService, VerificationRequestError, VerificationConflict, VerificationCanceled, VerificationUnavailable
 from plugin_scenarios import catalog as plugin_catalog
+from sidecar import report as sidecar_report
 
 ROOT = Path(__file__).parent
 DB = Path(os.environ.get('EV_DB', ROOT / 'data/workbench.sqlite'))
@@ -384,7 +386,7 @@ class Handler(BaseHTTPRequestHandler):
             if path.path.startswith('/api/'):
                 return self.send({'error': 'Not found'}, 404)
             assets = {'/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css',
-                      '/theme.css': 'theme.css', '/plugin.html': 'plugin.html', '/plugin.js': 'plugin.js', '/plugin.css': 'plugin.css',
+                      '/sidecar.html': 'sidecar.html', '/sidecar.js': 'sidecar.js', '/theme.css': 'theme.css', '/plugin.html': 'plugin.html', '/plugin.js': 'plugin.js', '/plugin.css': 'plugin.css',
                       '/downloads/evidence-verifier-extension.zip': 'downloads/evidence-verifier-extension.zip'}
             if path.path.startswith('/fonts/'):
                 name = path.path.removeprefix('/fonts/')
@@ -419,7 +421,9 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         # Same-origin local workbench; no untrusted site can submit jobs/reviews.
         origin = self.headers.get('Origin')
-        if origin and origin != 'http://' + self.headers.get('Host', ''):
+        extension_id = os.environ.get('EV_EXTENSION_ID', '')
+        extension_origin = ('chrome-extension://' + extension_id) if re.fullmatch(r'[a-p]{32}', extension_id) else None
+        if origin and origin != 'http://' + self.headers.get('Host', '') and origin != extension_origin:
             return self.send({'error': 'Cross-origin mutation rejected'}, 403)
         try:
             size = int(self.headers.get('Content-Length', '0'))
@@ -428,6 +432,14 @@ class Handler(BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(size))
             if not isinstance(body, dict):
                 raise ValueError('Request body must be a JSON object')
+            if self.path == '/api/sidecar/plans':
+                job = planner().create(body.get('question'), body.get('candidate'), 'sidecar', uuid.uuid4().hex[:16])
+                POOL.submit(planner().execute, job['id'])
+                return self.send({'id':job['id'], 'state':job['state']}, 202)
+            if self.path == '/api/sidecar/report':
+                job = verifications().get(body.get('verification_id'))
+                repair = repairer().get(body['repair_id']) if body.get('repair_id') else None
+                return self.send(sidecar_report(job, body.get('question'), body.get('candidate'), repair))
             if self.path == '/api/verifications':
                 job = verifications().create(body, inference_configuration()['configured'])
                 if job['state'] == 'queued':

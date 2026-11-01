@@ -1,28 +1,14 @@
-# Evidence Verifier 证据侧栏（理想演示版）
+# Evidence Verifier Chrome sidecar 0.2.0
 
-这是可加载的Chrome Manifest V3插件源码包，不是已经安装或发布到商店的插件。使用Chrome 116+；没有安装新浏览器、扩展或依赖。
+解压Release插件ZIP，在Chrome扩展管理页手动加载manifest.json所在目录。Chrome 116+。本项目不会自动安装或变更权限。
 
-## 使用
+默认打开真实对话侧栏sidecar.html，教学案例另在plugin.html。主动读取ChatGPT、Claude、Gemini可见回答、引用与工具片段；选择器适配未完成三站点实机验证，失效时手动粘贴。不能提取模型隐藏思维链或完整内部检索历史。
 
-1. 解压插件包，在Chrome扩展管理页手动选择“加载已解压的扩展程序”，指向manifest.json所在目录。
-2. 点击扩展图标打开侧栏，选择“任职不等于就读”或“中间实体接错人”，查看原文、关系判定与联合绑定。
-3. 也可以主动选中一段网页回答，右键选择“用证据侧栏查看选中回答”。选中内容保存在本插件的会话存储中，不自动上传或判定。
+- activeTab / scripting：在用户主动授权的活动页读取可见DOM、跟随更新或填入草稿。
+- sidePanel / contextMenus：打开侧栏及保留原主动选中文本入口。
+- storage：仅扩展会话保存快照与任务ID，未自动读取整段聊天历史。
+- 本机127.0.0.1权限与CSP：只连接8790/18790服务，不自动发送到站点后台。
 
-安装与扩展权限由用户在浏览器中自行处理，本项目不会自动安装插件或修改安全设置。网页工作台/#plugin提供同界面预览，不必安装即可演示。
+真实核验须配置本机服务及精确EV_EXTENSION_ID，点击提交才发送证据。服务可能调用用户配置的模型，请自行确认配置。原文由用户打开引用页后采集，不静默抓取远程链接；无模型、无证据不伪造结果。补充prompt可以复制或填入空草稿，不自动发送、不覆盖现有草稿。
 
-## 范围
-
-插件优先读取127.0.0.1:18790的公开教学案例；本地服务不可用时使用打包的离线快照，并明确标注。没有调用任意外部LLM，没有访问账号凭据、自动读取整页对话或将选中内容发到服务器。
-
-演示中的事实抽取与支持性判断是人工编写的理想假设；引用位置回放、变量联合绑定和缺口查询由现有程序生成。离线快照并非实时模型推理。它不会给任意选中文本生成虚构的幻觉分数或模型准确率。
-
-需要真实业务核验时，使用工程内独立HTTP API、Python SDK或LangGraph节点，提交明确证据与关系计划；当前CPU演示部署没有连接模型。该插件不改变此限制。
-
-## 权限
-
-- sidePanel：显示侧栏。
-- contextMenus：接收用户明确选中的回答。
-- storage：仅保存当前插件会话的选中内容。
-- 127.0.0.1主机权限：读取本机案例服务；CSP进一步限定18790/8790两个端口。
-
-没有all_urls、content_scripts、tabs读取或远程脚本。构建说明遵循Chrome官方[Side Panel API](https://developer.chrome.com/docs/extensions/reference/api/sidePanel)和[跨域请求](https://developer.chrome.com/docs/extensions/develop/concepts/network-requests)文档。插件实际安装环境尚未运行验证；网页预览用于本次理想场景展示。
+完整步骤、上下文长度、额外工具预算、状态与隐私范围见仓库docs/conversation-sidecar.md。设计依据Chrome官方[activeTab](https://developer.chrome.com/docs/extensions/develop/concepts/activeTab)与[Scripting API](https://developer.chrome.com/docs/extensions/reference/api/scripting)。

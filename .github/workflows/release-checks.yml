@@ -26,10 +26,14 @@ jobs:
           node --check app/static/app.js
           node --check app/static/plugin.js
           node --check app/extension/background.js
+          node --check app/extension/page-adapter.js
+          node --check app/static/sidecar.js
       - name: Publication source check
         run: python scripts/check_publication.py
+      - name: Sidecar report contracts (fixtures, no models)
+        run: python -m unittest discover -s app/tests -p test_sidecar.py
       - name: Build offline delivery
-        run: python scripts/build_release.py --version 0.1.0 --out dist
+        run: python scripts/build_release.py --version 0.2.0 --out dist
       - uses: actions/upload-artifact@v4
         with:
           name: evidence-verifier-delivery

@@ -17,7 +17,7 @@
 - **取证工作流与工程控制**：search / open / find、共享工具预算、缺口补搜、任务恢复和取消；版本化核验缓存、并发请求合并、按估算工作量分配模型副本。
 - **LLM 附属接入**：Chrome Manifest V3 侧栏源码、独立 HTTP API、零依赖 Python 客户端与可选 LangGraph 节点；前端预览和插件共用界面。
 
-**v0.1.0 是工程演示交付。** 默认无需 GPU、模型或第三方 Python 包，可回放两个教学场景和历史开发诊断。教学场景中的事实抽取与语义判断为预设，引用位置和联合绑定由程序计算；真实模型接入、训练及效果评测的状态见[交付说明](docs/delivery.md)。
+**v0.2.0 新增主流AI对话取证插件；默认工作台仍是工程演示。** 默认无需 GPU、模型或第三方 Python 包，可回放两个教学场景和历史开发诊断。教学场景中的事实抽取与语义判断为预设，引用位置和联合绑定由程序计算；真实模型接入、训练及效果评测的状态见[交付说明](docs/delivery.md)。
 
 ## 快速开始
 
@@ -39,9 +39,12 @@ python3 app/server.py --port 8790
 
 ## 浏览器侧栏
 
-从 [Release](https://github.com/Gump111458785/evidence-verifier/releases) 下载 `evidence-verifier-extension-0.1.0.zip`，解压后按[插件说明](app/extension/README.md)手动加载。也可以直接使用工作台内同界面的侧栏预览。
+v0.2.0增加ChatGPT / Claude / Gemini可见DOM适配、主动读取/跟随、引用来源页采集、独立核验与缺口补搜、补充prompt复制或填入原对话草稿。[完整操作与边界](docs/conversation-sidecar.md)。适配代码已交付，尚未完成三站点实机验证，不读取隐藏思维链。
 
-插件通过图标或用户主动选择文本的右键菜单打开。选中文本只存放在扩展会话内；当前版本回放教学案例，不自动扫描页面或为任意文本生成幻觉分数。本机服务不可用时显示离线快照。
+
+从 [Release](https://github.com/Gump111458785/evidence-verifier/releases) 下载 `evidence-verifier-extension-0.2.0.zip`，解压后按[插件说明](app/extension/README.md)手动加载。也可以直接使用工作台内同界面的侧栏预览。
+
+插件通过图标或用户主动选择文本的右键菜单打开。选中文本只存放在扩展会话内；新侧栏默认等待主动读取，核验需连接已有服务；教学案例另行保留，不为任意文本生成虚构的幻觉分数。本机服务不可用时显示离线快照。
 
 ## 接入现有智能体
 
@@ -82,11 +85,11 @@ scripts/              离线交付构建
 ## 构建交付
 
 ```bash
-python3 scripts/build_release.py --version 0.1.0 --out dist
+python3 scripts/build_release.py --version 0.2.0 --out dist
 # 若本机已有 setuptools / wheel，可另加 --wheel 构建客户端 wheel。
 ```
 
-生成源码包、插件包、SDK 源码包与 SHA-256 清单，不下载模型、不安装依赖、不执行训练。CI 只检查语法和交付构建，不代表模型质量、GPU 兼容性或性能测试。
+生成源码包、插件包、SDK 源码包与 SHA-256 清单，不下载模型、不安装依赖、不执行训练。CI 检查语法、侧栏报告的fixture合同与交付构建，不代表模型质量、GPU 兼容性或性能测试。
 
 ## License
 

@@ -1,0 +1,17 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Evidence Verifier · 对话取证</title><link rel="stylesheet" href="plugin.css"></head><body class="conversation">
+<header class="panel-brand"><div><h1>Evidence Verifier</h1><p>主流 AI 对话取证与补证</p></div></header><main>
+<p class="source-note">读取公开回答和引用，不获取隐藏思维链。页面内容留在扩展会话；点击核验后才提交本机服务，服务可能调用你配置的模型。</p>
+<div class="result-heading"><button id="capture">读取当前回答</button><button id="watch">跟随页面更新</button><button id="stop">停止跟随</button></div>
+<p id="status" role="status" class="meta">支持 ChatGPT / Claude / Gemini；页面结构变化时可手动粘贴。</p>
+<label>用户问题（最多2,000字符）<textarea id="question" rows="2"></textarea></label><label>待审候选片段（规划最多1,000字符，长回答请主动选取）<textarea id="candidate" rows="4"></textarea></label>
+<details><summary>公开引用和工具记录</summary><pre id="capture-trace" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre></details>
+<label>证据原文 JSON（链接和回答本身不当作支持证据）<textarea id="evidence" rows="4">[]</textarea></label><button id="source">收集当前引用来源页的原文</button>
+<p class="meta">打开回答中的引用链接，再点击收集。仅取该来源页选中文本或article/main；失败时可手动粘贴原文并在导出中补全出处。</p>
+<label>本机服务<select id="service"><option>http://127.0.0.1:8790</option><option>http://127.0.0.1:18790</option></select></label>
+<details><summary>首次接入说明</summary><p class="meta" id="setup"></p><p class="meta">核验器只检查声明关系。跟随只更新预览，不自动发送对话。原站点的完整检索历史可能不可见。</p></details>
+<button id="plan" class="secondary">生成关系草稿（只发送问题和候选）</button><label>关系计划 JSON（审阅后提交）<textarea id="relations" rows="4">[]</textarea></label>
+<button id="verify" class="primary">提交独立核验（只发送证据和关系）</button><button id="repair" class="secondary" disabled>定向补搜并重核验（本地语料，预算6次）</button>
+<button id="resume" class="secondary" hidden>恢复观察上次任务</button><button id="cancel" class="secondary" disabled>停止当前任务</button>
+<p id="error" class="error" role="alert" hidden></p><section aria-live="polite"><div id="verdict" class="verdict-box" hidden></div><ol id="stages"></ol><details><summary>事实、支持性、引用回放、联合绑定与补搜轨迹</summary><pre id="trace" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre></details></section>
+<div id="gap-search"></div><button id="prompt" class="secondary" disabled>生成补充 prompt</button><textarea id="supplement" rows="6" readonly aria-label="补充prompt"></textarea><button id="copy" class="secondary" disabled>复制 prompt</button><button id="insert" class="secondary" disabled>填入原对话草稿（不发送）</button><button id="export" class="text-action">导出当前审查记录</button>
+<footer><a href="plugin.html">教学案例</a><span>适配器未完成三个站点的实机兼容验证</span></footer></main><script src="sidecar.js"></script></body></html>

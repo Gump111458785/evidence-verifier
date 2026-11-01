@@ -1,14 +1,28 @@
 {
   "manifest_version": 3,
   "name": "Evidence Verifier · 证据侧栏",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "minimum_chrome_version": "116",
-  "description": "在LLM回答旁回放关系核验与实体绑定案例，支持主动带入选中文本。",
-  "permissions": ["sidePanel", "contextMenus", "storage"],
-  "host_permissions": ["http://127.0.0.1/*"],
-  "background": {"service_worker": "background.js"},
-  "side_panel": {"default_path": "plugin.html"},
-  "action": {"default_title": "打开证据审查侧栏"},
+  "description": "主动读取主流AI网页可见回答与引用，独立核验后生成补证prompt；不读取隐藏思维链。",
+  "permissions": [
+    "sidePanel",
+    "contextMenus",
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "sidecar.html"
+  },
+  "action": {
+    "default_title": "打开证据审查侧栏"
+  },
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' http://127.0.0.1:18790 http://127.0.0.1:8790;"
   }

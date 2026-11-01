@@ -17,7 +17,7 @@ def build(output, web_copy=False):
         raise ValueError('Choose a new versioned output filename; old packages are retained')
     output.parent.mkdir(parents=True, exist_ok=True)
     files = [(p, p.name) for p in (ROOT/'extension').iterdir() if p.is_file()]
-    files += [(ROOT/'static'/name, name) for name in ('plugin.html', 'plugin.css', 'plugin.js')]
+    files += [(ROOT/'static'/name, name) for name in ('plugin.html', 'plugin.css', 'plugin.js', 'sidecar.html', 'sidecar.js')]
     files += [(p, 'fonts/' + p.name) for p in (ROOT/'static/fonts').iterdir() if p.is_file()]
     snapshot = json.dumps(catalog(), ensure_ascii=False, indent=2)+'\n'
     hashes = {name: hashlib.sha256(p.read_bytes()).hexdigest() for p, name in files}
