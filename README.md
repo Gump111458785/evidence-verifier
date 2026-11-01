@@ -89,7 +89,7 @@ scripts/              离线交付构建
 ## 构建交付
 
 ```bash
-python3 scripts/build_release.py --version 0.3.0 --out dist
+python3 scripts/build_release.py --version 0.3.1 --out dist
 # 若本机已有 setuptools / wheel，可另加 --wheel 构建客户端 wheel。
 ```
 

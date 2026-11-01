@@ -36,7 +36,7 @@ def bundle(output, files, prefix):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--version', default='0.3.0')
+    parser.add_argument('--version', default='0.3.1')
     parser.add_argument('--out', type=Path, default=ROOT/'dist')
     parser.add_argument('--wheel', action='store_true', help='Use existing setuptools/wheel only')
     args = parser.parse_args()

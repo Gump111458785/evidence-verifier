@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 import sys
 import threading
-from provider import APIProvider,load_config,gateway
+from provider import APIProvider,load_config,gateway,search_handler
 
 ROOT=Path(__file__).resolve().parents[1]
 
@@ -42,7 +42,7 @@ def main():
         return digest({'provider_search':provider.config.get('search',{}),'run_namespace':search_namespace})
     search_namespace=provider.config.get('search',{}).get('revision') or secret
     SearchSessions._search=search;SearchSessions.corpus_identity=identity
-    app=server.ThreadingHTTPServer(('127.0.0.1',a.port),server.Handler)
+    app=server.ThreadingHTTPServer(('127.0.0.1',a.port),search_handler(server.Handler,provider))
     thread=threading.Thread(target=bridge.serve_forever,daemon=True);thread.start()
     try:
         server.init();print(json.dumps({'url':'http://127.0.0.1:'+str(a.port),'profile':provider.status(),'gateway':'private_loopback','model_training':False}),flush=True);app.serve_forever()

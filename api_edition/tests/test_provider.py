@@ -67,4 +67,19 @@ class GatewayTests(unittest.TestCase):
             with self.assertRaises(urllib.error.HTTPError):urllib.request.urlopen(urllib.request.Request(url,data=body))
         finally:server.shutdown();server.server_close();thread.join(timeout=2)
 
+
+
+class SearchPageTests(unittest.TestCase):
+    def handler(self):
+        from provider import search_handler
+        from unittest.mock import Mock
+        class Base:
+            def send(self,value,status=200):return status,value
+        p=Mock();p.config={};h=search_handler(Base,p)();h.path='/api/search?q=Nora';h.headers={'Host':'127.0.0.1:8790'}
+        return h,p
+    def test_search_page_does_not_read_diagnostic_corpus(self):
+        h,p=self.handler();p.search.side_effect=ValueError('Search API not configured');code,value=h.do_GET();self.assertEqual(code,409);p.search.assert_called_once_with('Nora')
+    def test_cross_site_cannot_trigger_paid_search(self):
+        h,p=self.handler();h.headers['Sec-Fetch-Site']='cross-site';self.assertEqual(h.do_GET()[0],403);p.search.assert_not_called()
+
 if __name__=='__main__':unittest.main()

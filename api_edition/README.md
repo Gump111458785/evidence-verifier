@@ -60,4 +60,4 @@ search.endpoint是完整HTTPS地址，密钥通过所指环境变量作为Bearer
 
 已有纯API配置、输入边界、缺失服务、拒绝响应、snippet排除和本机桥接的合同测试。测试使用mock/回环服务，没有调用付费厂商API；没有进行真实供应商端到端兼容、准确率或费用评测。侧栏三站点实机兼容状态不因更换后端而改变。
 
-API版下载包为`evidence-verifier-api-0.3.0-source.zip`；不包含训练入口文件，但保留共享核验内核与原始开发记录。API应用仍有Python/SQLite后端，不等于纯浏览器无服务器版本。
+API版下载包为`evidence-verifier-api-0.3.1-source.zip`；不包含训练入口文件，但保留共享核验内核与原始开发记录。API应用仍有Python/SQLite后端，不等于纯浏览器无服务器版本。

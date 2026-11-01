@@ -37,7 +37,7 @@ jobs:
           python api_edition/run.py --check
           python -m unittest discover -s api_edition/tests -p test_provider.py
       - name: Build offline delivery
-        run: python scripts/build_release.py --version 0.3.0 --out dist
+        run: python scripts/build_release.py --version 0.3.1 --out dist
       - uses: actions/upload-artifact@v4
         with:
           name: evidence-verifier-delivery

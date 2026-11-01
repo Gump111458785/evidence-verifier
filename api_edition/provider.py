@@ -143,3 +143,19 @@ def gateway(provider):
             data=json.dumps(result,ensure_ascii=False).encode();self.send_response(code);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
     server=ThreadingHTTPServer(('127.0.0.1',0),Handler)
     return server,token
+
+
+def search_handler(base,provider):
+    """Keep the workbench search page on API retrieval too; block cross-site billing."""
+    from urllib.parse import parse_qs
+    class Handler(base):
+        def do_GET(self):
+            path=urlsplit(self.path)
+            if path.path!='/api/search':return super().do_GET()
+            origin=self.headers.get('Origin')
+            allowed_extension='chrome-extension://'+provider.config.get('extension_id','')
+            if self.headers.get('Sec-Fetch-Site')=='cross-site' or origin and origin not in ('http://'+self.headers.get('Host',''),allowed_extension):
+                return self.send({'error':'Cross-site API search rejected'},403)
+            try:return self.send(provider.search(parse_qs(path.query).get('q',[''])[0]))
+            except (ValueError,RuntimeError) as e:return self.send({'error':str(e),'code':'search_api_failure'},409)
+    return Handler

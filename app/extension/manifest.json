@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Evidence Verifier · 证据侧栏",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "minimum_chrome_version": "116",
   "description": "主动读取主流AI网页可见回答与引用，独立核验后生成补证prompt；不读取隐藏思维链。",
   "permissions": [
