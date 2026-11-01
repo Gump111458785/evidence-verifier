@@ -1,0 +1,36 @@
+name: Release build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Python syntax
+        run: python -m compileall -q app sdk/src scripts
+      - name: JavaScript syntax
+        run: |
+          node --check app/static/app.js
+          node --check app/static/plugin.js
+          node --check app/extension/background.js
+      - name: Publication source check
+        run: python scripts/check_publication.py
+      - name: Build offline delivery
+        run: python scripts/build_release.py --version 0.1.0 --out dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: evidence-verifier-delivery
+          path: dist/

@@ -1,0 +1,14 @@
+{
+  "model": "/path/to/existing/Qwen2.5-3B-Instruct",
+  "max_length": 2048,
+  "micro_batch": 1,
+  "gradient_accumulation": 8,
+  "optimizer_steps": 20,
+  "chunk_tokens": 128,
+  "loss_mode": "checkpointed_chunked_ce",
+  "gradient_checkpointing": true,
+  "length_buckets": true,
+  "seed": 42,
+  "learning_rate": 0.0002,
+  "minimum_free_gib": 12
+}
