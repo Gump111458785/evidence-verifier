@@ -42,7 +42,7 @@ python3 app/server.py --port 8790
 v0.2.0增加ChatGPT / Claude / Gemini可见DOM适配、主动读取/跟随、引用来源页采集、独立核验与缺口补搜、补充prompt复制或填入原对话草稿。[完整操作与边界](docs/conversation-sidecar.md)。适配代码已交付，尚未完成三站点实机验证，不读取隐藏思维链。
 
 
-从 [Release](https://github.com/Gump111458785/evidence-verifier/releases) 下载 `evidence-verifier-extension-0.2.0.zip`，解压后按[插件说明](app/extension/README.md)手动加载。也可以直接使用工作台内同界面的侧栏预览。
+从 [Release](https://github.com/Gump111458785/evidence-verifier/releases) 下载 `evidence-verifier-extension-0.2.1.zip`，解压后按[插件说明](app/extension/README.md)手动加载。也可以直接使用工作台内同界面的侧栏预览。
 
 插件通过图标或用户主动选择文本的右键菜单打开。选中文本只存放在扩展会话内；新侧栏默认等待主动读取，核验需连接已有服务；教学案例另行保留，不为任意文本生成虚构的幻觉分数。本机服务不可用时显示离线快照。
 
@@ -85,7 +85,7 @@ scripts/              离线交付构建
 ## 构建交付
 
 ```bash
-python3 scripts/build_release.py --version 0.2.0 --out dist
+python3 scripts/build_release.py --version 0.2.1 --out dist
 # 若本机已有 setuptools / wheel，可另加 --wheel 构建客户端 wheel。
 ```
 
