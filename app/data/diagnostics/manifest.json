@@ -1,0 +1,9 @@
+{
+  "source_archive_sha256": "f85a8708b75368a7e42ab4dffb94a98e3e2458f12279b3df7de6dbaf9d3e11a9",
+  "archive_sha256": "99b79bf7a13b87d7fffcd264fff6704668d0adc9620c3af56e417bb32b5bd46a",
+  "expected_sha256": "bbe18e9eb9ad92b0d21c6da3c5cac20f2b379e52d7a54dae861f0d57c9d2cfcf",
+  "expected_records": 92,
+  "main_records": 80,
+  "probe_records": 12,
+  "scope": "constructed development diagnostic; historical predictions rescored offline, not new inference or independent validation"
+}

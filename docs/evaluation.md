@@ -18,3 +18,14 @@
 新版本的侧栏、HTTP编排、缓存和调度不能用这份旧结果证明改进收益。本轮未运行600题独立人工双标、300题端到端任务、LoRA目标模型训练、同预算重搜对照或GPU显存/延迟实验。
 
 CI中的语法与交付构建检查属于工程分发检查，不是这个模型评测的复现。
+
+## 一键重新评分
+
+```bash
+python3 scripts/reproduce_diagnostics.py
+python3 scripts/reproduce_diagnostics.py --out diagnostics-report.json
+```
+
+原始构造标签现保存在app/data/diagnostics/expected.jsonl，来自已核对SHA-256的v7源归档；输入、标签与原预测的身份由manifest.json记录。脚本不复制counts列，而是调用原评分协议从逐条预测与标签重算80题/12题两组，并逐项核对旧评测。改动原预测、原标签或汇总不一致会失败。
+
+这是旧模型输出的离线复算，不是重新运行三个模型或独立人工复标。无效输出包括多种协议和物化失败，不能把27/4全部称为语义矛盾。正例39→32和变量案例16→11的代价必须与52→69同时报告。

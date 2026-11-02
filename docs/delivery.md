@@ -1,3 +1,7 @@
+# v0.3.2 文档与代码改进
+
+新增[离线复算](../scripts/reproduce_diagnostics.py)、原构造标签与哈希校验、API配置/输出校验、独立检索注入及文档链接检查。README、[愿景](vision.md)、[历史](history.md)、[路线图](roadmap.md)按证据状态组织。以下旧交付记录按版本保留；不得把历史数字当作本轮模型实验。
+
 # v0.3.0 纯API交付
 
 新增独立[纯API入口与预留配置](../api_edition/README.md)，使用远程Chat Completions及正文搜索API。无需权重、GPU或训练。10项mock/回环合同通过；未配置真实API，未测厂商端到端、准确率或费用。原研究版及下列历史交付保留。

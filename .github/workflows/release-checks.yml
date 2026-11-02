@@ -30,14 +30,19 @@ jobs:
           node --check app/static/sidecar.js
       - name: Publication source check
         run: python scripts/check_publication.py
-      - name: Sidecar report contracts (fixtures, no models)
-        run: python -m unittest discover -s app/tests -p test_sidecar.py
+      - name: Backend regression (fixtures; optional ML tests skip without dependencies)
+        run: python -m unittest discover -s app/tests -p "test_*.py"
       - name: Pure API contracts (mock and loopback only)
         run: |
           python api_edition/run.py --check
           python -m unittest discover -s api_edition/tests -p test_provider.py
+      - name: Historical diagnostic reproduction and documentation
+        run: |
+          python scripts/reproduce_diagnostics.py
+          python -m unittest discover -s scripts/tests -p test_reproduce.py
+          python scripts/check_doc_links.py
       - name: Build offline delivery
-        run: python scripts/build_release.py --version 0.3.1 --out dist
+        run: python scripts/build_release.py --version 0.3.2 --out dist
       - uses: actions/upload-artifact@v4
         with:
           name: evidence-verifier-delivery

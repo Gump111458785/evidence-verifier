@@ -82,4 +82,94 @@ class SearchPageTests(unittest.TestCase):
     def test_cross_site_cannot_trigger_paid_search(self):
         h,p=self.handler();h.headers['Sec-Fetch-Site']='cross-site';self.assertEqual(h.do_GET()[0],403);p.search.assert_not_called()
 
+
+
+class StrictConfigurationTests(unittest.TestCase):
+    def test_bad_types_are_clear_validation_errors(self):
+        from provider import validate_config
+        cases = [[], None, {'roles':[]}, {'roles':{'verifier':None}}, {'roles':{},'search':[]},
+                 {'roles':{},'timeout_seconds':True}, {'roles':{},'timeout_seconds':float('nan')},
+                 {'roles':{},'max_response_bytes':2048.5}, {'roles':{},'extension_id':123},
+                 {'roles':{'extractor':{'send_seed':'false'}}},
+                 {'roles':{},'search':{'api_key_env':'bad name'}},
+                 {'roles':{'verifier':{'base_url':'https://example.org:99999/v1'}}}]
+        for value in cases:
+            with self.subTest(value=value), self.assertRaises(ValueError):validate_config(value)
+
+    def test_configuration_is_copied(self):
+        config={'roles':{}}
+        p=APIProvider(config);config['roles']['verifier']={'model':'changed'}
+        self.assertFalse(p.ready('verifier'));self.assertNotIn('model',p.config['roles']['verifier'])
+
+    def test_identity_separates_credentials_and_unversioned_runs(self):
+        c={'roles':{},'search':{'endpoint':'https://search.example.invalid','api_key_env':'TEST_CACHE_ACCOUNT','revision':'index-v1'}}
+        with patch.dict(os.environ,{'TEST_CACHE_ACCOUNT':'account-one'}):
+            p=APIProvider(c);first=p.search_identity()
+            self.assertEqual(first,APIProvider(c).search_identity())
+        with patch.dict(os.environ,{'TEST_CACHE_ACCOUNT':'account-two'}):self.assertNotEqual(first,p.search_identity())
+        c['search'].pop('revision')
+        self.assertNotEqual(APIProvider(c).search_identity(),APIProvider(c).search_identity())
+
+
+class ProviderOutputTests(unittest.TestCase):
+    setUp = ProviderTests.setUp
+    tearDown = ProviderTests.tearDown
+    def test_malformed_choices_and_truncation_fail_closed(self):
+        p=APIProvider(self.c)
+        replies=[[], {'choices':[None]}, {'choices':[{'message':[]}]},
+                 {'choices':[{'message':{'content':'{}'},'finish_reason':'length'}]},
+                 {'choices':[{'message':{'content':'{}','refusal':'blocked'}}]}]
+        for reply in replies:
+            with self.subTest(reply=reply),patch.object(p,'post',return_value=reply),self.assertRaises(ValueError):
+                p.complete('verifier',{'messages':[]})
+
+    def test_search_rejects_non_object_rows_and_non_finite_scores(self):
+        p=APIProvider(self.c)
+        for row in [None, {'url':'https://example.org','raw_content':'source','score':float('nan')}]:
+            with patch.object(p,'post',return_value={'results':[row]}),self.assertRaises(ValueError):p.search('question')
+
+
+class RuntimeIsolationTests(unittest.TestCase):
+    def test_environment_cannot_inherit_local_model_or_extension_settings(self):
+        from runtime import configure_environment
+        with patch.dict(os.environ,{'EV_MODEL_URL':'http://localhost:8000/v1','EV_MODEL_KEY':'old-local-key',
+                 'EV_EXTENSION_ID':'b'*32,'EV_ROUTING_POLICY':'invalid','EV_DB':'keep-runtime.sqlite'}):
+            configure_environment(APIProvider({'roles':{}}),'http://127.0.0.1:1234/v1','gateway-secret')
+            self.assertNotIn('EV_MODEL_URL',os.environ);self.assertNotIn('EV_MODEL_KEY',os.environ)
+            self.assertNotIn('EV_EXTENSION_ID',os.environ);self.assertNotIn('EV_ROUTING_POLICY',os.environ)
+            self.assertEqual(os.environ['EV_DB'],'keep-runtime.sqlite')
+
+    def test_api_search_injection_does_not_mutate_research_class(self):
+        sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'app'))
+        from retrieval import SearchSessions,RetrievalError
+        from runtime import search_sessions
+        original_search,original_identity=SearchSessions._search,SearchSessions.corpus_identity
+        p=APIProvider({'roles':{}});tools=search_sessions(p,lambda:None,Path('unused.sqlite'))
+        with self.assertRaises(RetrievalError):tools._search('query')
+        self.assertIs(SearchSessions._search,original_search);self.assertIs(SearchSessions.corpus_identity,original_identity)
+        self.assertEqual(tools.corpus_identity(),p.search_identity())
+
+
+
+class GatewayFailureTests(unittest.TestCase):
+    def test_auth_and_malformed_requests_never_reach_provider(self):
+        import threading
+        import urllib.request
+        import urllib.error
+        p=APIProvider({'roles':{}});server,token=gateway(p)
+        thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+        base='http://127.0.0.1:'+str(server.server_port)
+        cases=[('/v1/chat/completions',{},'',401),('/wrong',{},token,404),
+               ('/v1/chat/completions',[],token,400),
+               ('/v1/chat/completions',{'messages':[],'response_format':{'json_schema':{'name':[]}}},token,400)]
+        try:
+            with patch.object(p,'complete',side_effect=AssertionError('No provider calls')) as call:
+                for path,body,key,expected in cases:
+                    request=urllib.request.Request(base+path,data=json.dumps(body).encode(),headers={'Authorization':'Bearer '+key})
+                    with self.subTest(expected=expected),self.assertRaises(urllib.error.HTTPError) as error:
+                        urllib.request.urlopen(request)
+                    self.assertEqual(error.exception.code,expected)
+                call.assert_not_called()
+        finally:server.shutdown();server.server_close();thread.join(timeout=2)
+
 if __name__=='__main__':unittest.main()
