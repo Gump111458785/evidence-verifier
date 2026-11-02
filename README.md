@@ -12,7 +12,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![API mode](https://img.shields.io/badge/API_mode-no_local_GPU-227755)](api_edition/README.md)
 
-[快速开始](#快速开始) · [使用插件](#使用插件) · [真实补证案例](#真实补证案例) · [核心机制](#核心机制) · [实测结果](#实测结果) · [文档](#文档与开发)
+[系统架构](#系统架构) · [快速开始](#快速开始) · [使用插件](#使用插件) · [真实补证案例](#真实补证案例) · [核心机制](#核心机制) · [实测结果](#实测结果) · [文档](#文档与开发)
 
 </div>
 
@@ -25,6 +25,16 @@
 | 当前证据不够，不知道接下来搜什么 | 根据缺失关系构造查询，在共享工具预算内补搜并重核验 | 新证据、补搜轨迹、修订 prompt |
 
 可通过Chrome侧栏审查对话，也可通过HTTP API接入已有搜索系统。纯API版使用远程模型与搜索服务，无需本地GPU；教学工作台和历史复算无需密钥。
+
+## 系统架构
+
+下图展示**理想完成态的系统设计**：在线证据核验与定向补搜、可替换的模型资源底座，以及离线训练评测。`实 / 验 / 拟`分别标明已有实现与合同、接入或效果待验收、规划组件。
+
+![Evidence Verifier理想完成态架构：插件与API接入、独立事实链、补搜反馈、模型资源底座、离线训练评测](docs/images/system-architecture.png)
+
+[放大 / 编辑SVG](docs/images/system-architecture.svg) · [下载PDF](docs/images/system-architecture.pdf) · [架构与数据边界](docs/architecture.md)
+
+问题与候选答案只进入关系规划，事实抽取和支持性核验使用独立的证据输入；本地模型池与远程API按角色配置，可互相替换。3×RTX5090本地路径、3B LoRA及新数据评测属于目标设计，不表示已有对应训练、显存或吞吐成绩。
 
 ## 真实补证案例
 
