@@ -21,6 +21,8 @@ def report(job, question, candidate, repair=None):
              'relations':job['input']['plan'], 'bindings':result.get('bindings',{}),
              'relation_results':result.get('relation_results',[]), 'proof':result.get('proof',[]),
              'fact_rows':result.get('fact_rows',[]), 'span_checks':result.get('span_checks',[]),
+             'grounding':({k: v for k, v in result['grounding'].items() if k != 'revision'}
+                          if result.get('grounding') else None),
              'gaps':gaps, 'evidence':evidence,
              'repair_id':repair['id'] if repair else None}
     payload={'question':question,'previous_candidate':candidate,'evidence_audit':trace}

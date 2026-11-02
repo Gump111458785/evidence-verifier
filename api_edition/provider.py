@@ -42,8 +42,10 @@ def _text(value, label, limit=2000):
 
 
 def validate_config(value):
-    _object(value, {'roles', 'search', 'timeout_seconds', 'max_response_bytes', 'extension_id'}, 'API configuration')
+    _object(value, {'roles', 'search', 'timeout_seconds', 'max_response_bytes', 'extension_id', 'grounding_repair_attempts'}, 'API configuration')
     c = copy.deepcopy(value)
+    if type(c.get('grounding_repair_attempts', 0)) is not int or c.get('grounding_repair_attempts', 0) not in (0, 1):
+        raise ValueError('grounding_repair_attempts must be 0 or 1')
     _object(c.get('roles'), set(ROLES), 'roles')
     for role in ROLES:
         v = c['roles'].setdefault(role, {})
@@ -256,7 +258,7 @@ def gateway(provider):
                 name = rf.get('json_schema', {}).get('name')
                 if name is not None and not isinstance(name, str):
                     raise ValueError('Invalid schema name')
-                role = {'extract': 'extractor', 'verify': 'verifier', 'direct': 'verifier', 'relation_proposal': 'planner'}.get(name)
+                role = {'extract': 'extractor', 'grounding_repair': 'extractor', 'verify': 'verifier', 'direct': 'verifier', 'relation_proposal': 'planner'}.get(name)
                 if role is None:
                     if body.get('model') != 'api-agent':
                         raise ValueError('Unknown gateway role')

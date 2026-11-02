@@ -341,6 +341,8 @@ class RepairService:
                 checked = (evaluate(plan, out.get('facts', []), evidence) if out['status'] == 'ok'
                            else {'status': 'invalid_output', 'error': 'Extraction or independent verification contains invalid output'})
                 checked.update(provenance={k: verified[k] for k in ('source', 'model', 'model_revision', 'kernel_sha256')})
+                checked['grounding'] = out.get('grounding')
+                checked['fact_rows'] = out.get('facts', [])
                 summary['rounds'].append({'round': index+1, 'queries': gaps, 'evidence_sha256': digest(evidence),
                                           'verification': verified, 'joint_result': checked})
                 summary['evidence'], summary['final'] = evidence, checked

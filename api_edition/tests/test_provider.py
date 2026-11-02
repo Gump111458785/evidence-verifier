@@ -60,6 +60,18 @@ class ProviderTests(unittest.TestCase):
         for value in (True,127,16385,'8192'):
             self.c['roles']['extractor']['max_output_tokens']=value
             with self.subTest(value=value),self.assertRaises(ValueError):APIProvider(self.c)
+    def test_grounding_revision_is_explicit_and_bounded(self):
+        from runtime import configure_environment
+        for value in (True,2,-1,'1'):
+            self.c['grounding_repair_attempts']=value
+            with self.subTest(value=value),self.assertRaises(ValueError):APIProvider(self.c)
+        self.c['grounding_repair_attempts']=1
+        with patch.dict(os.environ,{'EV_GROUNDING_REPAIR_ATTEMPTS':'unexpected'}):
+            configure_environment(APIProvider(self.c),'http://127.0.0.1:1234/v1','fixture-key')
+            self.assertEqual(os.environ['EV_GROUNDING_REPAIR_ATTEMPTS'],'1')
+            self.c.pop('grounding_repair_attempts')
+            configure_environment(APIProvider(self.c),'http://127.0.0.1:1234/v1','fixture-key')
+            self.assertEqual(os.environ['EV_GROUNDING_REPAIR_ATTEMPTS'],'0')
     def test_deepseek_search_maps_native_body_and_preserves_source(self):
         self.c['search']['protocol']='deepseek'
         p=APIProvider(self.c)
@@ -100,6 +112,9 @@ class GatewayTests(unittest.TestCase):
             request=urllib.request.Request(url,data=body,headers={'Authorization':'Bearer '+token})
             with patch.object(p,'complete',return_value={'choices':[{'message':{'content':'{}'}}]}) as complete:
                 with urllib.request.urlopen(request) as response:self.assertEqual(response.status,200)
+                self.assertEqual(complete.call_args.args[0],'extractor')
+                revision=json.dumps({'model':'api-verifier','messages':[], 'response_format':{'json_schema':{'name':'grounding_repair'}}}).encode()
+                with urllib.request.urlopen(urllib.request.Request(url,data=revision,headers={'Authorization':'Bearer '+token})) as response:self.assertEqual(response.status,200)
                 self.assertEqual(complete.call_args.args[0],'extractor')
             with self.assertRaises(urllib.error.HTTPError):urllib.request.urlopen(urllib.request.Request(url,data=body))
         finally:server.shutdown();server.server_close();thread.join(timeout=2)

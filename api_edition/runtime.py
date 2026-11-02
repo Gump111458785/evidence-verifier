@@ -3,11 +3,12 @@ import os
 
 
 def configure_environment(provider, gateway_url, gateway_token):
-    prefixes = ('EV_MODEL_', 'EV_VERIFIER_', 'EV_AGENT_', 'EV_PLANNER_', 'EV_INFERENCE_', 'EV_ROUTING_', 'EV_REPLICA_')
+    prefixes = ('EV_MODEL_', 'EV_VERIFIER_', 'EV_AGENT_', 'EV_PLANNER_', 'EV_INFERENCE_', 'EV_ROUTING_', 'EV_REPLICA_', 'EV_GROUNDING_')
     for key in list(os.environ):
         if key.startswith(prefixes) or key == 'EV_EXTENSION_ID':
             os.environ.pop(key)
     os.environ['EV_EDITION'] = 'pure_api'
+    os.environ['EV_GROUNDING_REPAIR_ATTEMPTS'] = str(provider.config.get('grounding_repair_attempts', 0))
     if provider.ready('extractor') and provider.ready('verifier'):
         os.environ.update(EV_MODEL_URL=gateway_url, EV_MODEL_NAME='api-verifier', EV_MODEL_KEY=gateway_token)
     for role, prefix in (('planner', 'EV_PLANNER'), ('agent', 'EV_AGENT')):

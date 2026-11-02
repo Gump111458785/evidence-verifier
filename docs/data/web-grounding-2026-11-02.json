@@ -1,0 +1,122 @@
+{
+  "freeze_before_successful_probe": {
+    "scope": "development live smoke; not independent accuracy evaluation",
+    "model_roles": {
+      "planner": {
+        "base_url": "https://api.deepseek.com",
+        "model": "deepseek-flash",
+        "response_format": "json_object",
+        "send_seed": false,
+        "reasoning_effort": "none"
+      },
+      "extractor": {
+        "base_url": "https://api.deepseek.com",
+        "model": "deepseek-flash",
+        "response_format": "json_object",
+        "send_seed": false,
+        "reasoning_effort": "none"
+      },
+      "verifier": {
+        "base_url": "https://api.deepseek.com",
+        "model": "deepseek-flash",
+        "response_format": "json_object",
+        "send_seed": false,
+        "reasoning_effort": "none"
+      },
+      "agent": {
+        "base_url": "https://api.deepseek.com",
+        "model": "deepseek-flash",
+        "response_format": "json_object",
+        "send_seed": false,
+        "reasoning_effort": "none"
+      }
+    },
+    "input": {
+      "question": "Who designed the Analytical Engine?",
+      "candidate": "Charles Babbage",
+      "evidence": [
+        {
+          "id": "controlled-seed",
+          "text": "The Analytical Engine was never completed."
+        }
+      ],
+      "relation": {
+        "subject": "Analytical Engine",
+        "predicate": "designed_by",
+        "object": "Charles Babbage",
+        "time_scope": "any"
+      }
+    },
+    "expected": {
+      "initial": "missing",
+      "after_web_repair": "entailed",
+      "no_invalid_final_output": true,
+      "all_source_positions_replay": true,
+      "all_accepted_facts_require_semantic_audit": true
+    },
+    "negative_expected": {
+      "wrong_designer": "missing",
+      "role_reversal": "missing",
+      "society_membership_is_not_employment": "missing"
+    },
+    "prior_cumulative_estimate_usd": 0.0362043,
+    "source_files_sha256": {
+      "app/engine.py": "f652918df48a65f888da1c8791c38c28ac1a36be34725856ff43c9a9ed20820f",
+      "app/grounding.py": "505d72cf40aeb82cfe2b9492645b92a56da8abf03e9a0e7f232c6872ea458a4b",
+      "app/repair.py": "a51291cd68af7eb300c7863ed89af4d5c52cf94706837a8de7978c426a7f458e",
+      "app/server.py": "4e3467d109a934a630c308fa5bab7b1c044f76d1158e76fd2dc6a7277693b917",
+      "app/sidecar.py": "9bba9b36a21ef7c59da2765e356a9cb0049703ac8d9030296372a8a366c5d492",
+      "api_edition/provider.py": "f9bd559336ce87d9111ff8fbaa1162e02345205125643c37753b82dcb2afd342",
+      "api_edition/runtime.py": "b91f0c3130ef1b2e2538ac1b74bb48216e8f50d708b897e68800de8838d1aa87"
+    },
+    "user_cumulative_budget_cny": 3,
+    "conservative_cumulative_usd_cap": 0.1,
+    "budget_conversion_ceiling_cny_per_usd": 10,
+    "conversion_note": "Conservative budget accounting factor, not a quoted exchange rate; USD cap intentionally below the user ceiling.",
+    "phase": "bounded adjacent-context retest",
+    "parent_freeze_sha256": "93cfa0091674d3c20ab4fc91a262bc75c1cd4fdf1c78599dba3d292ea14745d3"
+  },
+  "development_result": {
+    "input_scope": "controlled insufficient seed; live web search and model verification, not an accuracy benchmark",
+    "initial": {
+      "id": "d2221af2077d4bae",
+      "state": "completed",
+      "verdict": "missing",
+      "error": null
+    },
+    "repair": {
+      "id": "89c303f965b0466b",
+      "state": "completed",
+      "verdict": "entailed",
+      "stop_reason": "entailed",
+      "error": null,
+      "additional_tool_calls": 4
+    },
+    "prompt_generated": true,
+    "automatically_sent": false,
+    "source_positions_replay": true,
+    "proof_count": 1,
+    "semantic_audit": {
+      "reviewer": "assistant development inspection, not independent human gold",
+      "primary_design_proof": "explicit source names the whole Analytical Engine and Charles Babbage",
+      "accepted_facts_reviewed": 3,
+      "education_does_not_establish_employment": "correctly rejected",
+      "scope": "one development case and shared-fact negative matching checks"
+    },
+    "negative_checks": {
+      "wrong_designer": "missing",
+      "role_reversal": "missing",
+      "society_membership_is_not_employment": "missing"
+    },
+    "mechanical_passed": true,
+    "cost": {
+      "this_round_estimated_peak_usd": 0.0076587,
+      "prior_estimated_peak_usd": 0.0362043,
+      "cumulative_estimated_peak_usd": 0.043863,
+      "conservative_cny_upper_estimate": 0.43862999999999996,
+      "user_budget_cny": 3,
+      "accounting_factor_cny_per_usd": 10,
+      "note": "not a quoted exchange rate or a vendor billing statement"
+    }
+  }
+}

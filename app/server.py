@@ -202,6 +202,7 @@ def execute_plan(cid, spec, guard=None):
         checked['provenance'] = provenance
         checked['plan_revision'] = spec.get('plan_revision')
         checked['fact_rows'] = out.get('facts', [])
+        checked['grounding'] = out.get('grounding')
         if 'usage_complete' in provenance:
             checked['usage_complete'] = provenance['usage_complete']
         with db() as c:

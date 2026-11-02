@@ -45,6 +45,7 @@ planner/extractor/verifier可以使用不同API模型。只有extractor与verifi
 - 每角色可显式配置max_output_tokens（128–16384的整数），覆盖调用方输出上限，并按token_parameter映射。思考模型的思考token也会消耗供应商输出额度；增加额度不保证返回有效JSON，禁止依赖无上限重试。[本次真实截断记录](../docs/browser-validation-2026-11-02.md)。
 - HTTPS连接；HTTP只允许回环地址，供自有网关或合同演练。拒绝携带凭据的URL、密钥内联配置及重定向，不转发凭据到意外目的地。
 - 超时、限流、拒绝、空回答、无效JSON/引用都不是“证据不足”。无自动付费重试。
+- 顶层`grounding_repair_attempts`只允许0或1，默认0。设为1时，对实体未在引用中定位的事实先尝试同文档前后各2句、额外至多600字符的原文补齐，保留所有中间句；仍无效时至多调用一次extractor修正定位。它只看证据、关系定义、原假设与错误，不看问题、候选或目标关系；不许丢弃事实或更改关系、极性、时间限定。该额外模型阶段可能计费，网络错误仍不重试。补齐出处不等于支持，之后只用各事实所引句独立核验语义。
 - 本地仅启动私有回环API桥接和工作台；桥接有随机进程内令牌，真实密钥不传给浏览器、客户端或任务记录。
 - API没有可信不可变模型版本时不跨运行复用核验结果；供应商token统计缺失时成本未知，不填零费用。
 
@@ -65,6 +66,8 @@ search.endpoint是完整HTTPS地址，密钥通过所指环境变量作为Bearer
 可复制[DeepSeek示例配置](config.deepseek.example.json)为config.local.json，设置环境变量`EV_API_VERIFIER_KEY`，再按上面的命令启动。四个角色可共用该密钥或自行分开。当前示例选择deepseek-flash、json_object、reasoning_effort=none，不发送seed；搜索使用官方原生端点。供应商型号和价格可能变化，使用前参考[官方价格表](https://api-docs.deepseek.com/quick_start/pricing/)。`.env.local`仅用于保存本地密钥，启动器不会自动加载；运行前须在当前进程环境设置对应变量，切勿上传密钥文件。
 
 2026-11-02已完成真实付费API冒烟：三组自编核验样例、规划修复后的单次复测、网页搜索与补充提示词生成通过。最初规划输出有位置错误并被拒绝，记录保留；没有降低校验规则。[测试范围、费用与已知边界](../docs/deepseek-smoke-2026-11-02.md)。
+
+后续以同一缺证问题验证真实网页自动补搜：`missing → search/open → 原文补齐 → 独立核验 → entailed → 补充prompt`单案例通过；DeepSeek示例现显式启用上述有界修正。成功轮只用了程序补齐，没有调用定位修正模型；此前失败保留。[完整记录及累计费用](../docs/web-grounding-validation-2026-11-02.md)。此为后端自动流程验收，不代表把prompt自动发送给原AI，也不代表三站点兼容或准确率提升。
 
 ## 检查与交付边界
 

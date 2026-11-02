@@ -45,9 +45,9 @@ python3 scripts/reproduce_diagnostics.py --out diagnostics-report.json
 | 场景 | 服务对象与形态 | 当前状态 |
 |---|---|---|
 | 企业知识库引用核验 | RAG/SaaS 回答链路中的 HTTP API 与 Python SDK | HTTP 合同已实现；SDK/框架接入待实机验收；企业部署（未实现） |
-| AI 搜索后置核验与补证 | 按缺失关系检索原文，再对同一计划核验 | 本地闭环代码与合同已实现；互联网搜索 API 接口已实现，真实供应商闭环待验证 |
+| AI 搜索后置核验与补证 | 按缺失关系检索原文，再对同一计划核验 | 真实网页自动补搜单开发案例通过；代表性收益待评测。[记录](docs/web-grounding-validation-2026-11-02.md) |
 | 训练数据过滤 | 用支持性与证据链筛选智能体轨迹 | 已有样本整理与导出代码；自动可靠过滤及训练收益（未实现） |
-| 个人 AI 回答审查 | ChatGPT / Claude / Gemini 浏览器侧栏 | 侧栏与适配代码已交付；三站点实机兼容待验证 |
+| 个人 AI 回答审查 | ChatGPT / Claude / Gemini 浏览器侧栏 | ChatGPT单案例交互通过；Gemini地区阻断；Claude按要求未测 |
 
 [产品愿景与场景说明](docs/vision.md)。上述服务对象是目标场景，不表示已有客户、试点或商业化。
 
@@ -63,7 +63,8 @@ python3 scripts/reproduce_diagnostics.py --out diagnostics-report.json
 | 共享预算检索、缺口查询、补搜与重核验 | **已实现（程序/合同）**：[检索测试](app/tests/test_retrieval.py)、[补证报告测试](app/tests/test_sidecar.py)；真实端到端收益待测 |
 | 版本缓存、并发合并、多副本路由 | **进行中**：[实现](app/inference.py)，真实模型负载、吞吐与费用未测 |
 | HTTP 核验、Python SDK、LangGraph 节点 | **进行中（接入验收）**：[API](app/verification_api.py)、[SDK](sdk)；代码交付不等于框架与真实服务已验收 |
-| 纯 API 模式，独立规划/抽取/核验配置 | **已实现（合同及少量真实API冒烟）**：[启动器](api_edition/run.py)、[DeepSeek记录](docs/deepseek-smoke-2026-11-02.md)；代表性准确率及完整网页闭环待测 |
+| 纯 API 模式，独立规划/抽取/核验配置 | **已实现（合同及少量真实API冒烟）**：[启动器](api_edition/run.py)、[基础记录](docs/deepseek-smoke-2026-11-02.md)；[自动网页单开发案例](docs/web-grounding-validation-2026-11-02.md)通过，代表性准确率待测 |
+| 有界原文补齐与引用内独立核验 | **已实现（合同及单案例）**：[原文处理](app/grounding.py)、[回归](app/tests/test_grounding.py)；同文档邻句补齐，仍逐条核验语义，未修复错误保留为无效输出 |
 | 浏览器侧栏与三站点适配 | **进行中（分站点验收）**：ChatGPT单案例交互链路通过；Gemini地区阻断；Claude未测。[实机记录](docs/browser-validation-2026-11-02.md) |
 | LoRA 预检与分块交叉熵 | **进行中（目标模型验收）**：[预检](app/training.py)、[损失实现](app/torch_training.py)、[测试与跳过条件](app/tests/test_training.py)；不使用 Liger |
 | 3B 专用核验模型 | **未实现**：目标训练尚未启动，没有交付 checkpoint 或训练收益 |

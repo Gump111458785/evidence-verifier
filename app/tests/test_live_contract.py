@@ -59,12 +59,22 @@ class LiveContractTests(unittest.TestCase):
         self.assertEqual(result['usage']['model_calls'], 0)
         self.assertEqual(result['usage']['cache_hits'], 2)
 
-    def test_changed_evidence_does_not_reuse_old_cache(self):
+    def test_changed_uncited_evidence_reextracts_but_may_reuse_exact_citation_check(self):
         self.run_live()
         second = copy.deepcopy(self.row)
         second['evidence'][0]['text'] += ' This is extra context.'
         result = self.run_live(second)
+        self.assertEqual(result['usage']['model_calls'], 1)
+        self.assertEqual(result['usage']['cache_hits'], 1)
+        self.assertEqual(self.requests[-1]['response_format']['json_schema']['name'], 'extract')
+
+    def test_changed_cited_sentence_invalidates_its_support_cache(self):
+        self.run_live()
+        second = copy.deepcopy(self.row)
+        second['evidence'][0]['text'] = 'Lena worked as an instrument maker at Neri University, starting in 1998.'
+        result = self.run_live(second)
         self.assertEqual(result['usage']['cache_hits'], 0)
+        self.assertEqual(result['usage']['model_calls'], 2)
 
     def test_unsupported_quote_is_invalid_not_missing(self):
         self.fact['object']['text'] = 'Invented institution'

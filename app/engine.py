@@ -8,6 +8,7 @@ import urllib.request
 import uuid
 from pathlib import Path
 from inference import configuration as inference_configuration, router as inference_router, estimate_work
+from grounding import REPAIR_SYSTEM, source_payload, materialize_all, expand_local_context, revision_schema, apply_revision, cited_evidence
 
 ROOT = Path(__file__).parent
 sys.path.insert(0, str(ROOT / 'vendor'))
@@ -53,21 +54,26 @@ def live(row, mode, cache_get, cache_put, event):
     endpoints = routing_config['urls']
     model = routing_config['model']
     kernel.validate_target(row['relation'])
-    payload, cat = kernel.extraction_payload(row['evidence'])
+    payload, cat = source_payload(row['evidence'], kernel)
+    repair_attempts = os.environ.get('EV_GROUNDING_REPAIR_ATTEMPTS', '0')
+    if repair_attempts not in ('0', '1'):
+        raise ValueError('Grounding repair attempts must be 0 or 1')
     version = digest({p.name: hashlib.sha256(p.read_bytes()).hexdigest()
                       for p in (ROOT / 'vendor/evpilot').glob('*.py')})
     # An endpoint/model name can survive weight updates. Without a pinned revision,
     # isolate the cache to this execution rather than silently using stale weights.
     model_revision = routing_config['revision'] or None
     cache_namespace = model_revision or 'unversioned-run-' + uuid.uuid4().hex
-    adapter_version = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    adapter_version = digest({name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
+                              for name in ('engine.py', 'grounding.py')})
     usage = {'prompt_tokens': 0, 'completion_tokens': 0, 'cache_hits': 0, 'model_calls': 0, 'coalesced_hits': 0}
     usage_complete = True
 
     def call(stage, value):
-        schema = kernel.schema_for(stage, cat)
+        schema = (revision_schema(cat, len(value['hypotheses']), kernel) if stage == 'grounding_repair'
+                  else kernel.schema_for(stage, cat))
         system = {'extract': kernel.EXTRACT_SYSTEM, 'verify': kernel.VERIFY_SYSTEM,
-                  'direct': kernel.DIRECT_SYSTEM}[stage]
+                  'direct': kernel.DIRECT_SYSTEM, 'grounding_repair': REPAIR_SYSTEM}[stage]
         key = digest([sorted(endpoints), model, cache_namespace, adapter_version, version, stage, system, value, schema, 42, 0])
         cached = cache_get(key)
         if cached is not None:
@@ -134,21 +140,47 @@ def live(row, mode, cache_get, cache_put, event):
             result.update(status='invalid_output', errors=[{'stage': 'matching', 'error': str(exc)}])
     else:
         extracted = call('extract', payload)  # No question, candidate or target relation.
-        facts, errors = [], []
-        for index, raw in enumerate(extracted['parsed']['facts']):
+        raw_facts = extracted['parsed']['facts']
+        materialized, grounding_errors = materialize_all(raw_facts, cat, kernel)
+        grounding = {'policy': 'preserve_hypotheses_single_source_revision',
+                     'initial_errors': grounding_errors, 'repair_attempted': False,
+                     'repaired_fact_indices': [], 'local_context_expansions': []}
+        if grounding_errors and repair_attempts == '1':
+            raw_facts, expansions = expand_local_context(raw_facts, grounding_errors, payload, cat)
+            grounding['local_context_expansions'] = expansions
+            materialized, grounding_errors = materialize_all(raw_facts, cat, kernel)
+        if grounding_errors and repair_attempts == '1':
+            grounding['repair_attempted'] = True
+            event('grounding', 'needs_revision', {'errors': grounding_errors})
+            revision = call('grounding_repair', dict(payload, hypotheses=raw_facts, errors=grounding_errors))
+            grounding['revision'] = revision
             try:
-                fact = kernel.materialize_fact(raw, cat)
+                revised = apply_revision(raw_facts, revision['parsed']['facts'], grounding_errors, cat)
+                grounding['repaired_fact_indices'] = [i for i, (a, b) in enumerate(zip(raw_facts, revised)) if a != b]
+                raw_facts = revised
+                materialized, grounding_errors = materialize_all(raw_facts, cat, kernel)
+            except (ValueError, KeyError, TypeError) as exc:
+                grounding_errors = [{'stage': 'grounding_repair', 'error': str(exc)[:1000]}]
+        grounding['final_errors'] = grounding_errors
+        event('grounding', 'rejected' if grounding_errors else 'completed', grounding)
+        facts, errors = [], []
+        # Preflight the whole extraction before spending on semantic verification.
+        errors.extend(grounding_errors)
+        for index, raw in enumerate(raw_facts if not errors else []):
+            try:
+                fact = materialized[index]
                 check = call('verify', {'predicate_definition': kernel.CONTRACT[fact['predicate']],
                                        'fact': raw, 'computed_object': fact['object'],
-                                       'evidence': payload['evidence']})
+                                       'evidence': cited_evidence(payload, raw['quote_ids'])})
                 facts.append({'fact': fact, 'raw': raw, 'verification': check})
             except (ValueError, KeyError, TypeError, jsonschema.ValidationError) as exc:
                 errors.append({'index': index, 'error': str(exc)[:1000]})
         result = {'id': row['id'], 'status': 'invalid_output' if errors else 'ok',
-                  'facts': facts, 'errors': errors}
+                  'facts': facts, 'errors': errors, 'grounding': grounding}
         if not errors:
             result['prediction'] = kernel.match_target(row['relation'],
                 [(f['fact'], f['verification']['parsed']) for f in facts])
     return {'source': 'remote_api' if os.environ.get('EV_EDITION')=='pure_api' else 'live_vllm', 'input': row, 'output': result, 'model': model,
             'mode': mode, 'usage': usage, 'usage_complete': usage_complete, 'kernel_sha256': version,
+            'adapter_sha256': adapter_version,
             'model_revision': model_revision, 'cache_scope': 'pinned_revision' if model_revision else 'execution_only'}

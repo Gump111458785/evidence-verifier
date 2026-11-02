@@ -2,6 +2,8 @@
 
 这是接入与数据流验收，使用项目自编教学输入，不是独立评测集，也不产生可写入简历的准确率指标。密钥、供应商响应ID、私人配置和运行数据库不发布。main包含本次接入改动；旧v0.3.2下载包不包含这些新增内容。
 
+后续已完成[真实网页自动补搜单开发案例](web-grounding-validation-2026-11-02.md)；本页原始范围、结果与费用不回写。
+
 ## 配置
 
 - 四个角色使用`deepseek-flash`，Chat Completions、JSON object模式、`reasoning_effort=none`，不发送seed，不自动重试。

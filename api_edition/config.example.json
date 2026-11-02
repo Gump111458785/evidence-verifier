@@ -8,5 +8,6 @@
   "search": {"endpoint": "", "api_key_env": "EV_API_SEARCH_KEY", "revision": "", "max_results": 3},
   "timeout_seconds": 90,
   "max_response_bytes": 2000000,
-  "extension_id": ""
+  "extension_id": "",
+  "grounding_repair_attempts": 0
 }
