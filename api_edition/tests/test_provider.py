@@ -50,6 +50,16 @@ class ProviderTests(unittest.TestCase):
             self.assertEqual(send.call_args.args[1]['reasoning_effort'],'none')
         self.c['roles']['verifier']['reasoning_effort']='invalid'
         with self.assertRaisesRegex(ValueError,'reasoning_effort'):APIProvider(self.c)
+    def test_explicit_output_budget_is_mapped_to_provider_parameter(self):
+        self.c['roles']['extractor'].update(max_output_tokens=8192,token_parameter='max_completion_tokens')
+        p=APIProvider(self.c)
+        with patch.object(p,'post',return_value={'choices':[{'message':{'content':'{}'}}]}) as send:
+            p.complete('extractor',{'messages':[],'max_tokens':2400})
+        self.assertEqual(send.call_args.args[1]['max_completion_tokens'],8192)
+        self.assertNotIn('max_tokens',send.call_args.args[1])
+        for value in (True,127,16385,'8192'):
+            self.c['roles']['extractor']['max_output_tokens']=value
+            with self.subTest(value=value),self.assertRaises(ValueError):APIProvider(self.c)
     def test_deepseek_search_maps_native_body_and_preserves_source(self):
         self.c['search']['protocol']='deepseek'
         p=APIProvider(self.c)
@@ -141,6 +151,11 @@ class StrictConfigurationTests(unittest.TestCase):
 class ProviderOutputTests(unittest.TestCase):
     setUp = ProviderTests.setUp
     tearDown = ProviderTests.tearDown
+    def test_reasoning_budget_exhaustion_is_reported_as_truncation(self):
+        p=APIProvider(self.c)
+        reply={'choices':[{'finish_reason':'length','message':{'content':'','reasoning_content':'not exposed'}}]}
+        with patch.object(p,'post',return_value=reply),self.assertRaisesRegex(ValueError,'truncated'):
+            p.complete('extractor',{'messages':[]})
     def test_malformed_choices_and_truncation_fail_closed(self):
         p=APIProvider(self.c)
         replies=[[], {'choices':[None]}, {'choices':[{'message':[]}]},

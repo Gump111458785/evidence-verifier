@@ -42,6 +42,7 @@ planner/extractor/verifier可以使用不同API模型。只有extractor与verifi
 - 每角色response_format可取json_schema、json_object、none。后两种模式将所需JSON结构放入system提示，返回后仍由本地内核验证，不因为取消远端约束而信任结果。
 - 默认不发送seed；token_parameter可选max_tokens或max_completion_tokens。服务不支持某参数时应显式改配置，不自动切换协议、重试或重复计费。
 - 每角色可显式配置reasoning_effort为none、low、high或max；只在该供应商支持时使用，不配置则不主动添加此参数。
+- 每角色可显式配置max_output_tokens（128–16384的整数），覆盖调用方输出上限，并按token_parameter映射。思考模型的思考token也会消耗供应商输出额度；增加额度不保证返回有效JSON，禁止依赖无上限重试。[本次真实截断记录](../docs/browser-validation-2026-11-02.md)。
 - HTTPS连接；HTTP只允许回环地址，供自有网关或合同演练。拒绝携带凭据的URL、密钥内联配置及重定向，不转发凭据到意外目的地。
 - 超时、限流、拒绝、空回答、无效JSON/引用都不是“证据不足”。无自动付费重试。
 - 本地仅启动私有回环API桥接和工作台；桥接有随机进程内令牌，真实密钥不传给浏览器、客户端或任务记录。

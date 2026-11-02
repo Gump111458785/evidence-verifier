@@ -1,6 +1,12 @@
 function configureSidePanel(){
- chrome.sidePanel.setPanelBehavior({openPanelOnActionClick:true}).catch(console.error);
+ // Keep the explicit action gesture: it grants activeTab before panel commands.
+ chrome.sidePanel.setPanelBehavior({openPanelOnActionClick:false}).catch(console.error);
 }
+chrome.action.onClicked.addListener(tab=>{
+ if(!Number.isInteger(tab?.windowId))return;
+ // Must remain synchronous with the action click, before any awaited operation.
+ chrome.sidePanel.open({windowId:tab.windowId}).catch(console.error);
+});
 chrome.runtime.onInstalled.addListener(()=>{
  chrome.contextMenus.create({id:'evidence-verifier-selection',title:'用证据侧栏查看选中回答',contexts:['selection']},()=>{void chrome.runtime.lastError});
  configureSidePanel();
@@ -27,13 +33,22 @@ async function pageCommand(mode,prompt){
   const clean=v=>{const u=new URL(v);u.hash='';return u.href};
   if(!state.liveSnapshot?.citations?.some(c=>clean(c.url)===clean(tab.url)))throw Error('请先打开当前回答中记录的引用链接，再收集原文；重定向链接请手动粘贴并保留来源。');
  }
- await chrome.scripting.executeScript({target:{tabId:tab.id},files:['page-adapter.js']});
+ try{await chrome.scripting.executeScript({target:{tabId:tab.id},files:['page-adapter.js']})}
+ catch(error){
+  if(/Cannot access contents|missing host permission|cannot be scripted/i.test(error.message))throw Error('当前页未授权读取。请在该页点击工具栏中的证据侧栏图标，再点击读取；切换来源页后也需要重新点击图标。');
+  throw error;
+ }
  if(mode==='insert'){
   const fresh=await chrome.scripting.executeScript({target:{tabId:tab.id},func:()=>globalThis.evPage.run('capture')});
   if(fresh[0]?.result?.candidate!==stored.liveSnapshot?.candidate||fresh[0]?.result?.question!==stored.liveSnapshot?.question)throw Error('对话已变化，请重新读取和核验，旧prompt未写入。');
  }
- const values=await chrome.scripting.executeScript({target:{tabId:tab.id},func:(m,p)=>globalThis.evPage.run(m,p),args:[mode,prompt||'']});
- const value=values[0]?.result;
+ const values=await chrome.scripting.executeScript({target:{tabId:tab.id},func:(m,p)=>{
+  try{return {ok:true,value:globalThis.evPage.run(m,p)}}catch(error){return {ok:false,error:error.message}}
+ },args:[mode,prompt||'']});
+ const envelope=values[0]?.result;
+ if(!envelope||envelope.ok!==true)throw Error(envelope?.error||'页面适配器未返回有效结果，请重新点击扩展图标后读取。');
+ const value=envelope.value;
+ if(!value||typeof value!=='object')throw Error('页面适配器返回了无效快照。');
  if(mode==='capture'||mode==='watch')await chrome.storage.session.set({liveSnapshot:{...value,tab_id:tab.id}});
  return value;
 }

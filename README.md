@@ -64,7 +64,7 @@ python3 scripts/reproduce_diagnostics.py --out diagnostics-report.json
 | 版本缓存、并发合并、多副本路由 | **进行中**：[实现](app/inference.py)，真实模型负载、吞吐与费用未测 |
 | HTTP 核验、Python SDK、LangGraph 节点 | **进行中（接入验收）**：[API](app/verification_api.py)、[SDK](sdk)；代码交付不等于框架与真实服务已验收 |
 | 纯 API 模式，独立规划/抽取/核验配置 | **已实现（合同及少量真实API冒烟）**：[启动器](api_edition/run.py)、[DeepSeek记录](docs/deepseek-smoke-2026-11-02.md)；代表性准确率及完整网页闭环待测 |
-| 浏览器侧栏与三站点适配 | **进行中（实机验收）**：[操作说明](docs/conversation-sidecar.md)、[页面适配器](app/extension/page-adapter.js) |
+| 浏览器侧栏与三站点适配 | **进行中（分站点验收）**：ChatGPT单案例交互链路通过；Gemini地区阻断；Claude未测。[实机记录](docs/browser-validation-2026-11-02.md) |
 | LoRA 预检与分块交叉熵 | **进行中（目标模型验收）**：[预检](app/training.py)、[损失实现](app/torch_training.py)、[测试与跳过条件](app/tests/test_training.py)；不使用 Liger |
 | 3B 专用核验模型 | **未实现**：目标训练尚未启动，没有交付 checkpoint 或训练收益 |
 | 别名表/同名消歧、可靠自动轨迹过滤 | **未实现**：已有受限名称归一化和人工整理，不能替代这些能力 |

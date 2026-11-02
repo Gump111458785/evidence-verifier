@@ -1,8 +1,10 @@
-# Evidence Verifier Chrome sidecar 0.2.0
+# Evidence Verifier Chrome sidecar
 
 解压Release插件ZIP，在Chrome扩展管理页手动加载manifest.json所在目录。Chrome 116+。本项目不会自动安装或变更权限。
 
-默认打开真实对话侧栏sidecar.html，教学案例另在plugin.html。主动读取ChatGPT、Claude、Gemini可见回答、引用与工具片段；选择器适配未完成三站点实机验证，失效时手动粘贴。不能提取模型隐藏思维链或完整内部检索历史。
+默认打开真实对话侧栏sidecar.html，教学案例另在plugin.html。主动读取ChatGPT、Claude、Gemini可见回答、引用与工具片段。2026-11-02完成ChatGPT单案例交互验收；Gemini被地区限制阻断，Claude未测试，不能宣称三站点兼容。失效时手动粘贴。不能提取模型隐藏思维链或完整内部检索历史。
+
+先在目标对话页点击工具栏图标，取得该页临时读取权限，再点“读取当前回答”；切换到引用来源页后也要点击图标授权。侧栏保持打开不等于新标签页已授权。源代码main包含本次兼容性修复，旧v0.3.2下载包未更新。
 
 - activeTab / scripting：在用户主动授权的活动页读取可见DOM、跟随更新或填入草稿。
 - sidePanel / contextMenus：打开侧栏及保留原主动选中文本入口。

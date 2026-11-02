@@ -5,3 +5,5 @@
 .conversation .result-heading{flex-wrap:wrap;gap:8px}.conversation button{min-height:40px}.conversation textarea{resize:vertical}.conversation pre{font-size:12px}.conversation footer{align-items:start;flex-wrap:wrap}
 
 .conversation main{max-width:520px;margin:0 auto}.conversation .panel-brand{justify-content:center}.conversation textarea{min-height:64px}
+
+.conversation #capture-trace,.conversation #trace{white-space:pre-wrap;overflow-wrap:anywhere}

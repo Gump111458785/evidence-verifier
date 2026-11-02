@@ -15,7 +15,7 @@ import urllib.error
 
 ROLES = ('planner', 'extractor', 'verifier', 'agent')
 ENV_NAME = re.compile(r'[A-Za-z_][A-Za-z0-9_]*')
-ROLE_FIELDS = {'base_url', 'model', 'api_key_env', 'response_format', 'send_seed', 'token_parameter', 'reasoning_effort'}
+ROLE_FIELDS = {'base_url', 'model', 'api_key_env', 'response_format', 'send_seed', 'token_parameter', 'reasoning_effort', 'max_output_tokens'}
 
 
 def endpoint_ok(value, *, source=False):
@@ -60,6 +60,8 @@ def validate_config(value):
             raise ValueError('Unsupported token parameter')
         if 'reasoning_effort' in v and v['reasoning_effort'] not in ('none', 'low', 'high', 'max'):
             raise ValueError('Unsupported reasoning_effort')
+        if 'max_output_tokens' in v and (type(v['max_output_tokens']) is not int or not 128 <= v['max_output_tokens'] <= 16384):
+            raise ValueError('max_output_tokens must be an integer from 128 to 16384')
         if type(v.get('send_seed', False)) is not bool:
             raise ValueError('send_seed must be boolean')
     search = c.setdefault('search', {})
@@ -149,6 +151,8 @@ class APIProvider:
         payload.update(model=v['model'], stream=False)
         if 'reasoning_effort' in v:
             payload['reasoning_effort'] = v['reasoning_effort']
+        if 'max_output_tokens' in v:
+            payload['max_tokens'] = v['max_output_tokens']
         if not v.get('send_seed', False):
             payload.pop('seed', None)
         if v.get('token_parameter') == 'max_completion_tokens':
@@ -169,12 +173,12 @@ class APIProvider:
             raise ValueError('Provider response lacks choices')
         choice = reply['choices'][0]
         message = choice.get('message') if isinstance(choice, dict) else None
+        if isinstance(choice, dict) and choice.get('finish_reason') in ('length', 'content_filter'):
+            raise ValueError('Provider completion is truncated or filtered; check the configured output token budget')
         if not isinstance(message, dict) or message.get('refusal'):
             raise ValueError('Provider returned refused or invalid completion')
         if not isinstance(message.get('content'), str) or not message['content'].strip():
             raise ValueError('Provider returned empty/non-text completion')
-        if choice.get('finish_reason') in ('length', 'content_filter'):
-            raise ValueError('Provider completion is truncated or filtered')
         reply.update(ev_api_role=role, ev_api_model=v['model'])
         return reply
 
