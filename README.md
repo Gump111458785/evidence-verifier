@@ -1,139 +1,192 @@
+<div align="center">
+
 # Evidence Verifier
 
-[![Release build](https://github.com/Gump111458785/evidence-verifier/actions/workflows/release-checks.yml/badge.svg)](https://github.com/Gump111458785/evidence-verifier/actions/workflows/release-checks.yml) · Python 3.10+ · [MIT](LICENSE) · 无需 GPU 即可体验
+**核对 AI 回答的证据，找到缺失关系，再定向补搜。**
 
-**把 AI 回答的引用，变成可回放、可绑定、可补证的证据链。**
+面向 AI 对话与搜索智能体的外接证据核验器。<br>
+将事实抽取、支持性核验、原文回放与跨关系绑定拆开，生成可追溯的核验记录和补充 prompt。
 
-检查“引用是否真正支持这条关系”，识别角色误推和中间实体错绑；把证据缺口转成检索条件，再生成带证据记录的修订 prompt。愿景是让 AI 答案更容易被核查，当前核验范围是明确声明的关系。
+[![CI](https://github.com/Gump111458785/evidence-verifier/actions/workflows/release-checks.yml/badge.svg)](https://github.com/Gump111458785/evidence-verifier/actions/workflows/release-checks.yml)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](api_edition/README.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![API mode](https://img.shields.io/badge/API_mode-no_local_GPU-227755)](api_edition/README.md)
 
-[离线复算](#核心结果历史实测离线复算) · [选择运行模式](#快速开始) · [API 版](api_edition/README.md) · [侧栏](docs/conversation-sidecar.md) · [架构](docs/architecture.md) · [路线图](docs/roadmap.md) · [Releases](https://github.com/Gump111458785/evidence-verifier/releases)
+[快速开始](#快速开始) · [使用插件](#使用插件) · [真实补证案例](#真实补证案例) · [核心机制](#核心机制) · [实测结果](#实测结果) · [文档](#文档与开发)
 
-![教学案例：补证后的关系链](docs/images/plugin-completed.jpg)
+</div>
 
-图中是本机教学案例：事实与语义判定为预设，引用位置和联合绑定由程序执行。[初始错绑状态](docs/images/plugin-binding-gap.jpg)。
+## 三十秒看懂
 
-## 为什么需要它
+| 使用中遇到的问题 | Evidence Verifier 的处理方式 | 输出 |
+|---|---|---|
+| 回答附了引用，却没有证明目标事实 | 屏蔽问题和候选答案抽取事实，再逐条核对引用是否支持关系 | 事实、支持性判定、原文位置 |
+| 两跳各自成立，中间却连了不同的人 | 对同一变量进行全链绑定，检查角色、方向与时间 | 完整绑定、缺失关系或歧义 |
+| 当前证据不够，不知道接下来搜什么 | 根据缺失关系构造查询，在共享工具预算内补搜并重核验 | 新证据、补搜轨迹、修订 prompt |
 
-“有引用”不等于“有证据”。工作地点不能推出受教育地点，同一区域不能推出同一省；两条关系分别成立，也可能连接了不同的人。
+可通过Chrome侧栏审查对话，也可通过HTTP API接入已有搜索系统。纯API版使用远程模型与搜索服务，无需本地GPU；教学工作台和历史复算无需密钥。
 
-直接让 LLM 判断答案是否可靠，会把关系理解、事实抽取和支持性判断混在一起。本项目拆开这些步骤，让错误落到具体的关系、角色、原文位置或变量绑定上。
+## 真实补证案例
 
-## 核心结果（历史实测，离线复算）
+**问题：Who designed the Analytical Engine?** 候选为Charles Babbage。先提供一条受控缺证输入：`The Analytical Engine was never completed.`，它没有说明设计者。
 
-**开发诊断：构造数据，80 题，Qwen2.5-14B。** 下表来自归档预测与原始构造标签的重新评分，不是当前版本的新模型推理或独立泛化成绩。
-
-| 指标 | 直接裁判 | 拆分核验 |
-|---|---:|---:|
-| 联合正确 | 52/80 | 69/80 |
-| 无效输出 | 27/80 | 4/80 |
-| 负例联合判对 | 13/40 | 37/40 |
-| 正例联合判对 | 39/40 | 32/40 |
-| 变量绑定案例联合判对 | 16/16 | 11/16 |
-
-**改进与代价同时保留：** 联合正确提高，但正例和变量绑定仍有缺口，未达到原有门槛。无效输出包括格式、原文定位、事实物化等失败，不能全部解释为“判定与证据矛盾”。
-
-```bash
-python3 scripts/reproduce_diagnostics.py
-# 可选：保存逐例结果到新文件，不覆盖已有结果。
-python3 scripts/reproduce_diagnostics.py --out diagnostics-report.json
+```mermaid
+flowchart LR
+    A["初始核验：missing"] --> B["定向补搜<br>1次search + 3次open"]
+    B --> C["原文定位与邻句补齐"]
+    C --> D["独立支持性核验<br>原文位置回放"]
+    D --> E["目标关系：entailed"]
+    E --> F["生成补充prompt<br>由用户确认发送"]
 ```
 
-脚本校验冻结输入哈希，用原始标签和逐条预测重算三模型×两流程的全部结果，再核对旧评测；只需标准库，不加载模型或调用 API。共有92条输入：80条主诊断、12条补充探针；552份历史预测。[指标与复算边界](docs/evaluation.md)。
-
-## 落地场景
-
-| 场景 | 服务对象与形态 | 当前状态 |
-|---|---|---|
-| 企业知识库引用核验 | RAG/SaaS 回答链路中的 HTTP API 与 Python SDK | HTTP 合同已实现；SDK/框架接入待实机验收；企业部署（未实现） |
-| AI 搜索后置核验与补证 | 按缺失关系检索原文，再对同一计划核验 | 真实网页自动补搜单开发案例通过；代表性收益待评测。[记录](docs/web-grounding-validation-2026-11-02.md) |
-| 训练数据过滤 | 用支持性与证据链筛选智能体轨迹 | 已有样本整理与导出代码；自动可靠过滤及训练收益（未实现） |
-| 个人 AI 回答审查 | ChatGPT / Claude / Gemini 浏览器侧栏 | ChatGPT单案例交互通过；Gemini地区阻断；Claude按要求未测 |
-
-[产品愿景与场景说明](docs/vision.md)。上述服务对象是目标场景，不表示已有客户、试点或商业化。
-
-## 能力一览
-
-状态统一为：**已实现**＝有实现及对应程序/合同测试；**进行中**＝已有代码或数据，但所述验收未完成；**未实现**＝规划，不是交付能力。模型效果与工程合同分开列出。
-
-| 能力 | 状态与证据 |
+| 检查点 | 实际观察 |
 |---|---|
-| 关系角色、方向、时间约束与跨关系绑定 | **已实现**：[内核](app/relations.py)、[角色/错绑回归](app/tests/test_relations.py)；12类关系定义见[CONTRACT](app/vendor/evpilot/relation_kernel_v7.py) |
-| 候选答案不可见的抽取输入 | **已实现（数据合同）**：[抽取路径](app/engine.py)、[API消息隔离测试](api_edition/tests/test_provider.py)；真实模型质量待测 |
-| 原文位置回放与受限年份计算 | **已实现**：[位置校验](app/engine.py)、[共享内核](app/vendor/evpilot/relation_kernel_v7.py)、[历史记录回放检查](app/tests/test_workbench.py) |
-| 共享预算检索、缺口查询、补搜与重核验 | **已实现（程序/合同）**：[检索测试](app/tests/test_retrieval.py)、[补证报告测试](app/tests/test_sidecar.py)；真实端到端收益待测 |
-| 版本缓存、并发合并、多副本路由 | **进行中**：[实现](app/inference.py)，真实模型负载、吞吐与费用未测 |
-| HTTP 核验、Python SDK、LangGraph 节点 | **进行中（接入验收）**：[API](app/verification_api.py)、[SDK](sdk)；代码交付不等于框架与真实服务已验收 |
-| 纯 API 模式，独立规划/抽取/核验配置 | **已实现（合同及少量真实API冒烟）**：[启动器](api_edition/run.py)、[基础记录](docs/deepseek-smoke-2026-11-02.md)；[自动网页单开发案例](docs/web-grounding-validation-2026-11-02.md)通过，代表性准确率待测 |
-| 有界原文补齐与引用内独立核验 | **已实现（合同及单案例）**：[原文处理](app/grounding.py)、[回归](app/tests/test_grounding.py)；同文档邻句补齐，仍逐条核验语义，未修复错误保留为无效输出 |
-| 浏览器侧栏与三站点适配 | **进行中（分站点验收）**：ChatGPT单案例交互链路通过；Gemini地区阻断；Claude未测。[实机记录](docs/browser-validation-2026-11-02.md) |
-| LoRA 预检与分块交叉熵 | **进行中（目标模型验收）**：[预检](app/training.py)、[损失实现](app/torch_training.py)、[测试与跳过条件](app/tests/test_training.py)；不使用 Liger |
-| 3B 专用核验模型 | **未实现**：目标训练尚未启动，没有交付 checkpoint 或训练收益 |
-| 别名表/同名消歧、可靠自动轨迹过滤 | **未实现**：已有受限名称归一化和人工整理，不能替代这些能力 |
-| 托管云 API、计费控制台、企业部署 | **未实现**：当前是个人本机工作区 |
+| 模型与设置 | DeepSeek Flash，非思考模式；输入、期望与运行代码哈希在实测前冻结 |
+| 自动网页补搜 | DeepSeek真实搜索返回正文，4次工具调用后完成重核验 |
+| 设计者证据 | 新原文明确提及Charles Babbage设计整台Analytical Engine；1条目标证明，引用位置全部可回放 |
+| 独立语义核验 | 同批抽取中的“在Cambridge学习”获支持，“在Cambridge受雇”仍判缺失 |
+| 错误目标检查 | 同批事实下，错误设计者、主客体互换、学会会员推雇佣3项匹配检查均为missing |
+| 原对话反馈 | 生成补充prompt，`automatically_sent=false`，由用户审阅后发送 |
 
-## 设计原则
+这是**一个后端开发案例**；3项负例复用同批事实，不是3次独立端到端任务。此前的定位失败和思考额度耗尽记录保留，未通过修改标签或丢弃无效事实使测试过关。[冻结输入、修复过程与费用](docs/web-grounding-validation-2026-11-02.md)。
 
-- **事实抽取不看候选或目标关系**；规划器与抽取器分别接收不同输入。[代码](app/engine.py) / [合同测试](api_edition/tests/test_provider.py)
-- **位置命中只证明出处**；语义支持性单独核验，所有必要关系再做联合绑定。[代码](app/relations.py) / [测试](app/tests/test_relations.py)
-- **失败不计作拒答成功**；无效输出、运行失败、缺失、矛盾与歧义分别记录。[代码](app/sidecar.py) / [测试](app/tests/test_sidecar.py)
-- **输入和原文有明确上限**；不拿静默截断后的结果充作完整证据。[代码](app/verification_api.py)
-- **缓存绑定身份**；模型无固定 revision 时限制复用，API 搜索隔离账户与索引。[模型缓存](app/engine.py) / [API检索测试](api_edition/tests/test_provider.py)
-- **研究版与 API 版不互相修改检索类**；API 未配置时不退回教学语料。[显式注入](api_edition/runtime.py) / [测试](api_edition/tests/test_provider.py)
+## 工作台与侧栏
+
+<p align="center">
+  <img src="docs/images/plugin-completed.jpg" alt="教学工作台：已有AI对话、关系链、补证后的引用与联合绑定" width="820">
+</p>
+
+图中为本机**教学案例**：模型抽取与支持性判定采用预设，原文位置与联合绑定由程序执行。可在工作台体验“任职推就读”“中间实体错绑”两个场景；真实API案例的依据见上方实测记录。
+
+## 核心机制
+
+| 组件 | 具体做法 | 实现与依据 |
+|---|---|---|
+| **候选不可见的事实抽取** | 规划器看问题与候选；抽取器只看证据和12类关系定义，避免按待验证答案寻找事实 | [推理流程](app/engine.py) · [输入隔离测试](api_edition/tests/test_provider.py) |
+| **引用内独立核验** | 核验器逐条检查事实实际引用的句子；实体字符串命中后，仍需判断关系、角色与时间是否成立 | [原文处理](app/grounding.py) · [回归测试](app/tests/test_grounding.py) |
+| **程序化回放与绑定** | 校验原文字符位置，将多跳变量绑定到同一实体；年份加减、日期区间只走白名单运算，不执行模型生成代码 | [关系绑定](app/relations.py) · [共享内核](app/vendor/evpilot/relation_kernel_v7.py) |
+| **有界原文补齐** | 可显式启用同文档前后各2句、额外最多600字符的引用补齐；保留中间句，仍无效时最多一次模型定位修正 | [配置与计费边界](api_edition/README.md) · [修正约束测试](app/tests/test_grounding.py) |
+| **缺口驱动的补搜** | 将缺失关系转成查询，search/open/find共享工具预算，保留来源、字符范围和重核验记录 | [补搜任务](app/repair.py) · [检索合同](app/tests/test_retrieval.py) |
+| **版本缓存与请求合并** | 按模型revision、证据、提示词及schema隔离缓存，合并相同并发请求；未固定模型版本时限制复用 | [推理调度](app/inference.py) · [架构说明](docs/architecture.md) |
+
+输出区分`entailed / missing / contradicted / ambiguous`。无效格式、定位失败、不支持的关系和运行失败单列，不计作“证据不足”。缓存、并发合并和路由已有实现与合同测试，真实显存、吞吐及费用收益尚未测量。
 
 ## 快速开始
 
-先克隆仓库：
+Python 3.10+，SQLite需支持FTS5。以下从当前main源码启动，旧v0.3.2 Release保留原样，尚未包含最新网页核验与ChatGPT适配修复。
 
 ```bash
 git clone https://github.com/Gump111458785/evidence-verifier.git
 cd evidence-verifier
 ```
 
-| 目的 | 入口 | 条件 |
-|---|---|---|
-| 当场体验与历史复算 | `python3 app/server.py --port 8790` | Python 3.10+、SQLite FTS5；无需 GPU、权重、密钥 |
-| 纯 API 核验 | `python3 api_edition/run.py --config api_edition/config.local.json --port 8790` | 独立环境安装 jsonschema，并填写远程 API 配置 |
-| 已有本地推理服务/研究准备 | 原工作台与 EV_MODEL/EV_PLANNER 配置 | 自行提供服务；训练有独立门槛，不自动启动 |
+### 方式一：先体验教学工作台
 
-体验入口：http://127.0.0.1:8790/#plugin 。切换“任职误推为就读 / 中间实体接错人”，审查并补入教学证据。真实对话入口为 `/sidecar.html`，没有模型时显示未配置。
-
-纯 API 配置模板全留空，按[API 说明](api_edition/README.md)填写端点、模型和密钥环境变量；支持 OpenAI 兼容 Chat Completions，不冒充已实现 Claude/Gemini 原生协议。
-
-浏览器插件从[最新 Release](https://github.com/Gump111458785/evidence-verifier/releases/latest)下载对应扩展 ZIP，手动加载并配置准确扩展 ID。[插件步骤](app/extension/README.md) / [API 与 Python SDK](docs/integration.md)。侧栏补充 prompt 可以复制或填入空草稿，不自动发送。
-
-## 架构
-
-```mermaid
-flowchart LR
-  QA[问题与候选] --> P[关系计划：人工审阅]
-  E[证据原文] --> X[事实抽取：候选不可见]
-  X --> V[独立支持性核验]
-  V --> R[原文回放 / 白名单计算]
-  P --> J[跨关系联合绑定]
-  R --> J
-  J --> D[支持 / 缺失 / 矛盾 / 歧义]
-  D -->|缺失| S[有预算的定向补搜]
-  S --> E
-  D --> U[API / SDK / 侧栏修订prompt]
+```bash
+python3 app/server.py --port 8790
 ```
 
-这是代码职责图，不能读成所有真实模型链路已通过验收。[详细架构](docs/architecture.md) / [历史迭代](docs/history.md)。
+打开 **http://127.0.0.1:8790/#plugin**，选择案例、审查关系链、补入教学证据。无需GPU、模型权重或密钥；页面会标明预设结果。
 
-## 目标与路线图
+### 方式二：接入真实模型与网页搜索
 
-| 阶段 | 目标 / 验收条件 | 当前状态 |
+在独立环境安装CPU端校验依赖，首次配置时复制模板；已有`config.local.json`时直接编辑，保留现有配置。
+
+```bash
+python3 -m venv .venv-api
+source .venv-api/bin/activate
+python -m pip install -r api_edition/requirements.txt
+cp -n api_edition/config.deepseek.example.json api_edition/config.local.json
+```
+
+配置默认使用DeepSeek；也可按[API说明](api_edition/README.md)为规划、抽取、核验配置不同的OpenAI兼容服务。密钥通过环境变量提供，不能写进配置或提交到仓库。
+
+```bash
+export EV_API_VERIFIER_KEY='填写自己的密钥'
+python api_edition/run.py --config api_edition/config.local.json --check
+python api_edition/run.py --config api_edition/config.local.json --port 8790
+```
+
+打开 **http://127.0.0.1:8790/sidecar.html**。`--check`只检查配置，不调用付费API，也不验证密钥有效性。真实核验、关系规划及补搜可能计费；启动器不会自动读取`.env.local`。
+
+### 方式三：嵌入已有应用
+
+提供HTTP核验任务、Python SDK和LangGraph节点代码，支持任务观察、恢复与报告导出。[接入示例与合同](docs/integration.md) · [SDK](sdk)。HTTP合同已有测试，SDK和框架的真实服务集成仍待验收。
+
+## 使用插件
+
+**从当前main构建插件**，无需安装浏览器打包工具：
+
+```bash
+python3 app/scripts/build_extension.py --out dist/evidence-verifier-extension.zip
+```
+
+1. 解压ZIP，在Chrome的`chrome://extensions`开启开发者模式，选择“加载已解压的扩展程序”，选中`manifest.json`所在目录。构建脚本保留旧包；重复构建请换新的输出文件名。
+2. 复制扩展ID，填入`api_edition/config.local.json`的`extension_id`，重启上述API服务。
+3. 在ChatGPT对话页点击工具栏插件图标，再点**「读取当前回答」**。
+4. 打开引用来源页，再次点击插件图标授权该页，选择原文并点**「收集当前引用来源页的原文」**。
+5. **生成关系草稿 → 人工确认 → 提交独立核验**；结果缺证时可点**「定向补搜并重核验」**。
+6. **生成补充prompt → 填入原对话草稿 → 自行发送**。插件不自动发送，不覆盖已有草稿。
+
+| 网页端 | 实机状态 |
+|---|---|
+| ChatGPT | 单案例页面读取、原文采集、关系规划、核验及草稿写入通过 |
+| Gemini | 地区限制阻断，尚未验收问答界面 |
+| Claude | 按要求未测试 |
+
+只读取页面可见内容，不读取隐藏思维链或完整内部检索历史；“跟随页面更新”只更新预览，不自动调用核验模型。[完整操作与隐私范围](docs/conversation-sidecar.md) · [浏览器实机记录](docs/browser-validation-2026-11-02.md)。
+
+## 实测结果
+
+### 当前API链路与工程检查
+
+| 验证对象 | 范围与结果 | 依据 |
 |---|---|---|
-| 候选核验器开发门槛 | **目标**：联合≥72/80，正负例各≥36/40，绑定16/16，无无效输出及关键误放行 | 尚未达标，不绕过门槛写训练成功 |
-| 真实多跳核验评测 | **目标规模**：600题人工双标，数据划分与关系覆盖先冻结 | 未实现；这是评测计划，不是已有数据量 |
-| 搜索任务对照 | **目标规模**：300题、相同工具预算，对照自由重搜及直接裁判 | 未实现；提升幅度由实验决定 |
-| 成本与部署 | 先测质量、单题API用量或GPU时间与P95，再确定收益目标 | 未测；不从参数量推导60%节省或固定误放行率 |
+| 自动网页补搜 | 1个受控缺证开发案例从missing到entailed，生成修订prompt | [输入与实测](docs/web-grounding-validation-2026-11-02.md) |
+| DeepSeek用量 | 连同此前失败累计36次模型调用、7次搜索，峰值计价保守估算$0.043863 | [费用口径](docs/web-grounding-validation-2026-11-02.md) |
+| 程序回归 | 本机123项通过、3项可选训练依赖缺失跳过；CI通过 | [验证记录](docs/web-grounding-validation-2026-11-02.md) · [对应CI](https://github.com/Gump111458785/evidence-verifier/actions/runs/41406656853) |
 
-[具体门槛与后续分支](docs/roadmap.md)。目标没有被填成实测值；3B 训练、真实 API/站点兼容和商业化分别验收。
+用量包含开发失败和重测，不能作为产品单题成本；程序测试通过也不代表模型准确率。
 
-## 边界
+### 历史三模型诊断
 
-只检查声明关系，不自动保证整题覆盖，也不证明原文客观真实；教学预设、历史诊断与真实调用标注来源。侧栏只读页面可见内容，不读取隐藏思维链或完整内部检索记录。服务仅监听本机，未提供企业多租户与生产运维承诺。
+80题构造开发诊断，另有12条补充探针；保留Qwen 7B、Llama 8B、Qwen 14B在两种流程下的552份原始输出。下表为**Qwen2.5-14B旧预测的离线复算**，不是当前API版的新成绩。
 
-## License
+| 指标 | 直接裁判 | 拆分核验 |
+|---|---:|---:|
+| 联合正确 | 52/80 | 69/80 |
+| 无效输出 | 27/80 | 4/80 |
+| 正例联合判对 | 39/40 | 32/40 |
+| 负例联合判对 | 13/40 | 37/40 |
+| 变量绑定案例联合判对 | 16/16 | 11/16 |
 
-自有代码：[MIT](LICENSE)。IBM Plex 字体：[SIL OFL](app/static/fonts/LICENSE.txt)。[数据与上游署名](THIRD_PARTY_NOTICES.md)。
+拆分核验的联合正确和负例判定改善，但正例与变量绑定退步，**未达到原有门槛**。这些数据只用于开发诊断，不是独立泛化验证；无效输出包括格式、定位和事实物化失败。[三模型完整结果与评分口径](docs/evaluation.md)。
+
+```bash
+python3 scripts/reproduce_diagnostics.py
+# 可选：保存逐例评分到新文件，不覆盖旧结果
+python3 scripts/reproduce_diagnostics.py --out diagnostics-report.json
+```
+
+脚本校验冻结哈希，从原标签和逐条预测重算结果，只需标准库，不加载模型或调用API。
+
+## 后续计划与适用范围
+
+当前交付包含教学工作台、纯API启动器、Chrome侧栏及历史诊断复算。企业知识库核验、搜索系统接入和训练数据审查是目标场景，尚无客户或商业化验收。
+
+下一步先完成代表性核验与同预算搜索对照，再评估专用模型训练：600题人工双标、300题搜索任务均是计划规模，尚未形成对应独立评测成绩。LoRA预检和分块交叉熵已有代码，3B训练尚未启动；别名消歧、可靠自动轨迹过滤、托管云API与企业部署尚未实现。[完整能力状态](docs/implementation-status.md) · [验收门槛与路线图](docs/roadmap.md)。
+
+核验结论只覆盖人工确认的声明关系，不能自动证明整题覆盖、答案全部正确或来源客观真实。服务仅监听本机；API版未配置时明确报错，不以教学结果代替真实推理。
+
+## 文档与开发
+
+| 入口 | 内容 |
+|---|---|
+| [纯API接入](api_edition/README.md) · [浏览器插件](docs/conversation-sidecar.md) | 模型、搜索、扩展ID、使用步骤与计费边界 |
+| [架构](docs/architecture.md) · [HTTP / SDK](docs/integration.md) | 数据流、模块、缓存与应用接入 |
+| [真实网页案例](docs/web-grounding-validation-2026-11-02.md) · [浏览器记录](docs/browser-validation-2026-11-02.md) | 成功、失败、输入冻结与实机范围 |
+| [评测](docs/evaluation.md) · [数据](docs/data.md) | 历史输出、标签、联合指标与离线复算 |
+| [能力状态](docs/implementation-status.md) · [路线图](docs/roadmap.md) | 已实现行为、待验收项及后续实验 |
+| [项目愿景](docs/vision.md) · [迭代历史](docs/history.md) · [交付](docs/delivery.md) | 使用场景、版本与分发说明 |
+
+自有代码采用[MIT License](LICENSE)，IBM Plex字体采用[SIL OFL](app/static/fonts/LICENSE.txt)。模型、数据与上游代码遵循各自许可，见[数据与上游署名](THIRD_PARTY_NOTICES.md)。问题反馈请提交[Issues](https://github.com/Gump111458785/evidence-verifier/issues)，附上已去除密钥和私人对话的配置与日志。

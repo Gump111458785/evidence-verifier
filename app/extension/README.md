@@ -1,6 +1,6 @@
 # Evidence Verifier Chrome sidecar
 
-解压Release插件ZIP，在Chrome扩展管理页手动加载manifest.json所在目录。Chrome 116+。本项目不会自动安装或变更权限。
+从当前main源码构建插件ZIP并解压，在Chrome扩展管理页手动加载manifest.json所在目录。Chrome 116+。本项目不会自动安装或变更权限。构建步骤见[首页](../../README.md#使用插件)；旧v0.3.2 Release尚未包含最新ChatGPT适配修复。
 
 默认打开真实对话侧栏sidecar.html，教学案例另在plugin.html。主动读取ChatGPT、Claude、Gemini可见回答、引用与工具片段。2026-11-02完成ChatGPT单案例交互验收；Gemini被地区限制阻断，Claude未测试，不能宣称三站点兼容。失效时手动粘贴。不能提取模型隐藏思维链或完整内部检索历史。
 
