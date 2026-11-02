@@ -12,7 +12,7 @@ python3 -m venv .venv-api
 cp api_edition/config.example.json api_edition/config.local.json
 ```
 
-编辑config.local.json：为需要的角色填写`base_url`（截至/v1，程序追加/chat/completions）、`model`和`api_key_env`。仅支持OpenAI兼容Chat Completions协议；Anthropic/Gemini原生端点没有在此版本中实现，需其兼容端点或已有网关。这里没有预填厂商模型名或任何真实密钥。
+编辑config.local.json：为需要的角色填写`base_url`（供应商的基础地址，程序追加/chat/completions）、`model`和`api_key_env`。仅支持OpenAI兼容Chat Completions协议；Anthropic/Gemini原生端点没有在此版本中实现，需其兼容端点或已有网关。通用示例没有预填厂商模型名或任何真实密钥。
 
 ```bash
 export EV_API_PLANNER_KEY='填写自己的密钥'
@@ -41,6 +41,7 @@ planner/extractor/verifier可以使用不同API模型。只有extractor与verifi
 
 - 每角色response_format可取json_schema、json_object、none。后两种模式将所需JSON结构放入system提示，返回后仍由本地内核验证，不因为取消远端约束而信任结果。
 - 默认不发送seed；token_parameter可选max_tokens或max_completion_tokens。服务不支持某参数时应显式改配置，不自动切换协议、重试或重复计费。
+- 每角色可显式配置reasoning_effort为none、low、high或max；只在该供应商支持时使用，不配置则不主动添加此参数。
 - HTTPS连接；HTTP只允许回环地址，供自有网关或合同演练。拒绝携带凭据的URL、密钥内联配置及重定向，不转发凭据到意外目的地。
 - 超时、限流、拒绝、空回答、无效JSON/引用都不是“证据不足”。无自动付费重试。
 - 本地仅启动私有回环API桥接和工作台；桥接有随机进程内令牌，真实密钥不传给浏览器、客户端或任务记录。
@@ -54,11 +55,19 @@ search.endpoint是完整HTTPS地址，密钥通过所指环境变量作为Bearer
 
 响应：`{"results":[{"url":"https://example.org/article","title":"来源","raw_content":"来源正文","score":1.0}]}`。
 
-这是可配置的正文搜索接口合同；必须由供应商或调用方网关兼容。仅有content/snippet的结果不会进入证据库。程序不根据任意URL抓取网页；open/find针对该API已经返回并存留的正文执行，保留URL、字符范围和工具预算。原工作台的open/find有片段长度范围，后续find可取其他位置，不将片段视为整页。search未配置时明确失败，绝不回退开发诊断语料。默认源内容不是客观真伪金标。
+这是默认generic协议；必须由供应商或调用方网关兼容。generic协议下只有content/snippet的结果不会进入证据库。设置`search.protocol=deepseek`时使用原生`query/count/need_content`请求，将content正文及rerank_score映射为来源；snippet/summary仍不充当正文。包含实体锚点的DeepSeek查询超过128字符时明确失败，不静默截断。
+
+程序不根据任意URL抓取网页；open/find针对该API已经返回并存留的正文执行，保留URL、字符范围和工具预算。原工作台的open/find有片段长度范围，后续find可取其他位置，不将片段视为整页。search未配置时明确失败，绝不回退开发诊断语料。默认源内容不是客观真伪金标。
+
+## DeepSeek 接入与实际冒烟测试
+
+可复制[DeepSeek示例配置](config.deepseek.example.json)为config.local.json，设置环境变量`EV_API_VERIFIER_KEY`，再按上面的命令启动。四个角色可共用该密钥或自行分开。当前示例选择deepseek-flash、json_object、reasoning_effort=none，不发送seed；搜索使用官方原生端点。供应商型号和价格可能变化，使用前参考[官方价格表](https://api-docs.deepseek.com/quick_start/pricing/)。`.env.local`仅用于保存本地密钥，启动器不会自动加载；运行前须在当前进程环境设置对应变量，切勿上传密钥文件。
+
+2026-11-02已完成真实付费API冒烟：三组自编核验样例、规划修复后的单次复测、网页搜索与补充提示词生成通过。最初规划输出有位置错误并被拒绝，记录保留；没有降低校验规则。[测试范围、费用与已知边界](../docs/deepseek-smoke-2026-11-02.md)。
 
 ## 检查与交付边界
 
-已有纯API配置、输入边界、缺失服务、拒绝响应、snippet排除和本机桥接的合同测试。测试使用mock/回环服务，没有调用付费厂商API；没有进行真实供应商端到端兼容、准确率或费用评测。侧栏三站点实机兼容状态不因更换后端而改变。
+自动化合同测试使用mock/回环服务，不调用付费厂商API；另有上述DeepSeek真实冒烟记录。尚未完成代表性数据集准确率、完整网页补搜闭环收益或三站点实机兼容评测，不能将少量样例通过率作为准确率。
 
 API版下载包为`evidence-verifier-api-0.3.2-source.zip`；不包含训练入口文件，但保留共享核验内核与原始开发记录。API应用仍有Python/SQLite后端，不等于纯浏览器无服务器版本。
 

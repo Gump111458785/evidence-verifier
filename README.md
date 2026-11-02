@@ -63,7 +63,7 @@ python3 scripts/reproduce_diagnostics.py --out diagnostics-report.json
 | 共享预算检索、缺口查询、补搜与重核验 | **已实现（程序/合同）**：[检索测试](app/tests/test_retrieval.py)、[补证报告测试](app/tests/test_sidecar.py)；真实端到端收益待测 |
 | 版本缓存、并发合并、多副本路由 | **进行中**：[实现](app/inference.py)，真实模型负载、吞吐与费用未测 |
 | HTTP 核验、Python SDK、LangGraph 节点 | **进行中（接入验收）**：[API](app/verification_api.py)、[SDK](sdk)；代码交付不等于框架与真实服务已验收 |
-| 纯 API 模式，独立规划/抽取/核验配置 | **已实现（mock/回环合同）**：[启动器](api_edition/run.py)、[测试](api_edition/tests/test_provider.py)；密钥预留、真实厂商未测 |
+| 纯 API 模式，独立规划/抽取/核验配置 | **已实现（合同及少量真实API冒烟）**：[启动器](api_edition/run.py)、[DeepSeek记录](docs/deepseek-smoke-2026-11-02.md)；代表性准确率及完整网页闭环待测 |
 | 浏览器侧栏与三站点适配 | **进行中（实机验收）**：[操作说明](docs/conversation-sidecar.md)、[页面适配器](app/extension/page-adapter.js) |
 | LoRA 预检与分块交叉熵 | **进行中（目标模型验收）**：[预检](app/training.py)、[损失实现](app/torch_training.py)、[测试与跳过条件](app/tests/test_training.py)；不使用 Liger |
 | 3B 专用核验模型 | **未实现**：目标训练尚未启动，没有交付 checkpoint 或训练收益 |

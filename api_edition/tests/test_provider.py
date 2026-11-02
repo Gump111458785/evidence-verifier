@@ -42,6 +42,33 @@ class ProviderTests(unittest.TestCase):
     def test_search_no_local_fallback(self):
         self.c['search']['endpoint']=''
         with self.assertRaisesRegex(ValueError,'no diagnostic'):APIProvider(self.c).search('question')
+    def test_reasoning_effort_is_opt_in_and_forwarded(self):
+        self.c['roles']['verifier']['reasoning_effort']='none'
+        p=APIProvider(self.c)
+        with patch.object(p,'post',return_value={'choices':[{'message':{'content':'{}'}}]}) as send:
+            p.complete('verifier',{'messages':[]})
+            self.assertEqual(send.call_args.args[1]['reasoning_effort'],'none')
+        self.c['roles']['verifier']['reasoning_effort']='invalid'
+        with self.assertRaisesRegex(ValueError,'reasoning_effort'):APIProvider(self.c)
+    def test_deepseek_search_maps_native_body_and_preserves_source(self):
+        self.c['search']['protocol']='deepseek'
+        p=APIProvider(self.c)
+        reply={'results':[{'url':'https://example.org/page','content':'Full original source.',
+                           'snippet':'Short summary','rerank_score':0.75}]}
+        with patch.object(p,'post',return_value=reply) as send:
+            docs=p.search('education','Nora')
+        self.assertEqual(send.call_args.args[1],{'query':'"Nora" education','count':3,'need_content':True})
+        self.assertEqual(docs[0]['text'],'Full original source.')
+        self.assertEqual(docs[0]['score'],0.75)
+    def test_deepseek_missing_body_and_oversized_anchored_query(self):
+        self.c['search']['protocol']='deepseek';p=APIProvider(self.c)
+        with patch.object(p,'post',return_value={'results':[{'url':'https://example.org','snippet':'not evidence','summary':'not evidence'}]}):
+            self.assertEqual(p.search('question'),[])
+        with patch.object(p,'post') as send:
+            with self.assertRaisesRegex(ValueError,'128'):p.search('x'*125,'Nora')
+            send.assert_not_called()
+        self.c['search']['protocol']='unknown'
+        with self.assertRaisesRegex(ValueError,'protocol'):APIProvider(self.c)
     def test_secrets_rejected_in_config_and_insecure_url(self):
         for bad in [{'roles':{'extractor':{'api_key':'never-inline'}}},{'roles':{'verifier':{'base_url':'http://external.example/v1'}}}]:
             with tempfile.TemporaryDirectory() as d:

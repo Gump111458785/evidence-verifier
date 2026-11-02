@@ -31,6 +31,8 @@ unsupported or ambiguous rather than approximating or silently dropping their co
 Return one JSON object with relations (0-8), clauses (1-12), coverage, and rationale.
 Each clause must quote an exact nonempty substring of the QUESTION and give its Python
 Unicode-code-point start/end offsets. Each clause has kind=relation/unsupported/ambiguous,
+Offsets are zero-based, with end EXCLUSIVE. question_source gives the exact span of
+the entire question; reuse those boundaries when quoting the entire question.
 relation_indices (zero-based), and reason. Relation clauses reference at least one relation;
 other kinds reference none. Every relation must be referenced by a clause.
 coverage=complete/partial/ambiguous is only your proposed coverage, never verified coverage.
@@ -157,6 +159,7 @@ class PlanService:
                 'parent_kind': parent_kind, 'parent_id': parent_id, 'evidence_visible': False}
         spec['input_sha256'] = digest(spec)
         payload = {'question': spec['question'], 'candidate': spec['candidate'],
+                   'question_source': {'text': spec['question'], 'start': 0, 'end': len(spec['question'])},
                    'predicate_definitions': kernel.CONTRACT}
         config.update(temperature=0, seed=42, max_tokens=2200,
                       system_sha256=digest(SYSTEM), schema_sha256=digest(schema()),

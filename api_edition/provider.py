@@ -15,7 +15,7 @@ import urllib.error
 
 ROLES = ('planner', 'extractor', 'verifier', 'agent')
 ENV_NAME = re.compile(r'[A-Za-z_][A-Za-z0-9_]*')
-ROLE_FIELDS = {'base_url', 'model', 'api_key_env', 'response_format', 'send_seed', 'token_parameter'}
+ROLE_FIELDS = {'base_url', 'model', 'api_key_env', 'response_format', 'send_seed', 'token_parameter', 'reasoning_effort'}
 
 
 def endpoint_ok(value, *, source=False):
@@ -58,12 +58,16 @@ def validate_config(value):
             raise ValueError('Unsupported response_format')
         if v.get('token_parameter', 'max_tokens') not in ('max_tokens', 'max_completion_tokens'):
             raise ValueError('Unsupported token parameter')
+        if 'reasoning_effort' in v and v['reasoning_effort'] not in ('none', 'low', 'high', 'max'):
+            raise ValueError('Unsupported reasoning_effort')
         if type(v.get('send_seed', False)) is not bool:
             raise ValueError('send_seed must be boolean')
     search = c.setdefault('search', {})
-    _object(search, {'endpoint', 'api_key_env', 'revision', 'max_results'}, 'search')
+    _object(search, {'endpoint', 'api_key_env', 'revision', 'max_results', 'protocol'}, 'search')
     for key in ('endpoint', 'api_key_env', 'revision'):
         _text(search.get(key, ''), 'search.' + key)
+    if search.get('protocol', 'generic') not in ('generic', 'deepseek'):
+        raise ValueError('Unsupported search protocol')
     if search.get('endpoint') and not endpoint_ok(search['endpoint']):
         raise ValueError('Search endpoint must be HTTPS or loopback HTTP')
     if search.get('api_key_env') and not ENV_NAME.fullmatch(search['api_key_env']):
@@ -143,6 +147,8 @@ class APIProvider:
             raise ValueError('Completion request requires a messages array')
         v, payload = self.config['roles'][role], copy.deepcopy(body)
         payload.update(model=v['model'], stream=False)
+        if 'reasoning_effort' in v:
+            payload['reasoning_effort'] = v['reasoning_effort']
         if not v.get('send_seed', False):
             payload.pop('seed', None)
         if v.get('token_parameter') == 'max_completion_tokens':
@@ -181,21 +187,26 @@ class APIProvider:
             raise ValueError('Invalid entity anchor')
         search = self.config['search']
         query = (('"' + required_entity + '" ') if required_entity else '') + query
-        reply = self.post(search['endpoint'], {'query': query, 'max_results': search.get('max_results', 3), 'include_raw_content': True}, os.environ[search['api_key_env']])
+        deepseek = search.get('protocol') == 'deepseek'
+        if deepseek and len(query) > 128:
+            raise ValueError('DeepSeek query exceeds 128 characters; no silent truncation')
+        payload = ({'query': query, 'count': search.get('max_results', 3), 'need_content': True} if deepseek
+                   else {'query': query, 'max_results': search.get('max_results', 3), 'include_raw_content': True})
+        reply = self.post(search['endpoint'], payload, os.environ[search['api_key_env']])
         if not isinstance(reply, dict) or not isinstance(reply.get('results'), list) or len(reply['results']) > search.get('max_results', 3):
             raise ValueError('Search API results invalid or oversized')
         docs, seen = [], set()
         for row in reply['results']:
             if not isinstance(row, dict):
                 raise ValueError('Search result must be an object')
-            url, text = row.get('url'), row.get('raw_content')
+            url, text = row.get('url'), row.get('content' if deepseek else 'raw_content')
             if not endpoint_ok(url, source=True) or not isinstance(text, str) or not text.strip():
                 continue  # A snippet is not a source body.
             if url in seen:
                 continue
             if len(text) > 200000:
                 raise ValueError('Source text exceeds limit; no silent raw-content truncation')
-            title, score = row.get('title') or url, row.get('score', 0)
+            title, score = row.get('title') or url, row.get('rerank_score' if deepseek else 'score', 0)
             if not isinstance(title, str) or type(score) not in (int, float) or not math.isfinite(score):
                 raise ValueError('Invalid search title or score')
             seen.add(url)

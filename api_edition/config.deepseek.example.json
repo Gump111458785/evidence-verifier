@@ -1,0 +1,46 @@
+{
+  "roles": {
+    "planner": {
+      "base_url": "https://api.deepseek.com",
+      "model": "deepseek-flash",
+      "api_key_env": "EV_API_VERIFIER_KEY",
+      "response_format": "json_object",
+      "reasoning_effort": "none",
+      "send_seed": false
+    },
+    "extractor": {
+      "base_url": "https://api.deepseek.com",
+      "model": "deepseek-flash",
+      "api_key_env": "EV_API_VERIFIER_KEY",
+      "response_format": "json_object",
+      "reasoning_effort": "none",
+      "send_seed": false
+    },
+    "verifier": {
+      "base_url": "https://api.deepseek.com",
+      "model": "deepseek-flash",
+      "api_key_env": "EV_API_VERIFIER_KEY",
+      "response_format": "json_object",
+      "reasoning_effort": "none",
+      "send_seed": false
+    },
+    "agent": {
+      "base_url": "https://api.deepseek.com",
+      "model": "deepseek-flash",
+      "api_key_env": "EV_API_VERIFIER_KEY",
+      "response_format": "json_object",
+      "reasoning_effort": "none",
+      "send_seed": false
+    }
+  },
+  "search": {
+    "endpoint": "https://api.deepseek.com/v1/tools/search",
+    "api_key_env": "EV_API_VERIFIER_KEY",
+    "protocol": "deepseek",
+    "revision": "",
+    "max_results": 3
+  },
+  "timeout_seconds": 90,
+  "max_response_bytes": 2000000,
+  "extension_id": ""
+}
