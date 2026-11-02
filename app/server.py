@@ -274,6 +274,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send({'ok': True, 'edition': os.environ.get('EV_EDITION','research_workbench'), 'api_profile': json.loads(os.environ.get('EV_API_PROFILE_STATUS','null')), 'live_configured': inference_configuration()['configured'],
                     'agent': AgentService.configuration(), 'planner': PlanService.configuration(), 'workflow': workflows().configuration(),
                     'corpus_docs': count, 'corpus_scope': corpus_scope, 'scope': ARCHIVE['scope'], 'archive_sha256': ARCHIVE['source_sha256']})
+            if path.path == '/api/verifications':
+                return self.send(verifications().summaries(int(query.get('offset', ['0'])[0]), int(query.get('limit', ['50'])[0])))
             if path.path.startswith('/api/verifications/'):
                 return self.send(verifications().get(path.path.removeprefix('/api/verifications/')))
             if path.path == '/api/data-candidates':

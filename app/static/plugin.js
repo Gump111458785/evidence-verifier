@@ -6,14 +6,14 @@ let pluginData=null,pluginCase=null,pluginAfter=false,pluginStarted=false,plugin
 const relationNames={designed_by:'设计者',educated_at:'就读学校'};
 const panelLabels={entailed:'支持',missing:'缺失',ambiguous:'歧义',contradicted:'矛盾'};
 function notifyPreview(){if(window.parent!==window)window.parent.postMessage({type:'ev-plugin-preview',case_id:pluginCase.id,question:pluginCase.question,candidate:pluginCase.candidate,name:pluginCase.name,explanation:pluginCase.explanation,after:pluginAfter,started:pluginStarted},location.origin)}
-function choosePluginCase(id){pluginCase=pluginData.cases.find(c=>c.id===id)||pluginData.cases[0];pluginAfter=false;pluginStarted=false;pluginRelation=1;$p('#panel-case').value=pluginCase.id;$p('#panel-answer').textContent=pluginCase.candidate;$p('#panel-result').hidden=true;$p('#panel-run').textContent='审查示例回答';$p('#panel-run').disabled=false;notifyPreview()}
+function choosePluginCase(id){pluginCase=pluginData.cases.find(c=>c.id===id)||pluginData.cases[0];pluginAfter=false;pluginStarted=false;pluginRelation=1;$p('#panel-case').value=pluginCase.id;$p('#panel-answer').textContent=pluginCase.candidate;$p('#panel-result').hidden=true;$p('#panel-run').textContent='开始示例审查';$p('#panel-run').disabled=false;notifyPreview()}
 function renderPlugin(){
  const result=pluginAfter?pluginCase.final:pluginCase.initial;
  $p('#panel-result').hidden=false;
- $p('#panel-run').textContent='重新审查示例';
+ $p('#panel-run').textContent='重新审查';
  const positive=result.verdict==='entailed';
  $p('#panel-verdict').className='verdict-box'+(positive?' supported':'');
- $p('#panel-verdict').innerHTML=`<strong>${positive?'声明关系链已支持':result.binding_gap?'关系都像成立，实体却没接上':'引用相关，教育关系仍缺失'}</strong><p>${positive?'新证据绑定到同一位设计师，原有材料继续保留。':escapePanel(pluginCase.explanation)}</p>`;
+ $p('#panel-verdict').innerHTML=`<strong>${positive?'声明关系链已支持':result.binding_gap?'局部关系有证据，实体未连通':'教育经历仍缺少证据'}</strong><p>${positive?'新证据绑定到同一位设计师，原有材料继续保留。':escapePanel(pluginCase.explanation)}</p>`;
  $p('#relation-count').textContent=pluginCase.plan.length+' 条关系';
  $p('#panel-relations').innerHTML=pluginCase.plan.map((relation,index)=>{
   const local=result.relation_results[index],proof=positive?result.proof[index]:null,verdict=proof?'entailed':local.verdict;
@@ -32,7 +32,7 @@ function renderPlugin(){
   const html=escapePanel(marked.slice(0,quote.start))+'<mark>'+escapePanel(marked.slice(quote.start,quote.end))+'</mark>'+escapePanel(marked.slice(quote.end));
   $p('#panel-citation').innerHTML=`<article class="citation"><h2>${escapePanel(quote.evidence_id)} · 原文定位 [${quote.start}, ${quote.end})</h2><blockquote>${html}</blockquote><p>${result.binding_gap?'这段引用支持局部关系；它对应的人不一定是前一跳的设计师。':positive&&local.verdict==='ambiguous'?'存在干扰实体，已通过联合绑定消歧。':'位置命中证明出处，语义支持来自本案例的预设核验结果。'}</p></article>`;
  }else{$p('#panel-citation').innerHTML='<article class="citation"><h2>尚无对应教育证据</h2><blockquote>任职地点不能代替就读学校；相关实体出现，不等于这条关系成立。</blockquote></article>'}
- $p('#panel-repair').textContent=pluginAfter?'回到初始证据':'补入关键教育证据';
+ $p('#panel-repair').textContent=pluginAfter?'查看初始审查':'补入就读证据';
  $p('#panel-explanation').textContent=pluginCase.explanation;
  $p('#panel-queries').innerHTML=pluginCase.queries.map(q=>q.query?`<p class="query">缺口查询：${escapePanel(q.query)}</p>`:'').join('');
  notifyPreview();
@@ -47,7 +47,7 @@ async function loadPlugin(){
   else{$p('#panel-error').textContent='案例暂未载入，点击下方按钮重试。';$p('#panel-error').hidden=false;$p('#panel-run').textContent='重新载入';$p('#panel-run').disabled=false;return}
  }
  if(pluginData?.source!=='ideal_plugin_demo'||pluginData.measured!==false||pluginData.model_inference_performed!==false||!Array.isArray(pluginData.cases)||!pluginData.cases.length){$p('#panel-error').textContent='演示数据格式不正确。';$p('#panel-error').hidden=false;return}
- $p('#panel-source').textContent=pluginTransport==='bundled_snapshot'?'离线预设回放 · 未连接模型或本地服务。':'理想场景 · 模型结果预设，引用与绑定由本地程序回放。';
+ $p('#panel-source').textContent=pluginTransport==='bundled_snapshot'?'离线预设回放 · 未连接模型或本地服务。':'产品示例 · 预设模型判断，引用与绑定由本机程序执行。';
  $p('#panel-case').innerHTML=pluginData.cases.map(c=>`<option value="${escapePanel(c.id)}">${escapePanel(c.name)}</option>`).join('');$p('#panel-case').disabled=false;choosePluginCase(pluginData.cases[0].id);
 }
 $p('#panel-case').onchange=e=>choosePluginCase(e.target.value);

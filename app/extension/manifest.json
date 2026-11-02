@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Evidence Verifier · 证据侧栏",
-  "version": "0.3.2",
+  "name": "Evidence Verifier · 答案审查助手",
+  "version": "0.3.3",
   "minimum_chrome_version": "116",
   "description": "主动读取主流AI网页可见回答与引用，独立核验后生成补证prompt；不读取隐藏思维链。",
   "permissions": [
@@ -21,7 +21,7 @@
     "default_path": "sidecar.html"
   },
   "action": {
-    "default_title": "打开证据审查侧栏"
+    "default_title": "打开答案审查助手"
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' http://127.0.0.1:18790 http://127.0.0.1:8790;"

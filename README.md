@@ -62,11 +62,13 @@ flowchart LR
 
 ## 工作台与侧栏
 
-<p align="center">
-  <img src="docs/images/plugin-completed.jpg" alt="教学工作台：已有AI对话、关系链、补证后的引用与联合绑定" width="820">
-</p>
+![工作概览：答案、关系链与缺证提示](docs/images/product-overview.jpg)
 
-图中为本机**教学案例**：模型抽取与支持性判定采用预设，原文位置与联合绑定由程序执行。可在工作台体验“任职推就读”“中间实体错绑”两个场景；真实API案例的依据见上方实测记录。
+新版以“工作概览 → 答案审查 → 审查记录”为主线。首页展示可操作的产品示例，真实核验记录独立保存；研发诊断收进“研发工具”。
+
+![补证报告：逐关系结论、原文回放与执行步骤](docs/images/product-report.jpg)
+
+截图为**教学示例**：模型事实及支持性判定采用预设，原文位置与联合绑定由程序执行，不是模型效果实测。真实API与离线协议验证分别记录在[工作台交付说明](docs/product-workbench.md)。
 
 ## 核心机制
 
@@ -83,7 +85,7 @@ flowchart LR
 
 ## 快速开始
 
-Python 3.10+，SQLite需支持FTS5。以下从当前main源码启动，旧v0.3.2 Release保留原样，尚未包含最新网页核验与ChatGPT适配修复。
+Python 3.10+，SQLite需支持FTS5。以下从当前main源码启动，v0.3.3包含新版答案审查工作台、最新网页核验与ChatGPT适配修复；旧版本保留。
 
 ```bash
 git clone https://github.com/Gump111458785/evidence-verifier.git
@@ -96,7 +98,7 @@ cd evidence-verifier
 python3 app/server.py --port 8790
 ```
 
-打开 **http://127.0.0.1:8790/#plugin**，选择案例、审查关系链、补入教学证据。无需GPU、模型权重或密钥；页面会标明预设结果。
+打开 **http://127.0.0.1:8790/#home**，从工作概览进入对话插件或补证报告示例。无需GPU、模型权重或密钥；页面会标明预设结果。
 
 ### 方式二：接入真实模型与网页搜索
 
@@ -117,7 +119,7 @@ python api_edition/run.py --config api_edition/config.local.json --check
 python api_edition/run.py --config api_edition/config.local.json --port 8790
 ```
 
-打开 **http://127.0.0.1:8790/sidecar.html**。`--check`只检查配置，不调用付费API，也不验证密钥有效性。真实核验、关系规划及补搜可能计费；启动器不会自动读取`.env.local`。
+打开 **http://127.0.0.1:8790/#audit**，粘贴问题与回答片段，添加来源原文，再确认关系并提交。独立侧栏仍可通过 `/sidecar.html` 打开。`--check`只检查配置，不调用付费API，也不验证密钥有效性。真实核验、关系规划及补搜可能计费；启动器不会自动读取`.env.local`。
 
 ### 方式三：嵌入已有应用
 
@@ -134,9 +136,9 @@ python3 app/scripts/build_extension.py --out dist/evidence-verifier-extension.zi
 1. 解压ZIP，在Chrome的`chrome://extensions`开启开发者模式，选择“加载已解压的扩展程序”，选中`manifest.json`所在目录。构建脚本保留旧包；重复构建请换新的输出文件名。
 2. 复制扩展ID，填入`api_edition/config.local.json`的`extension_id`，重启上述API服务。
 3. 在ChatGPT对话页点击工具栏插件图标，再点**「读取当前回答」**。
-4. 打开引用来源页，再次点击插件图标授权该页，选择原文并点**「收集当前引用来源页的原文」**。
-5. **生成关系草稿 → 人工确认 → 提交独立核验**；结果缺证时可点**「定向补搜并重核验」**。
-6. **生成补充prompt → 填入原对话草稿 → 自行发送**。插件不自动发送，不覆盖已有草稿。
+4. 打开引用来源页，再次点击插件图标授权该页，选择原文并点**「收集当前来源页的原文」**。
+5. **生成待核验关系 → 人工确认 → 开始独立核验**；结果缺证时可点**「定向补搜并重核验」**。
+6. **生成修订建议 → 填入原对话草稿 → 自行发送**。插件不自动发送，不覆盖已有草稿。
 
 | 网页端 | 实机状态 |
 |---|---|
@@ -154,7 +156,7 @@ python3 app/scripts/build_extension.py --out dist/evidence-verifier-extension.zi
 |---|---|---|
 | 自动网页补搜 | 1个受控缺证开发案例从missing到entailed，生成修订prompt | [输入与实测](docs/web-grounding-validation-2026-11-02.md) |
 | DeepSeek用量 | 连同此前失败累计36次模型调用、7次搜索，峰值计价保守估算$0.043863 | [费用口径](docs/web-grounding-validation-2026-11-02.md) |
-| 程序回归 | 本机123项通过、3项可选训练依赖缺失跳过；CI通过 | [验证记录](docs/web-grounding-validation-2026-11-02.md) · [对应CI](https://github.com/Gump111458785/evidence-verifier/actions/runs/41406656853) |
+| 程序回归（上轮） | 本机123项通过、3项可选训练依赖缺失跳过；对应历史CI通过 | [验证记录](docs/web-grounding-validation-2026-11-02.md) · [对应CI](https://github.com/Gump111458785/evidence-verifier/actions/runs/41406656853) |
 
 用量包含开发失败和重测，不能作为产品单题成本；程序测试通过也不代表模型准确率。
 
@@ -192,6 +194,7 @@ python3 scripts/reproduce_diagnostics.py --out diagnostics-report.json
 
 | 入口 | 内容 |
 |---|---|
+| [产品演示与工作台](docs/product-workbench.md) | 导航、报告、实测范围与三分钟演示路径 |
 | [纯API接入](api_edition/README.md) · [浏览器插件](docs/conversation-sidecar.md) | 模型、搜索、扩展ID、使用步骤与计费边界 |
 | [架构](docs/architecture.md) · [HTTP / SDK](docs/integration.md) | 数据流、模块、缓存与应用接入 |
 | [真实网页案例](docs/web-grounding-validation-2026-11-02.md) · [浏览器记录](docs/browser-validation-2026-11-02.md) | 成功、失败、输入冻结与实机范围 |

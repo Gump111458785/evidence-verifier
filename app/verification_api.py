@@ -100,6 +100,36 @@ class VerificationService:
         return dict(row, input=json.loads(row['input']), result=json.loads(row['result']) if row['result'] else None,
                     events=[dict(e, payload=json.loads(e['payload'])) for e in events])
 
+    def summaries(self, offset=0, limit=50):
+        if type(offset) is not int or offset < 0 or type(limit) is not int or not 1 <= limit <= 100:
+            raise VerificationRequestError('Invalid verification page')
+        with self.connections() as c:
+            total = c.execute('SELECT count(*) FROM verification_requests').fetchone()[0]
+            rows = c.execute('''SELECT r.* FROM relation_checks r JOIN verification_requests v ON r.id=v.check_id
+                                ORDER BY r.created DESC,r.id LIMIT ? OFFSET ?''', (limit, offset)).fetchall()
+            has_repairs = c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='repair_jobs'").fetchone()
+            repairs = {row['id']: c.execute('SELECT id,state,created,result FROM repair_jobs WHERE parent_check_id=? ORDER BY created DESC,id DESC LIMIT 1',
+                       (row['id'],)).fetchone() for row in rows} if has_repairs else {}
+        summaries = []
+        for row in rows:
+            spec = json.loads(row['input'])
+            result = json.loads(row['result']) if row['result'] else None
+            first = spec['plan'][0]
+            verdict = ((result or {}).get('verdict') if (result or {}).get('status') == 'ok' else 'invalid_output') if row['state'] == 'completed' else None
+            repair = repairs.get(row['id'])
+            latest_repair = None
+            if repair:
+                repaired = json.loads(repair['result']) if repair['result'] else {}
+                final = repaired.get('final') or {}
+                latest_repair = {'id': repair['id'], 'state': repair['state'], 'created': repair['created'],
+                                 'verdict': (final.get('verdict') if final.get('status') == 'ok' else 'invalid_output') if repair['state'] == 'completed' else None}
+            summaries.append({'id': row['id'], 'state': row['state'], 'created': row['created'],
+                              'title': first['subject'] + ' → ' + first['predicate'] + ' → ' + first['object'],
+                              'relations': len(spec['plan']), 'evidence': len(spec['evidence']),
+                              'verdict': verdict, 'source': (result or {}).get('provenance', {}).get('source'),
+                              'client_tag': spec.get('client_tag', ''), 'error': row['error'], 'latest_repair': latest_repair})
+        return {'rows': summaries, 'total': total, 'offset': offset, 'limit': limit}
+
     def guard(self, cid):
         with self.connections() as c:
             state = c.execute('SELECT state FROM relation_checks WHERE id=?', (cid,)).fetchone()[0]

@@ -4,7 +4,7 @@
 
 `GET /api/plugin-demo`返回两组教学案例和程序绑定结果。响应携带`source=ideal_plugin_demo`、`measured=false`、`model_inference_performed=false`。无需模型即可运行。
 
-网页侧栏与MV3扩展使用相同的plugin.html/js/css。扩展仅接收用户主动选中的文本，保存在session storage；当前不将其提交模型。构建及权限见[扩展README](../app/extension/README.md)。
+真实网页与MV3侧栏共享sidecar.html/js及plugin.css，用户主动读取可见回答、采集来源，再确认提交核验。plugin.html/js为独立教学示例；不读取隐藏思维链。构建及权限见[扩展README](../app/extension/README.md)。
 
 ## 真实核验接口
 
@@ -29,6 +29,7 @@ python3 app/server.py --port 8790
 |---|---|
 | GET /api/health | 配置状态与语料来源，不调用模型 |
 | POST /api/verifications | 提交上述输入，返回持久化任务ID |
+| GET /api/verifications?offset=0&limit=20 | 仅列独立审查任务，含分页、原始结论与最新关联补搜摘要；不调用模型 |
 | GET /api/verifications/:id | 恢复状态、原始输入与结果 |
 | POST /api/verifications/:id/cancel | 只取消指定任务，当前HTTP调用可能先返回 |
 | POST /api/workflows | 创建共享工具预算的搜索/核验/补搜任务 |
@@ -44,3 +45,5 @@ python3 app/server.py --port 8790
 客户端0.2.0基础包只依赖标准库，见[sdk/README.md](../sdk/README.md)。LangGraph适配在调用构图函数时才导入调用方已有框架，当前版本未完成真实框架环境验证。
 
 发布wheel可安装到调用方独立环境；这不是PyPI发布。核验模型未配置时客户端抛出ModelUnavailable，不输出预填的成功结果。
+
+记录页通过 `/#audit-record/<check-id>/<repair-id>` 恢复；repair-id可省略。导出保留初始核验与所选补搜两份记录，不用补搜结果覆盖原结果。GET列表默认limit=50，范围1–100，offset非负；排队、失败和取消没有判定值，无效输出另列。

@@ -73,7 +73,7 @@ search.endpoint是完整HTTPS地址，密钥通过所指环境变量作为Bearer
 
 自动化合同测试使用mock/回环服务，不调用付费厂商API；另有上述DeepSeek真实冒烟记录。尚未完成代表性数据集准确率、完整网页补搜闭环收益或三站点实机兼容评测，不能将少量样例通过率作为准确率。
 
-API版下载包为`evidence-verifier-api-0.3.2-source.zip`；不包含训练入口文件，但保留共享核验内核与原始开发记录。API应用仍有Python/SQLite后端，不等于纯浏览器无服务器版本。
+API版下载包为`evidence-verifier-api-0.3.3-source.zip`；不包含训练入口文件，但保留共享核验内核与原始开发记录。API应用仍有Python/SQLite后端，不等于纯浏览器无服务器版本。
 
 ## 工程隔离与配置校验
 
