@@ -58,6 +58,10 @@ Evidence Verifier 围绕三件事展开：**对象是否找对、问题是否答
 
 ### 2.2 插件版：沿着当前对话完成核验与补证
 
+![插件版：ChatGPT对话与Evidence Verifier侧栏并排，读取当前问题与候选回答](docs/images/plugin-chatgpt-live.png)
+
+左侧为ChatGPT原对话，右侧为Evidence Verifier审查侧栏。截图展示“读取当前回答”后的问题与候选片段预览；用户可继续采集来源原文、确认待核验关系，并生成补充提示词。
+
 ```mermaid
 flowchart LR
     subgraph AI["AI 对话页"]
