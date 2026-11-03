@@ -152,34 +152,7 @@ flowchart LR
 
 ## 4. 系统架构
 
-```mermaid
-flowchart TB
-    Web["网页版工作台"] --> Plan["关系规划<br>问题＋候选答案"]
-    Plugin["Chrome 对话侧栏"] --> Plan
-    SDK["HTTP API / Python SDK"] --> Plan
-    Context["用户上下文、身份线索与用途"] -.-> Scope["对象澄清与范围确认 [待完成]"]
-    Scope -.-> Plan
-    Scope -.-> Cover["必要内容清单与遗漏检查 [待完成]"]
-    Cover -.-> Add["按需补充解释与延伸 [待完成]"]
-    Add -.-> Gap
-    Sources["来源原文"] --> Extract["独立事实抽取<br>仅证据＋关系定义"]
-    Extract --> Verify["独立支持性核验<br>事实＋所引原文"]
-    Verify --> Bind["原文位置回放<br>实体绑定与白名单计算"]
-    Plan --> Bind
-    Bind --> Report["四类判定与审查报告"]
-    Report --> Gap["缺失关系 → 定向补搜"]
-    Gap --> Sources
-    Report --> Prompt["修订提示词 → 原对话"]
-    Cover -.-> Prompt
-    API["远程模型 API<br>按角色配置"] -.-> Extract
-    API -.-> Verify
-    Pool["本地模型池<br>Qwen 7B / 3B [待完成]"] -.-> Extract
-    Pool -.-> Verify
-    Data["轨迹与人工标签"] --> Tune["3B LoRA 微调 [待完成]"]
-    Tune --> Pool
-    classDef core fill:#edf5ed,stroke:#769c7d,color:#254731;
-    class Extract,Verify,Bind,Report core;
-```
+![Evidence Verifier系统架构：对象与内容规划、独立证据核验、补证反馈、模型服务及离线训练](docs/images/system-architecture.svg)
 
 问题、候选答案与用户上下文用于对象澄清及规划；抽取器和支持性核验器仍只接收各自核验所需的证据输入。各角色可配置不同模型，纯 API 路径无需本地 GPU。
 
