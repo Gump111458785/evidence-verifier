@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'app/scripts'))
 from build_extension import build as build_extension
 
-EXCLUDED = {'__pycache__', '.git', '.venv', '.venv-api', 'node_modules', 'dist', 'build', 'runtime', 'runs', 'checkpoints', 'outputs'}
+EXCLUDED = {'__pycache__', '.git', '.edgeone', '.venv', '.venv-api', 'node_modules', 'dist', 'build', 'runtime', 'runs', 'checkpoints', 'outputs'}
 
 
 def include(path):
@@ -51,7 +51,7 @@ def main():
         subprocess.run([sys.executable, '-m', 'pip', 'wheel', '--no-index', '--disable-pip-version-check', '--no-deps', '--no-build-isolation',
                         str(ROOT/'sdk'), '--wheel-dir', str(out)], check=True)
     files = []
-    for folder in ('app', 'sdk', 'docs', 'scripts', '.github', 'api_edition'):
+    for folder in ('app', 'sdk', 'docs', 'scripts', '.github', 'api_edition', 'cloud_runtime', 'deploy'):
         files += [p for p in (ROOT/folder).rglob('*') if p.is_file() and include(p)]
     files += [ROOT/name for name in ('README.md', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'CHANGELOG.md', '.gitignore', '.env.example')]
     bundle(out/f'evidence-verifier-{args.version}-source.zip', files, 'evidence-verifier')

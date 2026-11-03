@@ -1,0 +1,324 @@
+{
+  "date": "2026-11-04",
+  "project_id": "makers-z7l7raqtginj",
+  "url": "https://evidence-verifier.edgeone.dev/",
+  "archive_sha256": "f1565eb57972e56d16122d9aec57266299c099301d4f78a66e4846d77570463e",
+  "assets": {
+    "app.js": "app.5e803cecbb85.js",
+    "cloud-access.js": "cloud-access.524e8414e50c.js",
+    "plugin.css": "plugin.60c3f1638455.css",
+    "plugin.js": "plugin.5169597a8aee.js",
+    "sidecar.js": "sidecar.2fa588f5b592.js",
+    "style.css": "style.0ebd5de45a58.css",
+    "theme.css": "theme.841da4ff9575.css"
+  },
+  "root_index": true,
+  "files": [
+    {
+      "path": "plugin.5169597a8aee.js",
+      "sha256": "5169597a8aee22c25665f464a361abdab4e43a4cd5e2305ef90e3a5e985c74af",
+      "bytes": 7272
+    },
+    {
+      "path": "sidecar.2fa588f5b592.js",
+      "sha256": "2fa588f5b59231d3bd45c0342ff1aa00f38805011c8fa77897169469f55ad836",
+      "bytes": 15890
+    },
+    {
+      "path": "index.html",
+      "sha256": "0b97f5b2fefa872b60a8a5f0107683aa683ce2bc7d423f3b43ffe5f85641f67c",
+      "bytes": 19745
+    },
+    {
+      "path": "plugin.60c3f1638455.css",
+      "sha256": "60c3f1638455fa7315a072250d00810baa9b2ced7217974de0d0cc563402297e",
+      "bytes": 8586
+    },
+    {
+      "path": "cloud-access.524e8414e50c.js",
+      "sha256": "524e8414e50cfb50a040c5aa61066a55f939493e197551d2c102b4fe09baf83a",
+      "bytes": 2556
+    },
+    {
+      "path": "edgeone.json",
+      "sha256": "66b17b653dd8ccb11690b0917b1eb98a7c370c59664c8b268d0c02db65c4669b",
+      "bytes": 371
+    },
+    {
+      "path": "sidecar.html",
+      "sha256": "2e2ac0877c1bca479e3456fad37035e85faf4ab722bb3f553de29d3fd733b0e0",
+      "bytes": 5071
+    },
+    {
+      "path": "app.5e803cecbb85.js",
+      "sha256": "5e803cecbb851b23d3a8c1c7f6f2d398af380cfd03eaad5f23075a1995305aa3",
+      "bytes": 69508
+    },
+    {
+      "path": "plugin.html",
+      "sha256": "8ef9830dd2d828660dbf2fec826b17a56fd7d3cac9613d0b4f28b3fdd9e7ef86",
+      "bytes": 2037
+    },
+    {
+      "path": "style.0ebd5de45a58.css",
+      "sha256": "0ebd5de45a5870781becdcb70ffd2e97022754ebd20aae6370c0cb1a8787724f",
+      "bytes": 13742
+    },
+    {
+      "path": "favicon.svg",
+      "sha256": "b35c85a4e65d91e7d4f72363db0fb053a806f4be107826e1b0877e8d40cbc13f",
+      "bytes": 214
+    },
+    {
+      "path": "theme.841da4ff9575.css",
+      "sha256": "841da4ff9575ce63ea302137ee9b7b134066f330170add89efef82cdea231395",
+      "bytes": 14613
+    },
+    {
+      "path": "fonts/plex-2.ttf",
+      "sha256": "5311c66fd6d04ae45671236f7eae667b671c06c1dc7e88d52c206e5fadd0fb21",
+      "bytes": 205284
+    },
+    {
+      "path": "fonts/plex-0.ttf",
+      "sha256": "6dbe082463cf749cfa057d45c3048c90f4df031496498e5b5bdfd0b6babb9d16",
+      "bytes": 205252
+    },
+    {
+      "path": "fonts/plex-1.ttf",
+      "sha256": "6f7a8c4219e021ff7c9131bc5f1f7af97bcd1436a59578d444a8cb92e9791742",
+      "bytes": 205292
+    },
+    {
+      "path": "fonts/LICENSE.txt",
+      "sha256": "7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da",
+      "bytes": 4456
+    },
+    {
+      "path": "fonts/fonts.css",
+      "sha256": "31fe0df0576a3887ee7483a095097c0419c642fdeb01b5671a6bba1d548e1c66",
+      "bytes": 555
+    },
+    {
+      "path": "downloads/evidence-verifier-extension.zip",
+      "sha256": "bffd16ed2d794cdca0068ebc0fdcd805efea795d8872e1a4a750c2acf86aa248",
+      "bytes": 343679
+    },
+    {
+      "path": "cloud-functions/requirements.txt",
+      "sha256": "117bb7857e2106917057761be56b51e26df4b9c0e3ebdbcf48a992e94534c6ac",
+      "bytes": 20
+    },
+    {
+      "path": "cloud-functions/api/[[route]].py",
+      "sha256": "1ac9e22fd963fb1704a16881e53d57e7242937d50b9336b54471f1aa19eee2f6",
+      "bytes": 1727
+    },
+    {
+      "path": "cloud-functions/api/evlib/repair.py",
+      "sha256": "a51291cd68af7eb300c7863ed89af4d5c52cf94706837a8de7978c426a7f458e",
+      "bytes": 22489
+    },
+    {
+      "path": "cloud-functions/api/evlib/scenarios.py",
+      "sha256": "9376285cd42f4e5a4e7be97c4ddf76a1851256fa06bf1c706e7ab440804e9d25",
+      "bytes": 5292
+    },
+    {
+      "path": "cloud-functions/api/evlib/curation.py",
+      "sha256": "1e118f4f1e309ac7124b3bcb95c8d1254d803500264b9a1e6fb6b5a84aea106f",
+      "bytes": 22707
+    },
+    {
+      "path": "cloud-functions/api/evlib/sidecar.py",
+      "sha256": "9bba9b36a21ef7c59da2765e356a9cb0049703ac8d9030296372a8a366c5d492",
+      "bytes": 2815
+    },
+    {
+      "path": "cloud-functions/api/evlib/relations.py",
+      "sha256": "9b1ff0988f195abe510aa891f8291f6e115eb879a16bdfa49d5e5f1cfe58de18",
+      "bytes": 5348
+    },
+    {
+      "path": "cloud-functions/api/evlib/engine.py",
+      "sha256": "f652918df48a65f888da1c8791c38c28ac1a36be34725856ff43c9a9ed20820f",
+      "bytes": 11024
+    },
+    {
+      "path": "cloud-functions/api/evlib/plugin_scenarios.py",
+      "sha256": "3be06085e81541751069d32ff4663fbd904448cced7d88dcfad24869996ddba1",
+      "bytes": 3635
+    },
+    {
+      "path": "cloud-functions/api/evlib/retrieval.py",
+      "sha256": "9f1224353df440c0e4ad5ea79ace1a328b5bdf62bdb1c0188655e8b588d41f04",
+      "bytes": 13456
+    },
+    {
+      "path": "cloud-functions/api/evlib/agent.py",
+      "sha256": "837d8c1796b2682f0248db7f2bf7930acf9283b09e2188ab255960dc5c925674",
+      "bytes": 11055
+    },
+    {
+      "path": "cloud-functions/api/evlib/planning.py",
+      "sha256": "a447115e62f64d2f3545db995ec8d67a92963583096849ec6b9bf904df12203a",
+      "bytes": 15873
+    },
+    {
+      "path": "cloud-functions/api/evlib/inference.py",
+      "sha256": "a8579ba5e83f1221cc7329cd853adf1cef51b2ce66b63951e9c02285608538c9",
+      "bytes": 6681
+    },
+    {
+      "path": "cloud-functions/api/evlib/grounding.py",
+      "sha256": "505d72cf40aeb82cfe2b9492645b92a56da8abf03e9a0e7f232c6872ea458a4b",
+      "bytes": 6752
+    },
+    {
+      "path": "cloud-functions/api/evlib/cloud_runtime/store.py",
+      "sha256": "e877d9dde51d0cdac61fc8ef3f6a665b3f3eebd64a91a05803be6c784e5d0825",
+      "bytes": 7245
+    },
+    {
+      "path": "cloud-functions/api/evlib/cloud_runtime/curation.py",
+      "sha256": "a724c47959b58d737f471f5bfcf31f50466cc952903c8221a06418b3acecab01",
+      "bytes": 4385
+    },
+    {
+      "path": "cloud-functions/api/evlib/cloud_runtime/__init__.py",
+      "sha256": "cbf028c00a6bab9060c71d5eae5c8253c4d0135e3035e16bed28e2ec3e3ae6a0",
+      "bytes": 74
+    },
+    {
+      "path": "cloud-functions/api/evlib/cloud_runtime/model.py",
+      "sha256": "93bf443fcbb68c1d91cbedbff162301183066fde0cc32596ea9c8d1ff250f487",
+      "bytes": 2733
+    },
+    {
+      "path": "cloud-functions/api/evlib/cloud_runtime/orchestration.py",
+      "sha256": "2c34202f41133ef523bf6709b88956b7002e151f5838b5dcd9582f0cd9f8342d",
+      "bytes": 17377
+    },
+    {
+      "path": "cloud-functions/api/evlib/cloud_runtime/jobs.py",
+      "sha256": "98712488b1401ecdf192b9a3c74813cb735990858e9e4e8b1896cc06a81d9e59",
+      "bytes": 4357
+    },
+    {
+      "path": "cloud-functions/api/evlib/cloud_runtime/api.py",
+      "sha256": "ba45a9c5389fd89254d612b9dfce2b33ade2b4b3d557aba59de24c1d05c31099",
+      "bytes": 12547
+    },
+    {
+      "path": "cloud-functions/api/evlib/cloud_runtime/pipeline.py",
+      "sha256": "74ae15dad59049dad899711e64c84a6d14bb5213a0610f39f15ff164aebdb741",
+      "bytes": 5920
+    },
+    {
+      "path": "cloud-functions/api/evlib/cloud_runtime/search.py",
+      "sha256": "f5c1b719fda16b3d7d744a09a70d68ffe3ddcf7598b513036ebc27eb0cd42d3a",
+      "bytes": 7253
+    },
+    {
+      "path": "cloud-functions/api/evlib/cloud_runtime/public-data.json",
+      "sha256": "be2ed41552305d2f6b2ed7062d2bf7770be866c71958d43cb6c06a3ff1976b4b",
+      "bytes": 271266
+    },
+    {
+      "path": "cloud-functions/api/evlib/data/archive.json",
+      "sha256": "99b79bf7a13b87d7fffcd264fff6704668d0adc9620c3af56e417bb32b5bd46a",
+      "bytes": 1444874
+    },
+    {
+      "path": "cloud-functions/api/evlib/vendor/evpilot/relation_kernel_v7.py",
+      "sha256": "4e846f89cb63bd40d1e7db94dcf0d939c00ae6bc5ced32f79be849164785b2c4",
+      "bytes": 17512
+    },
+    {
+      "path": "cloud-functions/api/evlib/vendor/evpilot/judge_v3_1.py",
+      "sha256": "5303e54302528606102dd485099d5e3a045205ea2447c88778a346dbf43116de",
+      "bytes": 6667
+    },
+    {
+      "path": "cloud-functions/api/evlib/vendor/evpilot/relation_kernel_v6.py",
+      "sha256": "bedf98c409d67cc87042a683df829b80c9c78a414df0b97606fb811428b36c86",
+      "bytes": 21561
+    },
+    {
+      "path": "cloud-functions/api/evlib/vendor/evpilot/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "cloud-functions/api/evlib/vendor/evpilot/common.py",
+      "sha256": "a8d8b241ac25d6938e453f260cc03e11b0d8707cd9f6a71fe00f96a07c04f420",
+      "bytes": 839
+    },
+    {
+      "path": "cloud-functions/api/evlib/vendor/evpilot/judge.py",
+      "sha256": "226a579eaecb4f3ea76e2b7ed7e31de005a5914a08f75fc2c2b188f45d9ca1f8",
+      "bytes": 6453
+    },
+    {
+      "path": "cloud-functions/api/evlib/vendor/evpilot/relation_kernel_v5.py",
+      "sha256": "072f697712e266df14149abba69715aa982bc52c8702d023d512a00a1f0aec57",
+      "bytes": 6125
+    },
+    {
+      "path": "cloud-functions/api/evlib/vendor/evpilot/judge_v3.py",
+      "sha256": "23d4fb0608dc4684ab573756776fef5fed7b432bc0368f073a371a51bbdf94dd",
+      "bytes": 12069
+    }
+  ],
+  "redis_acceptance": {
+    "concurrent_attempts": 48,
+    "reservations": 40,
+    "blocked": 8,
+    "fresh_instance_persistence": true,
+    "owner_isolation": true,
+    "paid_calls": 0,
+    "production_ledger_unchanged": true
+  },
+  "package_audit": {
+    "recursive_archive_entries_checked": 69,
+    "actual_configured_secret_values_checked": 4,
+    "matches": 0,
+    "root_index": true,
+    "environment_files_included": false
+  },
+  "usage": {
+    "known_supplier_responses": 4,
+    "prompt_tokens": 4702,
+    "completion_tokens": 146,
+    "estimated_peak_upper_cny_without_cache_discount": 0.015858,
+    "conversion_assumption_cny_per_usd": 10,
+    "actual_invoice_confirmed": false,
+    "reserved_millicny": 1000
+  },
+  "browser_observed": [
+    "anonymous_home",
+    "embedded_form",
+    "live_entailed",
+    "supplemental_prompt",
+    "json_download",
+    "success_and_failure_history",
+    "live_report"
+  ],
+  "backend_observed": [
+    "live_missing"
+  ],
+  "pending": [
+    "browser_final_refresh",
+    "cloud_web_repair_browser",
+    "mainland_custom_domain"
+  ],
+  "cpu_tests": {
+    "backend_run": 122,
+    "backend_passed": 119,
+    "backend_skipped": 3,
+    "cloud_subset": 30,
+    "api_contracts": 26,
+    "extension_contracts": 10
+  },
+  "model_accuracy_or_training_claims": false
+}

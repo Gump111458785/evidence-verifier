@@ -22,7 +22,7 @@ jobs:
       - name: Install CPU validation dependency
         run: python -m pip install -r api_edition/requirements.txt
       - name: Python syntax
-        run: python -m compileall -q app sdk/src scripts api_edition
+        run: python -m compileall -q app sdk/src scripts api_edition cloud_runtime deploy
       - name: JavaScript syntax
         run: |
           node --check app/static/app.js
@@ -30,6 +30,7 @@ jobs:
           node --check app/extension/background.js
           node --check app/extension/page-adapter.js
           node --check app/static/sidecar.js
+          node --check app/static/cloud-access.js
       - name: Publication source check
         run: python scripts/check_publication.py
       - name: Extension DOM and sidecar contracts (no external API calls)
@@ -47,6 +48,8 @@ jobs:
           python scripts/check_doc_links.py
       - name: Build offline delivery
         run: python scripts/build_release.py --version 0.3.3 --out dist
+      - name: Build EdgeOne package (no external API calls)
+        run: python scripts/build_edgeone.py --out /tmp/ev-edgeone-package
       - uses: actions/upload-artifact@v4
         with:
           name: evidence-verifier-delivery

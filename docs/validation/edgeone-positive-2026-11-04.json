@@ -1,0 +1,274 @@
+{
+  "verification": {
+    "id": "eef98142fd0dce377ed0100c",
+    "kind": "verification",
+    "state": "completed",
+    "created": 1793722770.7573173,
+    "input": {
+      "plan": [
+        {
+          "subject": "Analytical Engine",
+          "predicate": "designed_by",
+          "object": "Charles Babbage",
+          "subject_type": "work",
+          "object_type": "person"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "E1",
+          "text": "Charles Babbage designed the Analytical Engine."
+        }
+      ],
+      "scope": "declared_relations_only",
+      "complete_question_coverage": "not_established",
+      "parent_kind": "standalone_evidence",
+      "parent_id": null,
+      "client_tag": "conversation-sidecar-0.3.3"
+    },
+    "step": 2,
+    "result": {
+      "status": "ok",
+      "verdict": "entailed",
+      "bindings": {},
+      "proof": [
+        {
+          "subject": "Analytical Engine",
+          "object": "Charles Babbage",
+          "source_subject": "Analytical Engine",
+          "source_object": "Charles Babbage",
+          "predicate": "designed_by",
+          "subject_type": "work",
+          "object_type": "person",
+          "polarity": "positive",
+          "exclusive": false,
+          "time_scope": "unspecified",
+          "subject_spans": [
+            {
+              "evidence_id": "E1",
+              "start": 29,
+              "end": 46,
+              "text": "Analytical Engine"
+            }
+          ],
+          "object_spans": [
+            {
+              "evidence_id": "E1",
+              "start": 0,
+              "end": 15,
+              "text": "Charles Babbage"
+            }
+          ],
+          "calculation": {
+            "kind": "none",
+            "base_text": "",
+            "delta_text": "",
+            "end_text": "",
+            "quote_ids": []
+          },
+          "quotes": [
+            {
+              "evidence_id": "E1",
+              "text": "Charles Babbage designed the Analytical Engine.",
+              "start": 0,
+              "end": 47,
+              "quote_id": "Q1"
+            }
+          ]
+        }
+      ],
+      "relation_results": [
+        {
+          "verdict": "entailed",
+          "bindings": {},
+          "quotes": [
+            {
+              "evidence_id": "E1",
+              "text": "Charles Babbage designed the Analytical Engine.",
+              "start": 0,
+              "end": 47,
+              "quote_id": "Q1"
+            }
+          ],
+          "matched_facts": [
+            {
+              "subject": "Analytical Engine",
+              "object": "Charles Babbage",
+              "source_subject": "Analytical Engine",
+              "source_object": "Charles Babbage",
+              "predicate": "designed_by",
+              "subject_type": "work",
+              "object_type": "person",
+              "polarity": "positive",
+              "exclusive": false,
+              "time_scope": "unspecified",
+              "subject_spans": [
+                {
+                  "evidence_id": "E1",
+                  "start": 29,
+                  "end": 46,
+                  "text": "Analytical Engine"
+                }
+              ],
+              "object_spans": [
+                {
+                  "evidence_id": "E1",
+                  "start": 0,
+                  "end": 15,
+                  "text": "Charles Babbage"
+                }
+              ],
+              "calculation": {
+                "kind": "none",
+                "base_text": "",
+                "delta_text": "",
+                "end_text": "",
+                "quote_ids": []
+              },
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "Charles Babbage designed the Analytical Engine.",
+                  "start": 0,
+                  "end": 47,
+                  "quote_id": "Q1"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "span_checks": [
+        {
+          "evidence_id": "E1",
+          "start": 29,
+          "end": 46,
+          "text": "Analytical Engine",
+          "field": "subject_spans",
+          "valid": true
+        },
+        {
+          "evidence_id": "E1",
+          "start": 0,
+          "end": 15,
+          "text": "Charles Babbage",
+          "field": "object_spans",
+          "valid": true
+        },
+        {
+          "evidence_id": "E1",
+          "text": "Charles Babbage designed the Analytical Engine.",
+          "start": 0,
+          "end": 47,
+          "quote_id": "Q1",
+          "field": "quotes",
+          "valid": true
+        }
+      ],
+      "scope": "declared_relations_only",
+      "plan_sha256": "8ffe040522b48777365ebeee2ebbc73f50233fd0d6a086b448d3ad5e59153520",
+      "complete_question_coverage": "not_established",
+      "binding_gap": false,
+      "fact_rows": [
+        {
+          "fact": {
+            "subject": "Analytical Engine",
+            "object": "Charles Babbage",
+            "source_subject": "Analytical Engine",
+            "source_object": "Charles Babbage",
+            "predicate": "designed_by",
+            "subject_type": "work",
+            "object_type": "person",
+            "polarity": "positive",
+            "exclusive": false,
+            "time_scope": "unspecified",
+            "subject_spans": [
+              {
+                "evidence_id": "E1",
+                "start": 29,
+                "end": 46,
+                "text": "Analytical Engine"
+              }
+            ],
+            "object_spans": [
+              {
+                "evidence_id": "E1",
+                "start": 0,
+                "end": 15,
+                "text": "Charles Babbage"
+              }
+            ],
+            "calculation": {
+              "kind": "none",
+              "base_text": "",
+              "delta_text": "",
+              "end_text": "",
+              "quote_ids": []
+            },
+            "quotes": [
+              {
+                "evidence_id": "E1",
+                "text": "Charles Babbage designed the Analytical Engine.",
+                "start": 0,
+                "end": 47,
+                "quote_id": "Q1"
+              }
+            ]
+          },
+          "raw": {
+            "subject": "Analytical Engine",
+            "predicate": "designed_by",
+            "object": {
+              "kind": "literal",
+              "text": "Charles Babbage"
+            },
+            "quote_ids": [
+              "Q1"
+            ],
+            "polarity": "positive",
+            "qualifier": "none"
+          },
+          "verification": {
+            "status": "ok",
+            "parsed": {
+              "verdict": "entailed",
+              "rationale": "Q1 explicitly states that Charles Babbage designed the Analytical Engine, matching the subject (designed work), object (designer), and positive polarity."
+            }
+          }
+        }
+      ],
+      "grounding": {
+        "local_context_expansions": []
+      },
+      "provenance": {
+        "source": "remote_api",
+        "usage": [
+          {
+            "prompt_tokens": 1329,
+            "completion_tokens": 50,
+            "total_tokens": 1379,
+            "prompt_tokens_details": {
+              "cached_tokens": 1152
+            },
+            "prompt_cache_hit_tokens": 1152,
+            "prompt_cache_miss_tokens": 177
+          },
+          {
+            "prompt_tokens": 716,
+            "completion_tokens": 41,
+            "total_tokens": 757,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "prompt_cache_hit_tokens": 0,
+            "prompt_cache_miss_tokens": 716
+          }
+        ]
+      }
+    },
+    "error": null,
+    "events": [],
+    "step_started": 1793722778.5937881
+  },
+  "repair": null
+}

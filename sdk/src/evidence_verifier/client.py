@@ -53,7 +53,7 @@ class WaitTimeout(VerifierError):
 
 class VerifierClient:
     def __init__(self, base_url: str = 'http://127.0.0.1:8790', *, request_timeout: float = 30,
-                 headers: Mapping[str, str] | None = None):
+                 headers: Mapping[str, str] | None = None, advance_cloud_jobs: bool = False):
         parsed = urlsplit(base_url)
         if parsed.scheme not in ('http', 'https') or not parsed.netloc or parsed.query or parsed.fragment:
             raise ValueError('Use an HTTP(S) workbench base URL without query or fragment')
@@ -61,6 +61,7 @@ class VerifierClient:
             raise ValueError('Request timeout must be finite and positive')
         self.base_url, self.request_timeout = base_url.rstrip('/'), request_timeout
         self.headers = dict(headers or {})
+        self.advance_cloud_jobs = advance_cloud_jobs
 
     def _request(self, path: str, body: dict[str, Any] | None = None, *, timeout: float | None = None) -> dict[str, Any]:
         timeout = self.request_timeout if timeout is None else timeout
@@ -121,6 +122,10 @@ class VerifierClient:
         """Cancel only this job. A current request may still need to return."""
         return self._request('/api/verifications/' + self._id(job_id) + '/cancel', {})
 
+    def advance(self, job_id: str, *, timeout: float | None = None) -> dict[str, Any]:
+        """Explicit paid-capable cloud step. Never retry an uncertain response."""
+        return self._request('/api/verifications/' + self._id(job_id) + '/advance', {}, timeout=timeout)
+
     def wait(self, job_id: str, *, timeout: float = 300, poll_interval: float = .5) -> dict[str, Any]:
         if not math.isfinite(timeout) or timeout <= 0 or not math.isfinite(poll_interval) or poll_interval <= 0:
             raise ValueError('Wait timeout and poll interval must be finite and positive')
@@ -131,6 +136,16 @@ class VerifierClient:
                 raise WaitTimeout(job_id)
             try:
                 job = self.get(job_id, timeout=min(self.request_timeout, remaining))
+                if job.get('advance_path'):
+                    expected = '/api/verifications/' + self._id(job_id) + '/advance'
+                    if job['advance_path'] != expected:
+                        raise VerifierError('Unexpected cloud advance path')
+                    if not self.advance_cloud_jobs:
+                        raise VerifierError('Cloud task awaits an explicit advance(); opt in with advance_cloud_jobs=True to let wait() progress paid steps')
+                    remaining = deadline-time.monotonic()
+                    if remaining <= 0:
+                        raise WaitTimeout(job_id)
+                    job = self.advance(job_id, timeout=min(self.request_timeout, remaining))
             except VerifierTransportError as exc:
                 if time.monotonic() >= deadline:
                     raise WaitTimeout(job_id) from exc

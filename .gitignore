@@ -22,4 +22,5 @@ runtime/
 runs/
 checkpoints/
 outputs/
+.edgeone/
 api_edition/config.local.json

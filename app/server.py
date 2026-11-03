@@ -391,6 +391,7 @@ class Handler(BaseHTTPRequestHandler):
             if path.path.startswith('/api/'):
                 return self.send({'error': 'Not found'}, 404)
             assets = {'/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css',
+                      '/cloud-access.js': 'cloud-access.js', '/favicon.svg': 'favicon.svg',
                       '/sidecar.html': 'sidecar.html', '/sidecar.js': 'sidecar.js', '/theme.css': 'theme.css', '/plugin.html': 'plugin.html', '/plugin.js': 'plugin.js', '/plugin.css': 'plugin.css',
                       '/downloads/evidence-verifier-extension.zip': 'downloads/evidence-verifier-extension.zip'}
             if path.path.startswith('/fonts/'):

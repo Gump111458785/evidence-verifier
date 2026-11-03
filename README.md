@@ -12,7 +12,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![API mode](https://img.shields.io/badge/API_mode-no_local_GPU-227755)](api_edition/README.md)
 
-[网页版与插件版](#2-网页版与插件版) · [补证案例](#3-补证案例) · [系统架构](#4-系统架构) · [核心机制](#5-核心机制) · [后训练](#6-后训练证据核验模型的任务适配) · [快速开始](#7-快速开始)
+[在线工作台](https://evidence-verifier.edgeone.dev/) · [网页版与插件版](#2-网页版与插件版) · [补证案例](#3-补证案例) · [系统架构](#4-系统架构) · [核心机制](#5-核心机制) · [后训练](#6-后训练证据核验模型的任务适配) · [快速开始](#7-快速开始)
 
 </div>
 
@@ -264,6 +264,16 @@ Python 3.10+，SQLite 支持 FTS5。
 git clone https://github.com/Gump111458785/evidence-verifier.git
 cd evidence-verifier
 ```
+
+### 7.0 在线工作台
+
+访问 [Evidence Verifier](https://evidence-verifier.edgeone.dev/) 浏览界面和产品示例，无需登录。真实核验、网页补搜和私人记录需要单独的**模型调用访问码**；点击右上角“填写访问码”，此处不填写 DeepSeek 密钥。访问码只保存在当前页面内存，刷新后需要重新填写，报告保存在服务端。
+
+平台默认域名在中国大陆有访问条件限制；本次先完成平台域名联调，自定义域名与大陆长期公开访问 [待完成]。不以三小时签名预览链接作为长期地址。
+
+云端使用 EdgeOne Python 云函数与持久化 Redis：任务按短请求推进，原子费用预留跨重启、跨实例生效。DeepSeek `deepseek-flash` 与搜索请求共用本轮 **10 元**上限，每个供应商 HTTP 请求预留 0.25 元，最多 40 次；超限、存储异常或访问码错误均停止新增付费调用。失败和超时不自动重试，也不退还预留。预留不是供应商实际账单。
+
+[云端部署、配置与验收](docs/edgeone-deployment.md) · [EdgeOne 项目控制台](https://console.tencentcloud.com/edgeone/pages/project/makers-z7l7raqtginj)
 
 ### 7.1 启动网页版与核验服务
 
