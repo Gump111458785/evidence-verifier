@@ -152,7 +152,7 @@ flowchart LR
 
 ## 4. 系统架构
 
-![Evidence Verifier系统架构：对象与内容规划、独立证据核验、补证反馈、模型服务及离线训练](docs/images/system-architecture.svg)
+![Evidence Verifier系统总览：四步审查主线与定向补证](docs/images/system-architecture.svg)
 
 问题、候选答案与用户上下文用于对象澄清及规划；抽取器和支持性核验器仍只接收各自核验所需的证据输入。各角色可配置不同模型，纯 API 路径无需本地 GPU。
 
