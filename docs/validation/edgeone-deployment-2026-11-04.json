@@ -287,13 +287,33 @@
     "environment_files_included": false
   },
   "usage": {
-    "known_supplier_responses": 4,
-    "prompt_tokens": 4702,
-    "completion_tokens": 146,
-    "estimated_peak_upper_cny_without_cache_discount": 0.015858,
+    "known_model_responses": 9,
+    "search_requests": 1,
+    "prompt_tokens": 10215,
+    "completion_tokens": 581,
+    "estimated_peak_upper_cny_without_cache_discount": 0.045117,
     "conversion_assumption_cny_per_usd": 10,
     "actual_invoice_confirmed": false,
-    "reserved_millicny": 1000
+    "reserved_millicny": 2500,
+    "repairs": [
+      {
+        "id": "05375cd0802a4e389d77bfc4",
+        "parent_check_id": "bb65bf1c3bed7091d2a0180a",
+        "state": "completed",
+        "initial": "missing",
+        "final": "entailed",
+        "stop_reason": "relation_supported",
+        "tool_actions": [
+          "search",
+          "open"
+        ],
+        "source_urls": [
+          "https://archives.sciencemuseumgroup.ac.uk/Details/archive/110000015",
+          "https://www.computer.org/csdl/magazine/an/1998/04/man1998040029/13rRUwInvLo"
+        ],
+        "rounds": 1
+      }
+    ]
   },
   "browser_observed": [
     "anonymous_home",
@@ -302,14 +322,18 @@
     "supplemental_prompt",
     "json_download",
     "success_and_failure_history",
-    "live_report"
+    "live_report",
+    "missing_to_entailed_web_repair",
+    "repaired_supplemental_prompt",
+    "repaired_json_download",
+    "reload_same_report_with_access_code",
+    "wrong_access_code_denied",
+    "javascript_mime_text_javascript"
   ],
   "backend_observed": [
     "live_missing"
   ],
   "pending": [
-    "browser_final_refresh",
-    "cloud_web_repair_browser",
     "mainland_custom_domain"
   ],
   "cpu_tests": {
@@ -320,5 +344,13 @@
     "api_contracts": 26,
     "extension_contracts": 10
   },
-  "model_accuracy_or_training_claims": false
+  "model_accuracy_or_training_claims": false,
+  "deployment_id": "dp16appwnw6f",
+  "tested_code_commit": "516be1bfb1af3bb5ba712be12c754622612709eb",
+  "code_ci_url": "https://github.com/Gump111458785/evidence-verifier/actions/runs/41694281408",
+  "repair_span_checks": {
+    "total": 25,
+    "valid": 25,
+    "semantic_truth_not_certified_by_span_replay": true
+  }
 }

@@ -273,6 +273,8 @@ cd evidence-verifier
 
 云端使用 EdgeOne Python 云函数与持久化 Redis：任务按短请求推进，原子费用预留跨重启、跨实例生效。DeepSeek `deepseek-flash` 与搜索请求共用本轮 **10 元**上限，每个供应商 HTTP 请求预留 0.25 元，最多 40 次；超限、存储异常或访问码错误均停止新增付费调用。失败和超时不自动重试，也不退还预留。预留不是供应商实际账单。
 
+云端实测已完成“缺证 → 1次网页搜索与1次原文打开 → 重核验支持 → 修订提示词 → 报告导出与刷新恢复”。本轮9次模型返回及1次搜索的保守费用估算约0.045元，预算预留2.50元；不计作模型准确率或微调收益。
+
 [云端部署、配置与验收](docs/edgeone-deployment.md) · [EdgeOne 项目控制台](https://console.tencentcloud.com/edgeone/pages/project/makers-z7l7raqtginj)
 
 ### 7.1 启动网页版与核验服务
