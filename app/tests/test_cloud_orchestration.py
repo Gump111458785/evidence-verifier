@@ -7,6 +7,8 @@ from cloud_runtime.orchestration import Orchestrator
 from test_cloud_api import Storage
 from test_cloud_pipeline import FakeModel,TEXT
 from cloud_runtime.store import CloudError
+from cloud_runtime.pipeline import validate_input
+from relations import evaluate
 
 class AgentModel(FakeModel):
     def complete(self,system,payload,code):
@@ -24,6 +26,34 @@ class AgentModel(FakeModel):
         self.calls.append(payload);return {'parsed':value,'usage':{'prompt_tokens':1,'completion_tokens':1}}
 
 class OrchestrationTests(unittest.TestCase):
+    def test_two_repair_rounds_never_combine_model_and_search_in_one_post(self):
+        class IrrelevantFacts(FakeModel):
+            def complete(self,system,payload,code):
+                if 'predicate_definitions' not in payload:return super().complete(system,payload,code)
+                self.calls.append(payload)
+                q=next(s['quote_id'] for d in payload['evidence'] for s in d['segments'] if TEXT in s['text'])
+                return {'parsed':{'facts':[{'subject':'Analytical Engine','predicate':'designed_by',
+                    'object':{'kind':'literal','text':'Charles Babbage'},'polarity':'positive',
+                    'qualifier':'none','quote_ids':[q]}]},'usage':{'prompt_tokens':1,'completion_tokens':1}}
+        store=Storage();model=IrrelevantFacts();app=Orchestrator(store,{},model,'','owner')
+        spec=validate_input({'evidence':[{'id':'E0','text':'The Analytical Engine was never completed.'}],
+                'relations':[{'subject':'Charles Babbage','predicate':'educated_at','object':'Trinity College'}]})
+        parent=app.create('verification',spec);parent.update(state='completed',result=evaluate(spec['plan'],[],spec['evidence']))
+        store.put('owner',parent['id'],parent)
+        job=app.repair(parent['id'],4,2);searches=[]
+        def search(*args):
+            searches.append(args);n=len(searches)
+            return [{'doc_id':'https://example.org/source-'+str(n),'title':'Irrelevant design evidence',
+                     'text':TEXT+(' Source two.' if n==2 else ''),'opened':False,'score':1}]
+        with patch('cloud_runtime.search.Search.query',side_effect=search):
+            for _ in range(40):
+                previous=len(searches)+len(model.calls);job=app.advance(job['id'])
+                self.assertLessEqual(len(searches)+len(model.calls)-previous,1)
+                if job['state'] in ('completed','failed'):break
+        self.assertEqual(job['state'],'completed',job.get('error'))
+        self.assertEqual(job['result']['final']['verdict'],'missing')
+        self.assertEqual(len(searches),2);self.assertEqual(len(model.calls),4)
+
     def test_workflow_survives_json_roundtrips_and_advances_once(self):
         store=Storage();model=AgentModel();env={'EV_CLOUD_ACCESS_CODE':'x'*32};owner='owner'
         def app():return Orchestrator(store,env,model,'x'*32,owner)

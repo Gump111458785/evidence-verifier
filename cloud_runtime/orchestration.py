@@ -115,6 +115,9 @@ class Orchestrator:
             if child['result'].get('status')!='ok':
                 result['stop_reason']='invalid_output';return {'state':'completed','result':result,'work':work}
             work.update(phase='search',gap_index=0,round=work['round']+1,child=None)
+            # Finish this HTTP step after its final model call. A second repair
+            # round starts in a later POST, never a model call plus search here.
+            return {'state':'queued','work':work,'result':result}
         if result['final'].get('verdict')!='missing' or work['round']>=job['input']['max_rounds']:
             result['stop_reason']='relation_supported' if result['final'].get('verdict')=='entailed' else 'round_limit'
             return {'state':'completed','result':result,'work':work}

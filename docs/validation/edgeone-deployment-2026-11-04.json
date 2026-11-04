@@ -2,7 +2,7 @@
   "date": "2026-11-04",
   "project_id": "makers-z7l7raqtginj",
   "url": "https://evidence-verifier.edgeone.dev/",
-  "archive_sha256": "f1565eb57972e56d16122d9aec57266299c099301d4f78a66e4846d77570463e",
+  "archive_sha256": "0f47cbf26bcfc3abf943dd426a4b2b53b11893e183cbb85b4a433f33dc8a0b0f",
   "assets": {
     "app.js": "app.5e803cecbb85.js",
     "cloud-access.js": "cloud-access.524e8414e50c.js",
@@ -196,8 +196,8 @@
     },
     {
       "path": "cloud-functions/api/evlib/cloud_runtime/orchestration.py",
-      "sha256": "2c34202f41133ef523bf6709b88956b7002e151f5838b5dcd9582f0cd9f8342d",
-      "bytes": 17377
+      "sha256": "7f21ceb863f80269d4d5442608ba0ef242efea35d8a72a61b141bc33da3964d4",
+      "bytes": 17604
     },
     {
       "path": "cloud-functions/api/evlib/cloud_runtime/jobs.py",
@@ -337,20 +337,24 @@
     "mainland_custom_domain"
   ],
   "cpu_tests": {
-    "backend_run": 122,
-    "backend_passed": 119,
+    "backend_run": 123,
+    "backend_passed": 120,
     "backend_skipped": 3,
-    "cloud_subset": 30,
+    "cloud_subset": 31,
     "api_contracts": 26,
     "extension_contracts": 10
   },
   "model_accuracy_or_training_claims": false,
-  "deployment_id": "dp16appwnw6f",
+  "deployment_id": "dp7e2ca2qcyo",
   "tested_code_commit": "516be1bfb1af3bb5ba712be12c754622612709eb",
   "code_ci_url": "https://github.com/Gump111458785/evidence-verifier/actions/runs/41694281408",
   "repair_span_checks": {
     "total": 25,
     "valid": 25,
     "semantic_truth_not_certified_by_span_replay": true
-  }
+  },
+  "regression_guards": [
+    "one_supplier_call_per_post_in_two_round_repair",
+    "no_automatic_uncertain_retry"
+  ]
 }
