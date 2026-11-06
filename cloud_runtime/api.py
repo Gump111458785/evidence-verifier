@@ -1,5 +1,6 @@
 """Same-origin cloud API, durable private tasks and public labelled examples."""
 import copy
+import hashlib
 import json
 import os
 import re
@@ -10,25 +11,93 @@ from engine import CASES,MODELS
 from relations import evaluate,validate_plan
 from scenarios import scenario
 from sidecar import report
+from .auth import Accounts,session_token_from_headers
 from .store import Store,CloudError,authorize
 from .model import DeepSeek
 from .pipeline import validate_input,planner_input
 from .orchestration import Orchestrator,FAMILIES
 
 
+def _require_admin_or_operator(headers,env,accounts):
+    user=accounts.authenticate(headers)
+    if user:
+        if user.get('role')!='admin':raise CloudError('admin_required','需要管理员权限。',403)
+        return user
+    hdr={k.lower():v for k,v in (headers or {}).items()}.get('authorization','')
+    if hdr.startswith('Bearer '):
+        authorize(env,hdr[7:].strip())
+        return {'id':'operator','username':'operator','role':'admin'}
+    raise CloudError('auth_required','请先使用管理员账号登录。',401)
+
+
 def route(method,path,headers,body,env=None,store=None,model=None):
     env=os.environ if env is None else env
     store=store or Store(env);model=model or DeepSeek(env,store)
+    accounts=Accounts(store)
     url=urlsplit(path);path=url.path;query=parse_qs(url.query)
     configured=bool(env.get('EV_DEEPSEEK_API_KEY') and store.configured and len(env.get('EV_CLOUD_ACCESS_CODE',''))>=24)
     if method=='GET' and path=='/api/health':
         return {'ok':True,'edition':'pure_api','cloud_mode':'durable_step_jobs','live_configured':configured,
+                'invitation_only':True,'auth_mode':'invitation_account',
                 'planner':{'configured':configured},'agent':{'configured':configured,'model':'deepseek-flash'},
                 'workflow':{'configured':configured,'search_model':'deepseek-flash','planner_model':'deepseek-flash','verifier_model':'deepseek-flash','source':'remote_api'},
                 'search_configured':configured,'model':'deepseek-flash','trial_budget_cny':10,
                 'corpus_docs':0,'corpus_scope':'api_search_raw_content_not_local_index','no_automatic_retries':True}
     if method=='GET' and path=='/api/inference-status':
         return {'configured':False,'edition':'pure_api','reason':'云端调用远程API，不报告本地GPU负载'}
+    if method=='GET' and path=='/api/auth/me':
+        user=accounts.authenticate(headers) if (store.configured or hasattr(store,'_auth_kv')) else None
+        return {'authenticated':bool(user),'invitation_only':True,'registration_enabled':False,
+                'auth_required':True,'legacy_access_code_supported':True,'user':user}
+    if method=='POST' and path=='/api/auth/register':
+        raise CloudError('invitation_only','当前仅向受邀账号开放登录，不支持公开自助注册。请联系管理员开通账号。',403)
+    if method=='POST' and path=='/api/auth/login':
+        identifier=(body or {}).get('identifier') or (body or {}).get('username') or (body or {}).get('email') or ''
+        password=(body or {}).get('password') or ''
+        ua={k.lower():v for k,v in (headers or {}).items()}.get('user-agent','')
+        token,user=accounts.login(identifier,password,user_agent=ua)
+        return {'authenticated':True,'invitation_only':True,'user':user,'session_token':token,'_set_cookie':token}
+    if method=='POST' and path=='/api/auth/logout':
+        token=session_token_from_headers(headers)
+        if token:accounts.revoke_session(token)
+        return {'authenticated':False,'logged_out':True,'_clear_cookie':True}
+    if method=='POST' and path=='/api/auth/profile':
+        current=accounts.require_user(headers)
+        updated=accounts.update_profile(current['id'],display_name=(body or {}).get('display_name'),email=(body or {}).get('email'))
+        return {'authenticated':True,'user':updated}
+    if method=='POST' and path=='/api/auth/password':
+        current=accounts.require_user(headers)
+        ua={k.lower():v for k,v in (headers or {}).items()}.get('user-agent','')
+        token,updated=accounts.change_password(current['id'],(body or {}).get('current_password') or '',(body or {}).get('new_password') or '',keep_user_agent=ua)
+        return {'authenticated':True,'user':updated,'password_updated':True,'session_token':token,'_set_cookie':token}
+    if method=='GET' and path=='/api/auth/admin/users':
+        _require_admin_or_operator(headers,env,accounts)
+        return {'users':accounts.list_users(),'invitation_only':True}
+    if method=='POST' and path=='/api/auth/admin/users':
+        admin=_require_admin_or_operator(headers,env,accounts)
+        created=accounts.create_user(
+            username=(body or {}).get('username'),
+            email=(body or {}).get('email'),
+            password=(body or {}).get('password'),
+            display_name=(body or {}).get('display_name') or '',
+            role=(body or {}).get('role') or 'member',
+            status=(body or {}).get('status') or 'active',
+            created_by=admin.get('username','admin'),
+        )
+        return {'user':created,'generated_password':created.get('generated_password')}
+    m_admin=re.fullmatch(r'/api/auth/admin/users/(usr_[a-f0-9]{20})',path)
+    if method=='POST' and m_admin:
+        _require_admin_or_operator(headers,env,accounts)
+        updated=accounts.admin_update_user(
+            m_admin[1],
+            display_name=(body or {}).get('display_name'),
+            email=(body or {}).get('email'),
+            role=(body or {}).get('role'),
+            status=(body or {}).get('status'),
+            new_password=(body or {}).get('new_password'),
+            generate_password=bool((body or {}).get('generate_password')),
+        )
+        return {'user':updated,'generated_password':updated.get('generated_password')}
     if method=='GET':
         snapshots=Path(__file__).with_name('public-data.json')
         if snapshots.exists():
@@ -36,9 +105,16 @@ def route(method,path,headers,body,env=None,store=None,model=None):
             if path in data:return data[path]
     if method=='POST' and path=='/api/scenarios/designer-education/run':
         value=scenario('designer-education');value['demonstration_id']=value['input_sha256'][:24];return value
-    code={k.lower():v for k,v in headers.items()}.get('authorization','')
-    if not code.startswith('Bearer '):raise CloudError('access_denied','真实操作与私人记录需要访问码',401)
-    code=code[7:];owner=authorize(env,code)
+    session_user=accounts.authenticate(headers) if (store.configured or hasattr(store,'_auth_kv')) else None
+    if session_user:
+        expected=env.get('EV_CLOUD_ACCESS_CODE','')
+        if len(expected)<24:raise CloudError('access_not_configured','尚未配置服务端访问码')
+        code=expected
+        owner=hashlib.sha256(('ev-acct:'+session_user['id']).encode()).hexdigest()[:32]
+    else:
+        code={k.lower():v for k,v in (headers or {}).items()}.get('authorization','')
+        if not code.startswith('Bearer '):raise CloudError('access_denied','真实操作与私人记录需要受邀账号登录或访问凭证',401)
+        code=code[7:].strip();owner=authorize(env,code)
     app=Orchestrator(store,env,model,code,owner)
     if method=='GET' and path=='/api/budget':
         spent=store.command(['GET',store.key('spent')])

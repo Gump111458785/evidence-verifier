@@ -1,26 +1,807 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Evidence Verifier · 答案审查工作台</title><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/theme.css"></head>
-<body><aside id="app-nav"><div class="brand"><svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><path d="M6 7h19M6 15h11M6 23h9M19 22l4 4 7-12" fill="none" stroke="currentColor" stroke-width="3"/></svg><strong>Evidence Verifier</strong></div><p class="workspace">证据审查工作区</p>
-<nav aria-label="主导航"><p class="nav-heading">工作台</p><button data-view="home" class="active">工作概览</button><button data-view="audit">答案审查</button><button data-view="agent">取证任务</button><button data-view="history">审查记录</button><p class="nav-heading">产品示例</p><button data-view="plugin">对话插件</button><button data-view="demo">补证报告</button><details class="nav-advanced"><summary>研发工具</summary><button data-view="review">历史核验</button><button data-view="search">证据检索</button><button data-view="data">样本管理</button><button data-view="experiments">评测中心</button></details></nav><div class="aside-bottom"><span class="dot"></span> 运行连接<p id="connection">正在连接服务</p><a href="https://github.com/Gump111458785/evidence-verifier" target="_blank" rel="noopener noreferrer">使用文档与版本说明 ↗</a></div></aside>
-<div class="shell"><header><div class="header-location"><button id="nav-toggle" aria-label="打开导航" aria-controls="app-nav" aria-expanded="false">菜单</button><span>证据审查 <span class="slash">/</span> <span id="breadcrumb">工作概览</span></span></div><span class="source-label">本机工作区</span></header><main>
-<section id="home" class="view"><div class="title"><div><h1>工作概览</h1><p>从一条回答出发，查看引用是否支持结论，再补足缺失的证据。</p></div><button class="primary" data-open="audit">新建答案审查</button></div>
-<div class="home-layout"><section class="home-example product-panel"><div class="section-head"><h2>从引用到完整证据链</h2><span class="origin-label">产品示例</span></div><p class="home-question">设计这台机器的人，究竟在哪所大学就读？</p><p id="home-question" class="meta">正在载入示例</p><div class="answer-excerpt"><span>待审回答</span><p id="home-answer">正在载入回答</p></div><div class="relation-strip" aria-label="示例待核验关系"><span>Meridian Engine</span><span class="chain-link">设计者</span><strong>Nora Hale</strong><span class="chain-link">教育经历</span><span>Lake University</span></div><div class="example-action"><span class="meta">检查每一跳，确认它们连接的是同一个人。</span><button data-open="plugin">打开示例审查</button></div></section>
-<section class="home-decision product-panel"><div class="section-head"><h2>审查结果如何使用</h2><span class="origin-label">示例流程</span></div><div class="decision-row"><span class="state-mark missing">缺证</span><div><strong>指出缺少哪条关系</strong><p>任职记录不能代替受教育经历。</p></div></div><div class="decision-row"><span class="state-mark supported">补证</span><div><strong>找到原文，再重新核验</strong><p>补入同一设计师的就读证据。</p></div></div><div class="decision-row"><span class="state-mark neutral">修订</span><div><strong>把核验记录交回原对话</strong><p>生成补充提示词，由用户确认发送。</p></div></div><button id="home-demo" class="text-link">查看完整补证报告 ↗</button></section></div>
-<section class="workflow-strip" aria-label="审查流程"><div><span>01</span><strong>选择待审回答</strong><p>读取网页或手动粘贴</p></div><div><span>02</span><strong>核对原文关系</strong><p>事实抽取与支持性分开</p></div><div><span>03</span><strong>追溯完整证据链</strong><p>原文位置与同一实体绑定</p></div><div><span>04</span><strong>补证并完善回答</strong><p>定向补搜与修订提示词</p></div></section>
-<div class="home-layout home-secondary"><section class="product-panel"><div class="section-head"><h2>最近审查</h2><button class="text-link" data-open="history">全部记录</button></div><div id="home-recent" class="home-recent"><p class="meta">正在读取审查记录</p></div></section><section class="product-panel"><div class="section-head"><h2>接入状态</h2><span id="home-edition" class="meta">读取中</span></div><div id="home-services"></div><p class="meta service-note">状态表示服务配置。实际可用性以任务结果为准。</p><button class="text-link" data-open="audit">打开答案审查助手 ↗</button></section></div>
-<p class="scope-footnote">产品示例使用预设模型判断，原文定位与关系绑定由程序执行；真实审查通过已配置的模型服务完成。</p></section>
-<section id="audit" class="view" hidden><div class="title"><div><h1>答案审查</h1><p>准备问题、回答和来源原文，确认待核验关系，再开始审查。</p></div><button data-open="plugin">先看产品示例</button></div><div class="audit-frame-wrap"><iframe id="audit-frame" src="/sidecar.html?embedded=1" title="答案审查助手"></iframe></div></section>
-<section id="plugin" class="view" hidden><div class="title"><div><h1>对话插件</h1><p>在现有AI对话旁，定位缺证关系，追溯引用并准备修订建议。</p></div><button id="plugin-run-embedded" class="primary" disabled>开始示例审查</button></div><div class="plugin-scope"><p>产品示例 · 预设模型判断，原文定位与关系绑定由程序执行。</p><a href="/downloads/evidence-verifier-extension.zip" download="evidence-verifier-extension.zip">下载 Chrome 插件包</a></div><div class="plugin-example-tabs" aria-label="演示案例"><button data-plugin-example="employment-education" class="selected">教育经历缺证</button><button data-plugin-example="entity-binding">同名实体辨别</button></div><div class="plugin-workspace"><div class="plugin-context"><article class="llm-window"><div class="llm-heading"><h2>待审对话</h2><span>示例对话</span></div><div class="llm-question"><small>用户提问</small><p id="plugin-question">Which university did the designer of the Meridian Engine attend?</p></div><div class="llm-answer"><small>模型候选回答</small><p id="plugin-candidate">The designer of the Meridian Engine attended Lake University.</p><span class="llm-citation">引用 E1、E2 · 待独立核验</span></div><div class="candidate-chain"><p>候选关系链</p><div><strong>Meridian Engine</strong><span>设计者 →</span><strong>?designer</strong><span>教育经历 →</span><strong>Lake University</strong></div></div></article><section class="sidecar-mechanism"><h2>每条判断都有核验依据</h2><div><strong>事实抽取</strong><p>只看原文与关系定义，屏蔽问题和候选答案。</p></div><div><strong>支持性核验</strong><p>逐事实检查引用是否支持关系、角色和时间。</p></div><div><strong>联合绑定</strong><p>必要关系必须连到同一个中间实体，再输出缺口。</p></div></section><div class="plugin-finding"><strong id="plugin-finding-title">任职不等于就读</strong><p id="plugin-finding-text">相关证据可以解释任职，却没有建立受教育关系。</p></div><details class="plugin-package-note"><summary>插件接入与能力范围</summary><p>此页为可交互产品示例。真实对话使用Chrome插件或“答案审查”入口；读取回答、采集原文后再提交核验。</p><p>ChatGPT单案例交互已验收，Gemini受地区限制，Claude未测。更多接入与能力范围见使用文档。</p></details></div><div class="plugin-device"><div class="plugin-device-heading"><h2>证据审查助手</h2><span id="plugin-preview-state">等待案例载入</span></div><iframe id="plugin-frame" src="/plugin.html" title="Evidence Verifier 插件侧栏预览" loading="eager"></iframe></div></div></section><section id="demo" class="view" hidden><div class="title"><div><h1>补证报告</h1><p>查看缺失关系如何得到补充，以及证据链最终如何成立。</p></div><button id="demo-run" class="primary">生成示例报告</button></div><div class="notice">示例报告 · 使用预设模型判断和教学证据，原文定位与联合绑定由程序执行，不调用付费模型。</div><div class="demo-question"><h2>要回答的问题</h2><p>Which university did the designer of the Meridian Engine attend?</p><div class="proof-chain"><strong>Meridian Engine</strong><span>设计师 →</span><strong>Nora Hale</strong><span>教育经历 →</span><strong>Lake University</strong></div></div><div id="demo-content"><p class="meta">运行后查看初始证据为何不足，以及补充证据后关系链如何成立。</p></div></section><section id="review" class="view" hidden><div class="title"><div><h1>历史核验</h1><p>并排检查原文、模型事实与最终绑定，定位结论背后的错误。</p></div><button id="export" class="secondary" disabled>导出本次记录</button></div>
-<div class="notice">当前可直接回放三个模型的真实历史输出。开发诊断用于定位问题，不代表独立验证；新推理需连接模型服务。</div>
-<div class="workgrid"><div class="case-column"><div class="section-head"><h2>诊断样本</h2><span id="case-count"></span></div><label class="sr-only" for="case-filter">搜索样本</label><input id="case-filter" placeholder="搜索关系、实体或样本编号"><div id="cases" class="cases"></div></div>
-<div class="detail"><div class="section-head"><div><h2 id="case-title">正在载入样本</h2><p id="case-id" class="meta"></p></div></div><div id="target" class="relation"></div>
-<div class="controls"><label>模型<select id="model"><option value="qwen14b">Qwen2.5 · 14B</option><option value="qwen7b">Qwen2.5 · 7B</option><option value="llama8b">Llama 3 · 8B</option></select></label><label>流程<select id="mode"><option value="split">抽取 + 核验</option><option value="direct">直接核验</option></select></label><label>来源<select id="source"><option value="archive">历史实验回放</option><option value="live">新模型推理</option></select></label><button id="run" class="primary">查看核验过程</button></div>
-<details class="custom"><summary>输入自定义证据与目标关系（新推理）</summary><label for="custom-input">JSON输入 · evidence与relation</label><textarea id="custom-input" rows="8" spellcheck="false"></textarea></details>
-<div class="evidence-result"><div><div class="section-head"><h2>证据原文</h2><span class="meta">字符位置可回放</span></div><div id="evidence"></div></div><div><div class="section-head"><h2>核验结论</h2><span id="run-state" class="meta">尚未执行</span></div><div id="result" class="result-empty">选择样本，查看模型在每一步的实际输出。</div></div></div>
-<div id="facts"></div><div id="review-plan"></div><div id="trace"></div><div id="review-form" hidden><h2>人工复核</h2><p class="meta">复核单独保存，不改变原始模型判断。</p><div class="review-controls"><label>复核标签<select id="review-verdict"><option value="entailed">支持</option><option value="missing">缺失</option><option value="contradicted">矛盾</option><option value="ambiguous">歧义</option></select></label><label class="grow">判断理由<input id="review-note" placeholder="说明关系、实体绑定或证据存在的问题"></label><button id="save-review">保存复核</button></div><div id="reviews"></div></div></div></div></section>
-<section id="agent" class="view" hidden><div class="title"><div><h1>取证任务</h1><p>把搜索、关系计划、独立核验与缺口补搜放进一份可追溯任务。</p></div><button id="agent-export" disabled>导出任务轨迹</button></div><div id="agent-status" class="notice">正在读取搜索模型连接状态。</div><form id="agent-form"><label for="agent-question">待解答问题</label><textarea id="agent-question" rows="3" maxlength="2000" placeholder="例如：In which year did Marie Curie die?" required></textarea><div class="controls"><label>执行方式<select id="agent-flow"><option value="workflow" selected>完整取证流程</option><option value="agent">仅搜索</option></select></label><label>工具调用预算<select id="agent-budget"><option value="3">3次</option><option value="6" selected>6次</option><option value="8">8次</option></select></label><button id="agent-start" class="primary">开始搜索</button><button id="agent-cancel" type="button" disabled>停止当前任务</button><span id="agent-progress" class="meta"></span></div></form><div class="agent-layout"><div><div class="section-head"><h2>任务记录</h2><button id="agent-refresh">刷新</button></div><h3 class="task-list-label">完整任务</h3><div id="workflow-jobs"></div><h3 class="task-list-label">分步搜索</h3><div id="agent-jobs"></div></div><div id="agent-pane"><div class="section-head"><h2>候选答案与引用</h2><span id="agent-state" class="meta">尚未执行</span></div><div id="agent-answer" class="result-empty">连接搜索模型后可执行新任务。模型提交的答案还需独立核验。</div><div id="agent-evidence"></div><div id="agent-plan"></div><div id="agent-timeline"></div></div><div id="workflow-pane" hidden><div class="section-head"><h2>完整取证任务</h2><span id="workflow-state" class="meta">尚未执行</span></div><div id="workflow-detail" class="result-empty">连接搜索、计划和核验服务后，可以在同一份工具预算内执行完整流程。</div></div></div></section><section id="search" class="view" hidden><div class="title"><div><h1>证据检索</h1><p>从当前本地证据库检索段落，查看原文与BM25排序。</p></div></div><form id="search-form" class="search-form"><label class="sr-only" for="query">检索词</label><input id="query" placeholder="试试 University、province 或 museum" required><button class="primary">检索证据</button></form><p id="search-info" class="meta"></p><div class="tool-toolbar"><label class="sr-only" for="session-picker">恢复已有取证会话</label><select id="session-picker"><option value="">恢复已有取证会话</option></select><button id="new-session">新建取证会话</button><button id="export-session" disabled>导出取证记录</button><button id="verify-session" disabled>用收集证据重新核验</button><span id="session-budget" class="meta">每个会话默认6次工具调用</span></div><div id="retrieval-plan"></div><form id="find-form" class="search-form" hidden><label class="sr-only" for="keyword">在已打开段落中查找</label><input id="keyword" placeholder="在已打开段落中定位关键词" required><button>定位关键词</button></form><div id="search-results"></div><details id="session-trace" hidden><summary>工具调用记录</summary><div id="tool-events"></div></details></section>
-<section id="data" class="view" hidden><div class="title"><div><h1>把运行记录，整理成样本管理。</h1><p>逐事实修订标签，保留来源、人工版本与训练导出快照。</p></div><button id="data-refresh">刷新样本</button></div><div class="notice">模型建议保持待审；开发诊断、留出题和教学材料不进入训练导出。</div><details class="data-import"><summary>导入已有样本（JSONL或JSON数组）</summary><p class="meta">每次最多100条。需包含来源、原文和任务字段；导入不会自动变成人工金标。</p><label>选择本地文件<input id="data-file" type="file" accept=".jsonl,.json,application/json"></label><label>样本内容<textarea id="data-import-text" rows="7" spellcheck="false" placeholder="粘贴已准备的样本记录"></textarea></label><button id="data-template">填写教学模板</button><button id="data-import-button">导入待审池</button><span id="data-import-status" class="meta" aria-live="polite"></span></details><p id="data-counts" class="meta">正在读取样本数量。</p><div class="data-layout"><div><h2>待审与已审样本</h2><div id="data-list"></div><div class="data-pagination"><button id="data-prev" disabled>上一页</button><span id="data-page" class="meta"></span><button id="data-next" disabled>下一页</button></div></div><div id="data-detail" class="result-empty">从核验记录收集样本，或导入已有训练集记录后开始整理。</div></div><div class="data-export-section"><div class="section-head"><h2>训练导出</h2><button id="data-export">冻结当前可导出样本</button></div><p class="meta">检查来源划分、精确文本重复、字段和引用后生成JSONL；不启动训练。未知来源样本继续保留待审。</p><label>已有导出<select id="data-export-picker"><option value="">暂无导出记录</option></select></label><div id="data-export-detail" aria-live="polite"></div></div></section><section id="experiments" class="view" hidden><div class="title"><div><h1>模型与流程对照</h1><p>同一80题开发诊断集，40正例、40负例，包含16个变量绑定案例。</p></div></div><div class="notice">原始冻结结果 · 正确结论但证据角色或绑定错误，联合计分仍为失败。所有方案均未通过原定完整验收门槛。</div><details class="relation-plan"><summary>核验服务的副本调度</summary><p class="meta">按估算工作量路由，记录排队和重复请求合并。未实测GPU性能收益。</p><button id="routing-refresh">刷新服务状态</button><div id="routing-status"></div></details><div id="experiment-chart"></div><div class="table-wrap"><table><thead><tr><th>模型 / 流程</th><th>联合正确</th><th>正例</th><th>负例</th><th>变量绑定</th><th>无效输出</th><th>关键误放行</th></tr></thead><tbody id="experiment-rows"></tbody></table></div></section>
-<section id="history" class="view" hidden><div class="title"><div><h1>审查记录</h1><p>每次查看与推理均生成独立记录；失败和人工复核保留在对应任务中。</p></div><button id="refresh-history">刷新记录</button></div><div class="section-head"><h2>答案审查记录</h2><span id="audit-history-count" class="meta"></span></div><div id="audit-history-list"></div><div class="record-pagination"><button id="audit-history-prev">上一页</button><span id="audit-history-page" class="meta"></span><button id="audit-history-next">下一页</button></div><details class="archive-records"><summary>历史实验与开发回放</summary><h2>历史实验核验</h2><div id="history-list"></div><div class="repair-history-section"><h2>关系补搜</h2><div id="repair-history"></div><div id="repair-history-detail" aria-live="polite"></div></div></details></section>
-<section id="audit-record" class="view" hidden><div class="title"><div><h1>审查报告</h1><p id="audit-record-title">查看关系、原文与判断依据。</p></div><div class="record-actions"><button data-open="history">返回审查记录</button><button id="audit-record-export" disabled>导出审查记录</button></div></div><div id="audit-record-content"></div></section>
-<p id="error" role="alert" hidden></p><footer>Evidence Verifier <span>每条关系，保留原文与核验依据。</span></footer>
-</main></div><script src="/cloud-access.js"></script><script src="/app.js"></script></body></html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Evidence Verifier · 多角色协同证据核验工作台</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/theme.css">
+</head>
+<body>
+  <aside id="app-nav">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true">
+        <path d="M6 7h19M6 15h11M6 23h9M19 22l4 4 7-12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div>
+        <strong>Evidence Verifier</strong>
+        <span class="brand-sub">Multi-Role Grounded Audit</span>
+      </div>
+    </div>
+    <p class="workspace">核心核验与对话辅助</p>
+    <nav aria-label="主导航">
+      <p class="nav-heading">核心任务</p>
+      <button data-view="home" class="active">协同总览</button>
+      <button data-view="audit">答案审查</button>
+      <button data-view="agent">取证与补搜</button>
+      <button data-view="history">审查记录</button>
+
+      <p class="nav-heading">插件与帮助</p>
+      <button data-view="plugin">对话插件</button>
+      <button data-view="demo">帮助与示例</button>
+      <button data-view="account">个人中心</button>
+
+      <details class="nav-advanced">
+        <summary>研发与归档诊断</summary>
+        <button data-view="review">历史核验</button>
+        <button data-view="search">证据检索</button>
+        <button data-view="data">样本管理</button>
+        <button data-view="experiments">评测中心</button>
+      </details>
+    </nav>
+    <div class="aside-bottom">
+      <div class="aside-status-row">
+        <span class="dot"></span>
+        <span>服务状态</span>
+      </div>
+      <p id="connection">正在连接服务</p>
+      <a href="/login.html" class="aside-link">切换受邀账号</a>
+      <a href="https://github.com/Gump111458785/evidence-verifier" target="_blank" rel="noopener noreferrer">使用文档与版本说明 ↗</a>
+    </div>
+  </aside>
+
+  <div class="shell">
+    <header>
+      <div class="header-location">
+        <button id="nav-toggle" aria-label="打开导航" aria-controls="app-nav" aria-expanded="false">菜单</button>
+        <span>证据核验台 <span class="slash">/</span> <span id="breadcrumb">协同总览</span></span>
+      </div>
+      <div class="header-actions">
+        <span class="source-label">受邀核验环境</span>
+        <span id="cloud-budget-pill" class="pill neutral">正在读取额度</span>
+        <button type="button" id="cloud-access-trigger" class="secondary small-btn">受邀账号中心</button>
+        <div class="user-menu-wrap">
+          <button type="button" id="user-menu-toggle" class="user-avatar-btn" aria-expanded="false" aria-haspopup="true" title="受邀账号菜单">
+            <span id="user-avatar-initial" class="avatar-circle">EV</span>
+            <span id="user-display-label" class="user-name-label">受邀用户</span>
+            <span id="user-role-pill" class="pill neutral">受邀开放</span>
+          </button>
+          <div id="user-dropdown-menu" class="user-dropdown" hidden>
+            <button type="button" id="menu-open-account">个人中心与安全设置</button>
+            <button type="button" id="menu-open-admin" hidden>受邀账号管理（管理员）</button>
+            <button type="button" id="menu-new-audit">新建答案审查</button>
+            <hr>
+            <button type="button" id="menu-logout" class="danger-item">退出当前受邀会话</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section id="home" class="view">
+        <div class="title">
+          <div>
+            <h1>多角色协同证据核验台</h1>
+            <p>围绕「输入问题与回答 → 多角色协同核验 → 简明缺口报告 → 定向补证 → 修订提示生成」主线，看清每条事实是否真正成立。</p>
+          </div>
+          <div class="row">
+            <button class="secondary" id="home-collab-trigger" type="button">动态演示多角色交接</button>
+            <button class="primary" data-open="audit">新建答案审查</button>
+          </div>
+        </div>
+
+        <div class="home-layout">
+          <section class="home-example product-panel">
+            <div class="section-head">
+              <h2>典型案例：从表面引用到完整多跳证据链</h2>
+              <span class="origin-label">内置多跳案例</span>
+            </div>
+            <p class="home-question">设计这台机器的人，究竟在哪所大学就读？</p>
+            <p id="home-question" class="meta">正在载入示例</p>
+            <div class="answer-excerpt">
+              <span>待审 AI 回答</span>
+              <p id="home-answer">正在载入回答</p>
+            </div>
+            <div class="relation-strip" aria-label="示例待核验关系">
+              <span>Meridian Engine</span>
+              <span class="chain-link">设计者 →</span>
+              <strong>Nora Hale</strong>
+              <span class="chain-link">就读院校 →</span>
+              <span>Lake University</span>
+            </div>
+            <div class="example-action">
+              <span class="meta">检验两跳关系是否连到同一个实体，识别“任职 ≠ 就读”的证据缺口。</span>
+              <div class="row">
+                <button data-open="plugin">在插件中体验</button>
+                <button id="home-demo" class="text-link">查看一页式补证报告 ↗</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="home-decision product-panel">
+            <div class="section-head">
+              <h2>核验结论如何指导修正</h2>
+              <span class="origin-label">闭环处置准则</span>
+            </div>
+            <div class="decision-row">
+              <span class="state-mark supported">通过</span>
+              <div>
+                <strong>关系完整支持 · 不打扰或推荐追问</strong>
+                <p>当所有关键关系均获原句支持且实体一致时，给出一页式绿标确认，并提供高价值延伸追问建议。</p>
+              </div>
+            </div>
+            <div class="decision-row">
+              <span class="state-mark missing">缺证</span>
+              <div>
+                <strong>指出具体断链关系 · 定向补搜原文</strong>
+                <p>明确指出哪一跳关系缺少原文依据（如把“任职”误当“就读”），按预算定向检索缺失关系。</p>
+              </div>
+            </div>
+            <div class="decision-row">
+              <span class="state-mark contradicted">纠偏</span>
+              <div>
+                <strong>生成可一键补入原对话的修订提示词</strong>
+                <p>汇总缺失或矛盾依据与新补入证据，生成结构化修订提示词，经用户确认后填入 AI 对话框。</p>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <section class="product-panel multi-role-section" aria-labelledby="multi-role-heading">
+          <div class="section-head">
+            <div>
+              <h2 id="multi-role-heading">多角色协同核验流水线（6 角色分工与交接）</h2>
+              <p class="meta">点击「动态演练 6 角色协同」可逐步观察每个角色接收什么输入、执行什么核验、向下游交接什么产物。理想态能力已显式标注（演示）。</p>
+            </div>
+            <div class="row">
+              <span id="multi-role-summary-pill" class="pill entailed">6 角色流水线已就绪</span>
+              <button type="button" id="run-multi-role-demo" class="primary small-btn">动态演练 6 角色协同</button>
+            </div>
+          </div>
+
+          <div id="multi-role-grid" class="multi-role-grid">
+            <article class="role-card completed" data-role-step="1">
+              <div class="role-card-top">
+                <span class="role-index">Role 01 · Planner &amp; Scope</span>
+                <span class="role-status-badge completed" data-role-badge="1">✓ 已完成</span>
+              </div>
+              <h3>对象消歧与范围规划 <span class="demo-tag">含消歧（演示）</span></h3>
+              <p class="role-desc">拆解候选回答中的目标关系三元组，同时检查同名对象消歧与子问题覆盖范围（演示）。</p>
+              <div class="role-handoff" data-role-output="1">输出交接：2 条待核验关系（designed_by, educated_at）+ 实体 Nora Hale 消歧通过（演示）</div>
+            </article>
+
+            <article class="role-card completed" data-role-step="2">
+              <div class="role-card-top">
+                <span class="role-index">Role 02 · Blind Extractor</span>
+                <span class="role-status-badge completed" data-role-badge="2">✓ 已完成</span>
+              </div>
+              <h3>盲抽事实提取</h3>
+              <p class="role-desc">向模型隐藏用户问题与候选结论，仅输入证据原文与谓词定义，避免顺着错误答案找理由。</p>
+              <div class="role-handoff" data-role-output="2">输出交接：从 E1、E2 盲抽出 designed_by 与 employed_by 事实及原句引文</div>
+            </article>
+
+            <article class="role-card completed" data-role-step="3">
+              <div class="role-card-top">
+                <span class="role-index">Role 03 · Support Verifier</span>
+                <span class="role-status-badge completed" data-role-badge="3">✓ 已完成</span>
+              </div>
+              <h3>独立支持性核验</h3>
+              <p class="role-desc">逐条复核抽出事实的原句是否真正蕴含目标谓词，拦截概念偷换（如任职 ≠ 就读）。</p>
+              <div class="role-handoff" data-role-output="3">输出交接：designed_by 支持（entailed）；educated_at 缺失（missing）</div>
+            </article>
+
+            <article class="role-card completed" data-role-step="4">
+              <div class="role-card-top">
+                <span class="role-index">Role 04 · Grounding &amp; Binder</span>
+                <span class="role-status-badge completed" data-role-badge="4">✓ 已完成</span>
+              </div>
+              <h3>原文回放与变量绑定</h3>
+              <p class="role-desc">确定性校验引文字符偏移（Span Check）与跨段落中间变量（?designer = Nora Hale）联合绑定。</p>
+              <div class="role-handoff" data-role-output="4">输出交接：字符偏移 100% 匹配原文；锁定缺失跳 (Nora Hale, educated_at, Lake University)</div>
+            </article>
+
+            <article class="role-card completed" data-role-step="5">
+              <div class="role-card-top">
+                <span class="role-index">Role 05 · Gap Repair Agent</span>
+                <span class="role-status-badge completed" data-role-badge="5">✓ 已完成</span>
+              </div>
+              <h3>缺口定向补搜</h3>
+              <p class="role-desc">针对缺失或矛盾的那一跳关系构造定向检索词，在受控预算内打开新证据并触发复核。</p>
+              <div class="role-handoff" data-role-output="5">输出交接：检索 "Nora Hale" "Lake University" 打开 E3，复核后两跳全部成立</div>
+            </article>
+
+            <article class="role-card completed" data-role-step="6">
+              <div class="role-card-top">
+                <span class="role-index">Role 06 · Revision Advisor</span>
+                <span class="role-status-badge completed" data-role-badge="6">✓ 已完成</span>
+              </div>
+              <h3>修订提示与追问生成</h3>
+              <p class="role-desc">汇总核验结论、缺失点与补入证据，生成可直接补回原 AI 对话的修订提示词或延伸追问。</p>
+              <div class="role-handoff" data-role-output="6">输出交接：已生成带 E1+E3 原文引用的修订提示词，待用户确认填入对话</div>
+            </article>
+          </div>
+
+          <details class="role-activity-details" open>
+            <summary>查看多角色交接活动记录（Handoff Activity Log）</summary>
+            <div id="multi-role-activity-log" class="role-activity-log">
+              <div class="activity-item completed">
+                <span class="activity-badge">Role 01 → Role 02</span>
+                <div>
+                  <strong>对象消歧与范围规划完成</strong>
+                  <p>已将问题拆解为 <code>(Meridian Engine, designed_by, ?designer)</code> 与 <code>(?designer, educated_at, Lake University)</code>；同名对象消歧与子问题覆盖检查通过 <span class="demo-tag">（演示）</span>。</p>
+                </div>
+              </div>
+              <div class="activity-item completed">
+                <span class="activity-badge">Role 02 → Role 03</span>
+                <div>
+                  <strong>盲抽事实提取完成（未暴露候选答案）</strong>
+                  <p>从 E1 抽出 <code>designed_by(Meridian Engine, Nora Hale)</code>；从 E2 抽出任职描述，未发现受教育记录。</p>
+                </div>
+              </div>
+              <div class="activity-item warning">
+                <span class="activity-badge">Role 03 &amp; 04 → Role 05</span>
+                <div>
+                  <strong>独立核验与联合绑定定位到第 2 跳缺口</strong>
+                  <p>中间实体 <code>?designer = Nora Hale</code> 绑定成功，但 E2 仅证明其在 Lake University 任教而非就读，触发 Role 05 定向补搜。</p>
+                </div>
+              </div>
+              <div class="activity-item completed">
+                <span class="activity-badge">Role 05 → Role 06</span>
+                <div>
+                  <strong>定向补搜补入 E3 并生成对话修订建议</strong>
+                  <p>补入 E3（Nora Hale 校友档案）后重新核验，两跳联合结论转为 <strong>支持（entailed）</strong>，Role 06 已生成可复制修订提示词。</p>
+                </div>
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <div class="home-layout home-secondary">
+          <section class="product-panel">
+            <div class="section-head">
+              <h2>最近答案审查记录</h2>
+              <button class="text-link" data-open="history">查看全部记录</button>
+            </div>
+            <div id="home-recent" class="home-recent">
+              <p class="meta">正在读取审查记录</p>
+            </div>
+          </section>
+          <section class="product-panel">
+            <div class="section-head">
+              <h2>运行环境与服务状态</h2>
+              <span id="home-edition" class="meta">读取中</span>
+            </div>
+            <div id="home-services"></div>
+            <p class="meta service-note">状态表示当前服务连接与配置；每次真实 API 调用均经服务端原子账本计量。</p>
+            <button class="text-link" data-open="audit">进入答案审查工作台 ↗</button>
+          </section>
+        </div>
+        <p class="scope-footnote">诚实性边界：内置示例与标有「（演示）」的环节用于展示交互与交接机制，不计作真实模型指标；真实审查通过已配置的模型服务与确定性原文校验完成。</p>
+      </section>
+
+      <section id="audit" class="view" hidden>
+        <div class="title">
+          <div>
+            <h1>答案审查工作台</h1>
+            <p>输入问题、待审 AI 回答与引用原文，按「关系规划 → 盲抽与核验 → 缺口补搜 → 修订提示词」四步完成核验。</p>
+          </div>
+          <div class="row">
+            <button data-open="demo" class="secondary">帮助与内置示例</button>
+            <button data-open="plugin" class="secondary">对话插件预览</button>
+          </div>
+        </div>
+        <div class="audit-role-banner">
+          <div class="audit-role-pill"><span class="step-num">01</span> 范围规划与消歧 <span class="demo-tag">（演示）</span></div>
+          <span class="role-arrow">→</span>
+          <div class="audit-role-pill"><span class="step-num">02</span> 盲抽事实提取</div>
+          <span class="role-arrow">→</span>
+          <div class="audit-role-pill"><span class="step-num">03</span> 独立支持核验</div>
+          <span class="role-arrow">→</span>
+          <div class="audit-role-pill"><span class="step-num">04</span> 原文偏移与绑定</div>
+          <span class="role-arrow">→</span>
+          <div class="audit-role-pill"><span class="step-num">05</span> 缺口定向补搜</div>
+          <span class="role-arrow">→</span>
+          <div class="audit-role-pill"><span class="step-num">06</span> 修订提示词生成</div>
+        </div>
+        <div class="audit-frame-wrap">
+          <iframe id="audit-frame" src="/sidecar.html?embedded=1" title="答案审查助手"></iframe>
+        </div>
+      </section>
+
+      <section id="plugin" class="view" hidden>
+        <div class="title">
+          <div>
+            <h1>浏览器对话伴随插件</h1>
+            <p>在 AI 对话页面旁自动检测回答完成：无问题时安静提供延伸追问，发现缺证或张冠李戴时给出简明修正建议并一键补入输入框。</p>
+          </div>
+          <div class="row">
+            <button id="plugin-run-embedded" class="primary" disabled>运行当前场景演练</button>
+          </div>
+        </div>
+        <div class="plugin-scope">
+          <p>支持「自动辅助检测」与「手动精审」双模式 · 仅读取页面可见问题、回答与公开引用，绝不读取隐藏思考链。</p>
+          <a href="/downloads/evidence-verifier-extension.zip" download="evidence-verifier-extension.zip" class="download-badge">下载 Chrome 插件包 (.zip)</a>
+        </div>
+        <div class="plugin-example-tabs" aria-label="演示案例">
+          <button data-plugin-example="employment-education" class="selected">场景 A · 发现缺证并自动补搜（任职 ≠ 就读）</button>
+          <button data-plugin-example="entity-binding">场景 B · 同名实体张冠李戴拦截</button>
+          <button data-plugin-example="verified-clean">场景 C · 证据充分时安静通过并推荐追问（演示）</button>
+        </div>
+        <div class="plugin-workspace">
+          <div class="plugin-context">
+            <article class="llm-window">
+              <div class="llm-heading">
+                <h2>宿主 AI 对话页面（模拟）</h2>
+                <span>回答生成已完成 · 自动触发核验</span>
+              </div>
+              <div class="llm-question">
+                <small>用户提问</small>
+                <p id="plugin-question">Which university did the designer of the Meridian Engine attend?</p>
+              </div>
+              <div class="llm-answer">
+                <small>AI 助手回答</small>
+                <p id="plugin-candidate">The designer of the Meridian Engine attended Lake University.</p>
+                <span class="llm-citation">公开引用 E1、E2 · 已由插件自动捕获</span>
+              </div>
+              <div class="candidate-chain">
+                <p>插件拆解的待核验关系链</p>
+                <div>
+                  <strong>Meridian Engine</strong>
+                  <span>设计者 →</span>
+                  <strong>?designer</strong>
+                  <span>教育经历 →</span>
+                  <strong>Lake University</strong>
+                </div>
+              </div>
+            </article>
+            <section class="sidecar-mechanism">
+              <h2>插件自动化减负设计</h2>
+              <div>
+                <strong>回答完成自动捕获</strong>
+                <p>监听回答流式输出结束与 DOM 稳定后自动提取问题、回答和可见引用链接。</p>
+              </div>
+              <div>
+                <strong>无错不打扰 · 有错给方案</strong>
+                <p>核验通过时仅展示轻量绿标与追问建议；发现缺证或矛盾时直接置顶呈现「问题摘要 → 修订提示词 → 确认填入」。</p>
+              </div>
+              <div>
+                <strong>展开查看完整证据链</strong>
+                <p>原文引文偏移与多角色交接细节默认收拢在折叠面板中，保持侧边栏清爽易读。</p>
+              </div>
+            </section>
+            <div class="plugin-finding">
+              <strong id="plugin-finding-title">任职不等于就读</strong>
+              <p id="plugin-finding-text">相关证据可以解释任职，却没有建立受教育关系。</p>
+            </div>
+            <details class="plugin-package-note">
+              <summary>Chrome 插件安装与真实对话接入说明</summary>
+              <p>1. 点击上方「下载 Chrome 插件包」并解压到本地文件夹；在 Chrome 打开 <code>chrome://extensions</code>，开启右上角「开发者模式」，点击「加载已解压的扩展程序」。</p>
+              <p>2. 在 AI 对话页面打开侧边栏后，开启「自动辅助核验」开关，插件将在 AI 回答生成完毕后自动完成采集与核验提示。</p>
+            </details>
+          </div>
+          <div class="plugin-device">
+            <div class="plugin-device-heading">
+              <h2>插件侧边栏实时预览</h2>
+              <span id="plugin-preview-state">等待案例载入</span>
+            </div>
+            <iframe id="plugin-frame" src="/plugin.html" title="Evidence Verifier 插件侧栏预览" loading="eager"></iframe>
+          </div>
+        </div>
+      </section>
+
+      <section id="demo" class="view" hidden>
+        <div class="title">
+          <div>
+            <h1>帮助指南与一页式补证示例</h1>
+            <p>了解 Evidence Verifier 的使用流程、判定状态含义，并体验从“发现证据缺口”到“补入新证据通过核验”的完整闭环。</p>
+          </div>
+          <button id="demo-run" class="primary">生成一页式补证示例报告</button>
+        </div>
+
+        <div class="help-guide-grid">
+          <article class="product-panel">
+            <h2>1. 三步完成日常答案核验</h2>
+            <ol class="help-steps">
+              <li><strong>输入或自动捕获</strong>：在「答案审查」或浏览器插件中载入用户问题、AI 候选回答与引用原文。</li>
+              <li><strong>多角色协同核验</strong>：系统自动执行关系规划、盲抽事实提取、支持性复核与原文字符定位。</li>
+              <li><strong>定向补搜与一键修订</strong>：若存在缺口（Amber）或矛盾（Red），点击「补充检索并复核」，随后将生成的修订提示词复制或一键填入原对话。</li>
+            </ol>
+          </article>
+          <article class="product-panel">
+            <h2>2. 结论状态色标说明</h2>
+            <div class="status-legend-list">
+              <div><span class="pill entailed">支持 · Entailed</span> 所有声明关系均有准确原文引文支持，且跨段落实体绑定一致。</div>
+              <div><span class="pill missing">缺失 · Missing</span> 引用原文未提供某跳关系的直接证据（例如把任职记录当作求学经历）。</div>
+              <div><span class="pill contradicted">矛盾 / 失败 · Contradicted</span> 原文与回答结论直接冲突，或实体张冠李戴导致绑定失败。</div>
+              <div><span class="pill running">执行中 · Running</span> 某角色正在执行核验或检索步骤。</div>
+            </div>
+          </article>
+        </div>
+
+        <div class="notice">示例报告说明 · 使用预设模型判断和教学证据演示完整闭环，原文定位与联合绑定由程序确定性执行，不消耗付费 API 额度。</div>
+        <div class="demo-question">
+          <h2>示例问题：Which university did the designer of the Meridian Engine attend?</h2>
+          <div class="proof-chain">
+            <strong>Meridian Engine</strong>
+            <span>设计师 →</span>
+            <strong>Nora Hale</strong>
+            <span>教育经历 →</span>
+            <strong>Lake University</strong>
+          </div>
+        </div>
+        <div id="demo-content">
+          <p class="meta">点击右上角「生成一页式补证示例报告」，查看初始证据为何不足、Role 05 如何补搜新证据，以及最终证据链如何成立。</p>
+        </div>
+      </section>
+
+      <section id="account" class="view" hidden>
+        <div class="title">
+          <div>
+            <h1>个人中心与受邀账号管理</h1>
+            <p>查看当前受邀账号信息、更新个人资料或登录密码；管理员可在此开通受邀成员账号或重置临时密码。</p>
+          </div>
+          <div class="row">
+            <button type="button" id="account-logout-btn" class="secondary">退出登录</button>
+          </div>
+        </div>
+
+        <div id="account-guest-banner" class="notice" hidden>
+          当前处于未登录或本地预览状态。如需使用云端受邀账号功能，请前往 <a href="/login.html">受邀账号登录页</a>。
+        </div>
+
+        <div class="home-layout">
+          <section class="product-panel">
+            <div class="section-head">
+              <h2>当前受邀账号概览</h2>
+              <span class="origin-label">服务端安全会话</span>
+            </div>
+            <dl class="account-meta-list">
+              <div><dt>显示名称</dt><dd id="account-summary-name">—</dd></div>
+              <div><dt>受邀用户名</dt><dd id="account-summary-username" class="mono">—</dd></div>
+              <div><dt>绑定邮箱</dt><dd id="account-summary-email">—</dd></div>
+              <div><dt>账号角色</dt><dd id="account-summary-role">—</dd></div>
+              <div><dt>最近登录</dt><dd id="account-summary-last-login">—</dd></div>
+              <div><dt>私有记录命名空间</dt><dd id="account-summary-owner" class="mono">—</dd></div>
+            </dl>
+          </section>
+
+          <section class="product-panel">
+            <div class="section-head">
+              <h2>更新个人资料与密码</h2>
+              <span class="origin-label">安全设置</span>
+            </div>
+            <div id="account-profile-feedback" class="notice" hidden></div>
+            <form id="account-profile-form" class="stack-form">
+              <div class="controls">
+                <label class="grow">显示名称
+                  <input id="account-display-name" type="text" maxlength="48" placeholder="输入您的显示名称" required>
+                </label>
+                <label class="grow">联系邮箱
+                  <input id="account-email" type="email" maxlength="160" placeholder="name@example.com" required>
+                </label>
+                <button type="submit" class="secondary">保存资料</button>
+              </div>
+            </form>
+
+            <hr class="section-divider">
+            <div id="account-password-feedback" class="notice" hidden></div>
+            <form id="account-password-form" class="stack-form">
+              <div class="controls">
+                <label class="grow">当前密码
+                  <div class="password-field-inline">
+                    <input id="account-current-password" type="password" autocomplete="current-password" placeholder="输入当前密码" required>
+                    <button type="button" class="password-eye-btn" data-password-toggle="account-current-password" aria-label="显示密码" aria-pressed="false"></button>
+                  </div>
+                </label>
+                <label class="grow">新密码（至少 10 位）
+                  <div class="password-field-inline">
+                    <input id="account-new-password" type="password" autocomplete="new-password" placeholder="含字母、数字或符号" required>
+                    <button type="button" class="password-eye-btn" data-password-toggle="account-new-password" aria-label="显示密码" aria-pressed="false"></button>
+                  </div>
+                </label>
+                <button type="submit" class="primary">更新密码</button>
+              </div>
+            </form>
+          </section>
+        </div>
+
+        <section id="account-admin-section" class="product-panel" hidden>
+          <div class="section-head">
+            <div>
+              <h2>受邀账号管理（管理员专属）</h2>
+              <p class="meta">本系统关闭公开注册；仅管理员可在此创建受邀账号、重置临时密码或停用账号。</p>
+            </div>
+            <span class="pill entailed">Invitation-Only Admin</span>
+          </div>
+
+          <div id="admin-user-feedback" class="notice" hidden></div>
+
+          <form id="admin-create-user-form" class="admin-create-form">
+            <div class="controls">
+              <label>用户名（小写字母/数字）
+                <input id="admin-new-username" type="text" placeholder="如 reviewer02" required>
+              </label>
+              <label>受邀邮箱
+                <input id="admin-new-email" type="email" placeholder="reviewer02@example.com" required>
+              </label>
+              <label>显示名称
+                <input id="admin-new-display-name" type="text" placeholder="如 李四（评测员）">
+              </label>
+              <label>角色权限
+                <select id="admin-new-role">
+                  <option value="member" selected>受邀成员 (Member)</option>
+                  <option value="admin">管理员 (Admin)</option>
+                </select>
+              </label>
+              <label class="grow">初始密码（留空则自动生成高强度随机密码）
+                <div class="password-field-inline">
+                  <input id="admin-new-password" type="password" autocomplete="new-password" placeholder="留空自动生成随机密码">
+                  <button type="button" class="password-eye-btn" data-password-toggle="admin-new-password" aria-label="显示密码" aria-pressed="false"></button>
+                </div>
+              </label>
+              <button type="submit" class="primary">开通受邀账号</button>
+            </div>
+          </form>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>受邀账号</th>
+                  <th>邮箱</th>
+                  <th>角色</th>
+                  <th>状态</th>
+                  <th>最近登录</th>
+                  <th>管理操作</th>
+                </tr>
+              </thead>
+              <tbody id="admin-users-tbody">
+                <tr><td colspan="6" class="muted">正在读取受邀账号列表…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section id="review" class="view" hidden>
+        <div class="title">
+          <div>
+            <h1>历史核验回放</h1>
+            <p>并排检查原文、模型事实与最终绑定，定位结论背后的错误。</p>
+          </div>
+          <button id="export" class="secondary" disabled>导出本次记录</button>
+        </div>
+        <div class="notice">当前可直接回放三个模型的真实历史输出。开发诊断用于定位问题，不代表独立验证；新推理需连接模型服务。</div>
+        <div class="workgrid">
+          <div class="case-column">
+            <div class="section-head"><h2>诊断样本</h2><span id="case-count"></span></div>
+            <label class="sr-only" for="case-filter">搜索样本</label>
+            <input id="case-filter" placeholder="搜索关系、实体或样本编号">
+            <div id="cases" class="cases"></div>
+          </div>
+          <div class="detail">
+            <div class="section-head"><div><h2 id="case-title">正在载入样本</h2><p id="case-id" class="meta"></p></div></div>
+            <div id="target" class="relation"></div>
+            <div class="controls">
+              <label>模型<select id="model"><option value="qwen14b">Qwen2.5 · 14B</option><option value="qwen7b">Qwen2.5 · 7B</option><option value="llama8b">Llama 3 · 8B</option></select></label>
+              <label>流程<select id="mode"><option value="split">抽取 + 核验</option><option value="direct">直接核验</option></select></label>
+              <label>来源<select id="source"><option value="archive">历史实验回放</option><option value="live">新模型推理</option></select></label>
+              <button id="run" class="primary">查看核验过程</button>
+            </div>
+            <details class="custom">
+              <summary>输入自定义证据与目标关系（新推理）</summary>
+              <label for="custom-input">JSON输入 · evidence与relation</label>
+              <textarea id="custom-input" rows="8" spellcheck="false"></textarea>
+            </details>
+            <div class="evidence-result">
+              <div><div class="section-head"><h2>证据原文</h2><span class="meta">字符位置可回放</span></div><div id="evidence"></div></div>
+              <div><div class="section-head"><h2>核验结论</h2><span id="run-state" class="meta">尚未执行</span></div><div id="result" class="result-empty">选择样本，查看模型在每一步的实际输出。</div></div>
+            </div>
+            <div id="facts"></div>
+            <div id="review-plan"></div>
+            <div id="trace"></div>
+            <div id="review-form" hidden>
+              <h2>人工复核</h2>
+              <p class="meta">复核单独保存，不改变原始模型判断。</p>
+              <div class="review-controls">
+                <label>复核标签<select id="review-verdict"><option value="entailed">支持</option><option value="missing">缺失</option><option value="contradicted">矛盾</option><option value="ambiguous">歧义</option></select></label>
+                <label class="grow">判断理由<input id="review-note" placeholder="说明关系、实体绑定或证据存在的问题"></label>
+                <button id="save-review">保存复核</button>
+              </div>
+              <div id="reviews"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="agent" class="view" hidden>
+        <div class="title">
+          <div>
+            <h1>取证与补搜任务</h1>
+            <p>把搜索、关系计划、独立核验与缺口补搜放进一份可追溯任务。</p>
+          </div>
+          <button id="agent-export" disabled>导出任务轨迹</button>
+        </div>
+        <div id="agent-status" class="notice">正在读取搜索模型连接状态。</div>
+        <form id="agent-form">
+          <label for="agent-question">待解答问题</label>
+          <textarea id="agent-question" rows="3" maxlength="2000" placeholder="例如：In which year did Marie Curie die?" required></textarea>
+          <div class="controls">
+            <label>执行方式<select id="agent-flow"><option value="workflow" selected>完整取证流程</option><option value="agent">仅搜索</option></select></label>
+            <label>工具调用预算<select id="agent-budget"><option value="3">3次</option><option value="6" selected>6次</option><option value="8">8次</option></select></label>
+            <button id="agent-start" class="primary">开始搜索</button>
+            <button id="agent-cancel" type="button" disabled>停止当前任务</button>
+            <span id="agent-progress" class="meta"></span>
+          </div>
+        </form>
+        <div class="agent-layout">
+          <div>
+            <div class="section-head"><h2>任务记录</h2><button id="agent-refresh">刷新</button></div>
+            <h3 class="task-list-label">完整任务</h3>
+            <div id="workflow-jobs"></div>
+            <h3 class="task-list-label">分步搜索</h3>
+            <div id="agent-jobs"></div>
+          </div>
+          <div id="agent-pane">
+            <div class="section-head"><h2>候选答案与引用</h2><span id="agent-state" class="meta">尚未执行</span></div>
+            <div id="agent-answer" class="result-empty">连接搜索模型后可执行新任务。模型提交的答案还需独立核验。</div>
+            <div id="agent-evidence"></div>
+            <div id="agent-plan"></div>
+            <div id="agent-timeline"></div>
+          </div>
+          <div id="workflow-pane" hidden>
+            <div class="section-head"><h2>完整取证任务</h2><span id="workflow-state" class="meta">尚未执行</span></div>
+            <div id="workflow-detail" class="result-empty">连接搜索、计划和核验服务后，可以在同一份工具预算内执行完整流程。</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="search" class="view" hidden>
+        <div class="title">
+          <div>
+            <h1>证据检索</h1>
+            <p>从当前本地证据库检索段落，查看原文与BM25排序。</p>
+          </div>
+        </div>
+        <form id="search-form" class="search-form">
+          <label class="sr-only" for="query">检索词</label>
+          <input id="query" placeholder="试试 University、province 或 museum" required>
+          <button class="primary">检索证据</button>
+        </form>
+        <p id="search-info" class="meta"></p>
+        <div class="tool-toolbar">
+          <label class="sr-only" for="session-picker">恢复已有取证会话</label>
+          <select id="session-picker"><option value="">恢复已有取证会话</option></select>
+          <button id="new-session">新建取证会话</button>
+          <button id="export-session" disabled>导出取证记录</button>
+          <button id="verify-session" disabled>用收集证据重新核验</button>
+          <span id="session-budget" class="meta">每个会话默认6次工具调用</span>
+        </div>
+        <div id="retrieval-plan"></div>
+        <form id="find-form" class="search-form" hidden>
+          <label class="sr-only" for="keyword">在已打开段落中查找</label>
+          <input id="keyword" placeholder="在已打开段落中定位关键词" required>
+          <button>定位关键词</button>
+        </form>
+        <div id="search-results"></div>
+        <details id="session-trace" hidden>
+          <summary>工具调用记录</summary>
+          <div id="tool-events"></div>
+        </details>
+      </section>
+
+      <section id="data" class="view" hidden>
+        <div class="title">
+          <div>
+            <h1>把运行记录，整理成样本管理。</h1>
+            <p>逐事实修订标签，保留来源、人工版本与训练导出快照。</p>
+          </div>
+          <button id="data-refresh">刷新样本</button>
+        </div>
+        <div class="notice">模型建议保持待审；开发诊断、留出题和教学材料不进入训练导出。</div>
+        <details class="data-import">
+          <summary>导入已有样本（JSONL或JSON数组）</summary>
+          <p class="meta">每次最多100条。需包含来源、原文和任务字段；导入不会自动变成人工金标。</p>
+          <label>选择本地文件<input id="data-file" type="file" accept=".jsonl,.json,application/json"></label>
+          <label>样本内容<textarea id="data-import-text" rows="7" spellcheck="false" placeholder="粘贴已准备的样本记录"></textarea></label>
+          <button id="data-template">填写教学模板</button>
+          <button id="data-import-button">导入待审池</button>
+          <span id="data-import-status" class="meta" aria-live="polite"></span>
+        </details>
+        <p id="data-counts" class="meta">正在读取样本数量。</p>
+        <div class="data-layout">
+          <div>
+            <h2>待审与已审样本</h2>
+            <div id="data-list"></div>
+            <div class="data-pagination">
+              <button id="data-prev" disabled>上一页</button>
+              <span id="data-page" class="meta"></span>
+              <button id="data-next" disabled>下一页</button>
+            </div>
+          </div>
+          <div id="data-detail" class="result-empty">从核验记录收集样本，或导入已有训练集记录后开始整理。</div>
+        </div>
+        <div class="data-export-section">
+          <div class="section-head"><h2>训练导出</h2><button id="data-export">冻结当前可导出样本</button></div>
+          <p class="meta">检查来源划分、精确文本重复、字段和引用后生成JSONL；不启动训练。未知来源样本继续保留待审。</p>
+          <label>已有导出<select id="data-export-picker"><option value="">暂无导出记录</option></select></label>
+          <div id="data-export-detail" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <section id="experiments" class="view" hidden>
+        <div class="title">
+          <div>
+            <h1>模型与流程对照</h1>
+            <p>同一80题开发诊断集，40正例、40负例，包含16个变量绑定案例。</p>
+          </div>
+        </div>
+        <div class="notice">原始冻结结果 · 正确结论但证据角色或绑定错误，联合计分仍为失败。所有方案均未通过原定完整验收门槛。</div>
+        <details class="relation-plan">
+          <summary>核验服务的副本调度</summary>
+          <p class="meta">按估算工作量路由，记录排队和重复请求合并。未实测GPU性能收益。</p>
+          <button id="routing-refresh">刷新服务状态</button>
+          <div id="routing-status"></div>
+        </details>
+        <div id="experiment-chart"></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>模型 / 流程</th><th>联合正确</th><th>正例</th><th>负例</th><th>变量绑定</th><th>无效输出</th><th>关键误放行</th></tr></thead>
+            <tbody id="experiment-rows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="history" class="view" hidden>
+        <div class="title">
+          <div>
+            <h1>一页式审查记录归档</h1>
+            <p>每次答案核验与补证均生成独立持久化记录；点击任意记录即可查看一页式结论报告与多角色交接轨迹。</p>
+          </div>
+          <button id="refresh-history">刷新记录</button>
+        </div>
+        <div class="section-head">
+          <h2>答案审查记录</h2>
+          <span id="audit-history-count" class="meta"></span>
+        </div>
+        <div id="audit-history-list"></div>
+        <div class="record-pagination">
+          <button id="audit-history-prev">上一页</button>
+          <span id="audit-history-page" class="meta"></span>
+          <button id="audit-history-next">下一页</button>
+        </div>
+        <details class="archive-records">
+          <summary>历史实验与开发回放记录</summary>
+          <h2>历史实验核验</h2>
+          <div id="history-list"></div>
+          <div class="repair-history-section">
+            <h2>关系补搜</h2>
+            <div id="repair-history"></div>
+            <div id="repair-history-detail" aria-live="polite"></div>
+          </div>
+        </details>
+      </section>
+
+      <section id="audit-record" class="view" hidden>
+        <div class="title">
+          <div>
+            <h1>一页式答案审查报告</h1>
+            <p id="audit-record-title">查看核验结论、多角色协同轨迹、原文依据与修订建议。</p>
+          </div>
+          <div class="record-actions">
+            <button data-open="history">返回审查记录</button>
+            <button id="audit-record-export" disabled>导出审查报告 (.json)</button>
+          </div>
+        </div>
+        <div id="audit-record-content"></div>
+      </section>
+
+      <p id="error" role="alert" hidden></p>
+      <footer>Evidence Verifier <span>多角色协同核验 · 每条关系均保留原文偏移与独立核验依据。</span></footer>
+    </main>
+  </div>
+  <script src="/cloud-access.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

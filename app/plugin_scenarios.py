@@ -47,6 +47,38 @@ def catalog():
                          'queries': missing_queries(plan, initial),
                          'initial_evidence_ids': ['E1', 'E2'], 'final_evidence_ids': ['E1', 'E2', 'E3'],
                          'input_sha256': digest({'plan': plan, 'evidence': evidence})})
+    clean_evidence = [
+        {'id': 'E1', 'title': '作品与设计者', 'text': 'The Meridian Engine was designed by Nora Hale.'},
+        {'id': 'E2', 'title': '校友就读档案', 'text': 'Nora Hale attended Lake University as a student.'},
+    ]
+    clean_plan = validate_plan([
+        {'subject': 'Meridian Engine', 'predicate': 'designed_by', 'object': '?designer'},
+        {'subject': '?designer', 'predicate': 'educated_at', 'object': 'Lake University'},
+    ])
+    clean_facts = [
+        fact(clean_evidence, 'E1', 'Meridian Engine', 'designed_by', 'Nora Hale'),
+        fact(clean_evidence, 'E2', 'Nora Hale', 'educated_at', 'Lake University'),
+    ]
+    clean_eval = evaluate(clean_plan, clean_facts, clean_evidence)
+    examples.append({
+        'id': 'verified-clean',
+        'name': '证据充分 · 安静通过并推荐追问（演示）',
+        'explanation': '当所有声明关系均获原文直接支持且实体绑定一致时，插件保持轻量不打扰，并提供高价值追问建议（演示）。',
+        'question': 'Which university did the designer of the Meridian Engine attend?',
+        'candidate': 'The designer of the Meridian Engine, Nora Hale, attended Lake University.',
+        'plan': clean_plan,
+        'evidence': clean_evidence,
+        'initial': clean_eval,
+        'final': clean_eval,
+        'queries': [],
+        'followup_questions': [
+            'Nora Hale 在 Lake University 就读期间主修什么专业方向？',
+            'Meridian Engine 的设计是否应用了她在 Lake University 时期的实验成果？',
+        ],
+        'initial_evidence_ids': ['E1', 'E2'],
+        'final_evidence_ids': ['E1', 'E2'],
+        'input_sha256': digest({'plan': clean_plan, 'evidence': clean_evidence}),
+    })
     return {'source': 'ideal_plugin_demo', 'model_inference_performed': False, 'measured': False,
             'model_results': 'authored_assumptions', 'program_steps': ['source_span_replay', 'joint_variable_binding', 'gap_query_templates'],
             'scope': 'declared_relations_only', 'cases': examples}

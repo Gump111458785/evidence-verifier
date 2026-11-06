@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>受邀账号登录 — Evidence Verifier 证据核验台</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2318644c'/%3E%3Ctext x='16' y='21' text-anchor='middle' font-family='monospace' font-weight='bold' font-size='14' fill='white'%3EEV%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/login.css">
+</head>
+<body class="ev-login-body">
+  <main class="ev-login-shell">
+    <section class="ev-login-brand" aria-labelledby="login-hero-title">
+      <div class="ev-login-brand-top">
+        <div class="ev-brand-mark">
+          <span class="ev-brand-glyph" aria-hidden="true">EV</span>
+          <div>
+            <strong>Evidence Verifier</strong>
+            <span>Multi-Role Grounded Answer Verification</span>
+          </div>
+        </div>
+        <span class="ev-invite-badge">Invitation-Only · 受邀开放</span>
+      </div>
+
+      <div class="ev-login-hero">
+        <p class="ev-eyebrow">严谨证据审查 · 多角色协作流 · 浏览器对话伴随插件</p>
+        <h1 id="login-hero-title">先看清每条事实是否真有出处，再决定是否采信 AI 的回答。</h1>
+        <p class="ev-login-lead">
+          面向研究复核与日常 AI 对话纠偏：把<strong>盲抽事实提取</strong>、<strong>独立支持性核验</strong>、<strong>原文字符定位与变量联合绑定</strong>以及<strong>定向缺口补搜</strong>组合成清晰的一页式核验报告。
+        </p>
+      </div>
+
+      <div class="ev-role-preview-grid" aria-label="多角色协同核验链路">
+        <article class="ev-role-preview-card">
+          <span class="ev-role-step">Role 01–02</span>
+          <h2>范围规划与盲抽提取</h2>
+          <p>先拆解问题核心关系并做同名对象消歧检查（演示），再在不看候选结论的前提下从引用原文中独立抽取事实。</p>
+        </article>
+        <article class="ev-role-preview-card">
+          <span class="ev-role-step">Role 03–04</span>
+          <h2>支持核验与原文联合绑定</h2>
+          <p>逐条复核原句是否真正支持谓词关系，校验字符偏移（Span Grounding）并执行跨段落多跳变量统一绑定。</p>
+        </article>
+        <article class="ev-role-preview-card">
+          <span class="ev-role-step">Role 05–06</span>
+          <h2>缺口定向补搜与修订提示</h2>
+          <p>定位缺失或矛盾关系后按预算定向补搜证据，自动生成可直接补入原 AI 对话输入框的修订提示词。</p>
+        </article>
+      </div>
+
+      <footer class="ev-login-brand-foot">
+        <span>不读取隐藏思考链 · 每次真实调用均经服务端原子账本计量 · 演示能力显式标注</span>
+      </footer>
+    </section>
+
+    <section class="ev-login-panel" aria-labelledby="login-form-title">
+      <div class="ev-login-card">
+        <div class="ev-login-card-head">
+          <div class="ev-login-kicker-row">
+            <span class="ev-kicker">ACCOUNT SIGN IN</span>
+            <span class="ev-status-pill ev-status-invited">仅限受邀账号</span>
+          </div>
+          <h2 id="login-form-title">登录 Evidence Verifier</h2>
+          <p>请输入管理员为您开通的受邀用户名或邮箱。登录状态由服务端安全会话维护，无需手工粘贴访问码。</p>
+        </div>
+
+        <div id="login-error" class="ev-login-alert" role="alert" hidden></div>
+        <div id="login-notice" class="ev-login-notice" hidden></div>
+
+        <form id="login-form" class="ev-login-form" novalidate>
+          <div class="ev-field">
+            <label for="login-identifier">受邀用户名或邮箱</label>
+            <input
+              id="login-identifier"
+              name="identifier"
+              type="text"
+              autocomplete="username"
+              placeholder="例如：admin 或 reviewer01@example.com"
+              required
+            >
+          </div>
+
+          <div class="ev-field">
+            <div class="ev-field-label-row">
+              <label for="login-password">登录密码</label>
+              <span class="ev-field-hint">区分大小写</span>
+            </div>
+            <div class="ev-password-wrap">
+              <input
+                id="login-password"
+                name="password"
+                type="password"
+                autocomplete="current-password"
+                placeholder="请输入受邀账号密码"
+                required
+              >
+              <button
+                type="button"
+                id="password-toggle"
+                class="ev-password-toggle"
+                aria-label="显示密码"
+                aria-pressed="false"
+                title="显示或隐藏密码"
+              >
+                <svg class="ev-icon-eye" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M2.2 12s3.6-6.5 9.8-6.5 9.8 6.5 9.8 6.5-3.6 6.5-9.8 6.5S2.2 12 2.2 12Z"></path>
+                  <circle cx="12" cy="12" r="3.1"></circle>
+                </svg>
+                <svg class="ev-icon-eye-off" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden>
+                  <path d="M3 3l18 18"></path>
+                  <path d="M10.58 10.58a2 2 0 0 0 2.83 2.83"></path>
+                  <path d="M9.88 5.09A10.4 10.4 0 0 1 12 4.8c6.2 0 9.8 7.2 9.8 7.2a16.8 16.8 0 0 1-3.16 4.19"></path>
+                  <path d="M6.61 6.61A16.5 16.5 0 0 0 2.2 12s3.6 7.2 9.8 7.2a10.3 10.3 0 0 0 5.39-1.48"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" id="login-submit" class="ev-btn-primary ev-login-submit">
+            <span id="login-submit-text">登录并进入工作台</span>
+          </button>
+        </form>
+
+        <div class="ev-login-policy">
+          <div class="ev-policy-title">受邀开放说明</div>
+          <p>本系统当前处于受邀研究与联调阶段，已关闭公开自助注册接口（<code>/api/auth/register</code>）。如需开通新成员账号或重置密码，请联系项目管理员在「个人中心 → 受邀账号管理」中操作。</p>
+        </div>
+
+        <div class="ev-login-links">
+          <a href="/plugin.html" class="ev-link-secondary">预览浏览器对话核验插件</a>
+          <span aria-hidden="true">·</span>
+          <a href="/?preview=demo" id="enter-demo-link" class="ev-link-secondary">查看内置公开核验示例</a>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="/login.js"></script>
+</body>
+</html>

@@ -1,16 +1,153 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Evidence Verifier · 答案审查助手</title><link rel="stylesheet" href="plugin.css"></head><body class="conversation">
-<header class="panel-brand"><div><h1>Evidence Verifier</h1><p>答案审查助手</p></div><span id="mode-label" class="mode">当前会话</span></header><main>
-<p class="source-note">生成关系或提交核验时会调用已配置的模型。只读取可见内容，不获取隐藏思维链。</p>
-<section class="audit-step"><div class="step-heading"><span>01</span><h2>选择待审回答</h2></div><div class="capture-actions"><button id="capture">读取当前回答</button><button id="watch">跟随页面更新</button><button id="stop">停止跟随</button></div>
-<p id="status" role="status" class="meta">在AI对话页主动读取回答，也可在下方手动粘贴。</p>
-<label>用户问题（最多2,000字符）<textarea id="question" rows="2" placeholder="这条回答在解答什么问题？"></textarea></label><label>待审回答片段（规划最多1,000字符）<textarea id="candidate" rows="3" placeholder="粘贴需要核查的回答，最多1,000字符。"></textarea></label><p id="input-count" class="meta"></p>
-<details><summary>已读取的引用与公开工具记录</summary><pre id="capture-trace"></pre></details></section>
-<section class="audit-step"><div class="step-heading"><span>02</span><h2>准备来源原文</h2></div><p class="meta">引用链接用于找出处，核验需要相关原文段落。</p><div id="evidence-summary" class="source-summary"></div><button id="source">收集当前来源页的原文</button>
-<details class="manual-source"><summary>手动添加来源原文</summary><label>原文段落<textarea id="manual-source-text" rows="3" placeholder="粘贴来源中直接相关的段落，不要粘贴候选回答代替原文。"></textarea></label><label>来源网址（可选）<input id="manual-source-url" type="url" placeholder="https://..."></label><button id="manual-source-add">添加到证据</button></details>
-<details><summary>编辑证据数据</summary><label>证据原文 JSON<textarea id="evidence" rows="4" spellcheck="false">[]</textarea></label></details></section>
-<section class="audit-step"><div class="step-heading"><span>03</span><h2>确认关系并核验</h2></div><p class="meta">先生成要核验的关系，确认角色与时间后再提交。</p><button id="plan" class="secondary">生成待核验关系</button><div id="relation-summary" class="source-summary"></div><details><summary>编辑关系与限定条件</summary><label>关系计划 JSON<textarea id="relations" rows="4" spellcheck="false">[]</textarea></label></details>
-<div class="audit-actions"><button id="verify" class="primary">开始独立核验</button><button id="repair" class="secondary" disabled>定向补搜并重新核验</button></div><p class="meta">补搜额外预算最多6次工具调用，1轮重核验；可能产生API费用。</p><div class="audit-actions"><button id="resume" class="secondary" hidden>恢复观察上次任务</button><button id="cancel" class="text-action" disabled>停止当前任务</button></div>
-<p id="error" class="error" role="alert" hidden></p><section aria-live="polite"><div id="verdict" class="verdict-box" hidden></div><ol id="stages"></ol><details><summary>事实、引用回放与绑定轨迹</summary><pre id="trace"></pre></details></section><div id="gap-search"></div></section>
-<section class="audit-step"><div class="step-heading"><span>04</span><h2>完善原回答</h2></div><p class="meta">根据核验记录生成补充提示词，保留证据、缺口与不确定性。</p><button id="prompt" class="secondary" disabled>生成修订建议</button><textarea id="supplement" rows="6" readonly aria-label="补充prompt" placeholder="完成有效核验后，可以在这里生成修订提示词。"></textarea><div class="audit-actions"><button id="copy" class="secondary" disabled>复制修订提示词</button><button id="insert" class="secondary" disabled>填入原对话草稿</button></div><p class="meta">不会自动发送，也不覆盖已有草稿。</p><button id="export" class="text-action">导出审查记录</button></section>
-<details class="connection-settings"><summary>连接与接入设置</summary><label>本机服务<select id="service"><option>http://127.0.0.1:8790</option><option>http://127.0.0.1:18790</option></select></label><p class="meta" id="setup"></p><p class="meta">核验只覆盖声明关系；跟随页面只更新预览，不自动调用模型。ChatGPT单案例已验收，Gemini地区阻断，Claude未测。</p></details>
-<footer><a href="plugin.html">查看产品示例</a><span>结论覆盖所列关系，不自动证明整题完整或来源客观真实。</span></footer></main><script src="cloud-access.js"></script><script src="sidecar.js"></script></body></html>
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Evidence Verifier · 答案审查助手</title>
+  <link rel="stylesheet" href="plugin.css">
+</head>
+<body class="conversation">
+  <header class="panel-brand">
+    <div>
+      <h1>Evidence Verifier</h1>
+      <p>多角色答案审查与对话辅助助手</p>
+    </div>
+    <span id="mode-label" class="mode">当前会话</span>
+  </header>
+  <main>
+    <div class="auto-assist-bar">
+      <label class="auto-toggle-label">
+        <input type="checkbox" id="auto-assist-toggle" checked>
+        <span><strong>自动辅助模式</strong> · AI 回答稳定后自动提取可见问答与引用（无错不打扰，有缺口提示修订）</span>
+      </label>
+      <div class="preset-actions">
+        <button type="button" id="preset-gap" class="secondary">载入缺证案例（任职≠就读）</button>
+        <button type="button" id="preset-supported" class="secondary">载入通过案例（证据充分）</button>
+      </div>
+    </div>
+
+    <p class="source-note">诚实性边界：生成关系或提交核验时会调用已配置的模型；只读取页面可见问题、回答与公开引用，不获取隐藏思维链。</p>
+
+    <section class="audit-step">
+      <div class="step-heading">
+        <span>01</span>
+        <h2>捕获或输入待审问答</h2>
+      </div>
+      <div class="capture-actions">
+        <button id="capture">读取当前回答</button>
+        <button id="watch">自动监听回答完成</button>
+        <button id="stop">停止监听</button>
+      </div>
+      <p id="status" role="status" class="meta">在 AI 对话页自动检测或主动读取回答，也可在下方手动粘贴或点击上方预设案例。</p>
+      <label>用户问题（最多 2,000 字符）
+        <textarea id="question" rows="2" placeholder="这条回答在解答什么问题？"></textarea>
+      </label>
+      <label>待审回答片段（规划最多 1,000 字符）
+        <textarea id="candidate" rows="3" placeholder="粘贴需要核查的回答，最多 1,000 字符。"></textarea>
+      </label>
+      <p id="input-count" class="meta"></p>
+      <details>
+        <summary>展开查看已读取的引用与公开工具记录</summary>
+        <pre id="capture-trace"></pre>
+      </details>
+    </section>
+
+    <section class="audit-step">
+      <div class="step-heading">
+        <span>02</span>
+        <h2>准备来源原文</h2>
+      </div>
+      <p class="meta">引用链接用于找出处，盲抽提取与支持性核验需要对应的原文段落。</p>
+      <div id="evidence-summary" class="source-summary"></div>
+      <button id="source">收集当前来源页的原文</button>
+      <details class="manual-source">
+        <summary>手动添加来源原文</summary>
+        <label>原文段落
+          <textarea id="manual-source-text" rows="3" placeholder="粘贴来源中直接相关的段落，不要粘贴候选回答代替原文。"></textarea>
+        </label>
+        <label>来源网址（可选）
+          <input id="manual-source-url" type="url" placeholder="https://...">
+        </label>
+        <button id="manual-source-add">添加到证据</button>
+      </details>
+      <details>
+        <summary>编辑证据 JSON 数据</summary>
+        <label>证据原文 JSON
+          <textarea id="evidence" rows="4" spellcheck="false">[]</textarea>
+        </label>
+      </details>
+    </section>
+
+    <section class="audit-step">
+      <div class="step-heading">
+        <span>03</span>
+        <h2>多角色协同核验与简明结论</h2>
+      </div>
+      <p class="meta">先拆解待核验关系（或直接核验下方关系计划），系统将依次执行盲抽事实提取、独立支持核验与原文偏移绑定。</p>
+      <div class="audit-actions">
+        <button id="plan" class="secondary">01 生成待核验关系</button>
+        <button id="verify" class="primary">02–04 开始独立核验</button>
+        <button id="repair" class="secondary" disabled>05 定向补搜并复核</button>
+      </div>
+      <div id="relation-summary" class="source-summary"></div>
+      <details>
+        <summary>展开编辑关系计划 JSON</summary>
+        <label>关系计划 JSON
+          <textarea id="relations" rows="4" spellcheck="false">[]</textarea>
+        </label>
+      </details>
+      <p class="meta">补搜额外预算最多 6 次工具调用、1 轮重核验；真实调用经服务端原子账本计量。</p>
+      <div class="audit-actions">
+        <button id="resume" class="secondary" hidden>恢复观察上次任务</button>
+        <button id="cancel" class="text-action" disabled>停止当前任务</button>
+      </div>
+      <p id="error" class="error" role="alert" hidden></p>
+      <section aria-live="polite">
+        <div id="verdict" class="verdict-box" hidden></div>
+        <div id="concise-summary" class="concise-action-card" hidden></div>
+        <ol id="stages"></ol>
+        <details>
+          <summary>展开查看事实抽取、引用回放与绑定轨迹 JSON</summary>
+          <pre id="trace"></pre>
+        </details>
+      </section>
+      <div id="gap-search"></div>
+    </section>
+
+    <section class="audit-step">
+      <div class="step-heading">
+        <span>04</span>
+        <h2>生成修订提示词并补回原对话</h2>
+      </div>
+      <p class="meta">根据核验记录生成补充提示词（发现了什么 → 建议怎么改），用户确认后填入原对话输入框。</p>
+      <button id="prompt" class="secondary" disabled>06 生成对话修订建议</button>
+      <textarea id="supplement" rows="6" readonly aria-label="补充prompt" placeholder="完成有效核验后，可以在这里生成可直接发回原 AI 对话的修订提示词。"></textarea>
+      <div class="audit-actions">
+        <button id="copy" class="secondary" disabled>复制修订提示词</button>
+        <button id="insert" class="primary" disabled>确认并填入原对话草稿</button>
+      </div>
+      <p class="meta">安全边界：仅填入输入框草稿，绝不自动点击发送，也不覆盖已有草稿。</p>
+      <button id="export" class="text-action">导出完整审查记录 (.json)</button>
+    </section>
+
+    <details class="connection-settings">
+      <summary>连接与接入设置</summary>
+      <label>核验服务地址
+        <select id="service">
+          <option>http://127.0.0.1:8790</option>
+          <option>http://127.0.0.1:18790</option>
+        </select>
+      </label>
+      <p class="meta" id="setup"></p>
+      <p class="meta">核验只覆盖声明关系；自动监听在回答流式输出结束后更新快照，不会未经授权自动消耗付费模型额度。</p>
+    </details>
+    <footer>
+      <a href="plugin.html">查看插件三场景交互演练</a>
+      <span>结论覆盖所列关系，不自动证明整题完整或来源客观真实。</span>
+    </footer>
+  </main>
+  <script src="cloud-access.js"></script>
+  <script src="sidecar.js"></script>
+</body>
+</html>

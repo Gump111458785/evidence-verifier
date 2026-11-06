@@ -1,0 +1,465 @@
+:root {
+  --ev-bg-outer: #f2f6f3;
+  --ev-bg-brand: #0f1f18;
+  --ev-bg-brand-card: rgba(255, 255, 255, 0.06);
+  --ev-border-brand: rgba(255, 255, 255, 0.12);
+  --ev-ink: #122019;
+  --ev-ink-secondary: #4a5d53;
+  --ev-ink-muted: #708278;
+  --ev-accent: #18644c;
+  --ev-accent-hover: #124f3c;
+  --ev-accent-soft: #e4f3ec;
+  --ev-surface: #ffffff;
+  --ev-border: #d9e3dd;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+body.ev-login-body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: radial-gradient(circle at 12% 15%, #e6efe9 0%, #f3f6f4 52%, #edf2ef 100%);
+  color: var(--ev-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.ev-login-shell {
+  width: 100%;
+  max-width: 1160px;
+  min-height: 680px;
+  background: var(--ev-surface);
+  border: 1px solid var(--ev-border);
+  border-radius: 22px;
+  box-shadow: 0 24px 60px rgba(15, 31, 24, 0.08), 0 2px 8px rgba(15, 31, 24, 0.04);
+  display: grid;
+  grid-template-columns: 1.12fr 0.88fr;
+  overflow: hidden;
+}
+
+.ev-login-brand {
+  background: linear-gradient(155deg, #0d1d16 0%, #132920 58%, #173529 100%);
+  color: #f4f8f5;
+  padding: 40px 44px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 28px;
+  position: relative;
+}
+
+.ev-login-brand::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 85% 15%, rgba(56, 189, 140, 0.14), transparent 52%);
+  pointer-events: none;
+}
+
+.ev-login-brand-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  position: relative;
+  z-index: 1;
+}
+
+.ev-brand-mark {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ev-brand-glyph {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #228b68, #155c44);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  color: #ffffff;
+}
+
+.ev-brand-mark strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #ffffff;
+}
+
+.ev-brand-mark span {
+  display: block;
+  font-size: 12px;
+  color: rgba(232, 242, 236, 0.72);
+}
+
+.ev-invite-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(46, 184, 134, 0.16);
+  color: #9bf2cf;
+  border: 1px solid rgba(114, 228, 184, 0.28);
+}
+
+.ev-login-hero {
+  position: relative;
+  z-index: 1;
+}
+
+.ev-eyebrow {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8ce5c0;
+}
+
+.ev-login-hero h1 {
+  margin: 0 0 14px;
+  font-size: clamp(24px, 2.5vw, 31px);
+  line-height: 1.26;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.ev-login-lead {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.68;
+  color: rgba(235, 244, 239, 0.84);
+}
+
+.ev-login-lead strong {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.ev-role-preview-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.ev-role-preview-card {
+  background: var(--ev-bg-brand-card);
+  border: 1px solid var(--ev-border-brand);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+
+.ev-role-step {
+  display: inline-block;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: #8ce5c0;
+  margin-bottom: 4px;
+}
+
+.ev-role-preview-card h2 {
+  margin: 0 0 5px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.ev-role-preview-card p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.56;
+  color: rgba(228, 239, 233, 0.78);
+}
+
+.ev-login-brand-foot {
+  position: relative;
+  z-index: 1;
+  font-size: 12px;
+  color: rgba(216, 230, 222, 0.66);
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ev-login-panel {
+  background: #ffffff;
+  padding: 42px 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ev-login-card {
+  width: 100%;
+  max-width: 400px;
+}
+
+.ev-login-card-head {
+  display: block;
+  padding: 0;
+  background: transparent;
+  border: none;
+  margin-bottom: 24px;
+}
+
+.ev-login-kicker-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.ev-kicker {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--ev-accent);
+}
+
+.ev-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.ev-status-invited {
+  background: var(--ev-accent-soft);
+  color: #0e4c38;
+  border: 1px solid #bce0d0;
+}
+
+.ev-login-card-head h2 {
+  margin: 0 0 8px;
+  font-size: 23px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--ev-ink);
+}
+
+.ev-login-card-head p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--ev-ink-secondary);
+}
+
+.ev-login-alert {
+  margin-bottom: 16px;
+  padding: 11px 14px;
+  border-radius: 10px;
+  background: #ffedea;
+  border: 1px solid #f5c2c0;
+  color: #831c1e;
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+.ev-login-notice {
+  margin-bottom: 16px;
+  padding: 11px 14px;
+  border-radius: 10px;
+  background: #edf7f2;
+  border: 1px solid #c3e2d3;
+  color: #134e3a;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.ev-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.ev-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ev-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ev-ink);
+}
+
+.ev-field-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ev-field-hint {
+  font-size: 12px;
+  color: var(--ev-ink-muted);
+}
+
+.ev-field input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid #cbd7d0;
+  background: #fbfdfc;
+  font-size: 14px;
+  color: var(--ev-ink);
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
+}
+
+.ev-field input:focus {
+  outline: none;
+  background: #ffffff;
+  border-color: var(--ev-accent);
+  box-shadow: 0 0 0 3px rgba(24, 100, 76, 0.14);
+}
+
+.ev-password-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.ev-password-wrap input {
+  padding-right: 44px;
+}
+
+.ev-password-toggle {
+  position: absolute;
+  right: 6px;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ev-ink-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.ev-password-toggle:hover {
+  background: #eef4f0;
+  color: var(--ev-ink);
+}
+
+.ev-password-toggle:focus-visible {
+  outline: 2px solid var(--ev-accent);
+  outline-offset: 1px;
+}
+
+.ev-btn-primary.ev-login-submit {
+  height: 46px;
+  border: none;
+  border-radius: 11px;
+  background: var(--ev-accent);
+  color: #ffffff;
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.16s ease, transform 0.1s ease;
+  box-shadow: 0 4px 12px rgba(24, 100, 76, 0.18);
+}
+
+.ev-btn-primary.ev-login-submit:hover:not(:disabled) {
+  background: var(--ev-accent-hover);
+}
+
+.ev-btn-primary.ev-login-submit:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.ev-login-policy {
+  margin-top: 22px;
+  padding: 13px 15px;
+  border-radius: 12px;
+  background: #f5f8f6;
+  border: 1px solid #e1eae5;
+}
+
+.ev-policy-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ev-ink);
+  margin-bottom: 4px;
+}
+
+.ev-login-policy p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.58;
+  color: var(--ev-ink-secondary);
+}
+
+.ev-login-policy code {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11.5px;
+  background: #e8efeb;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.ev-login-links {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--ev-ink-muted);
+}
+
+.ev-link-secondary {
+  color: var(--ev-accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.ev-link-secondary:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 920px) {
+  .ev-login-shell {
+    grid-template-columns: 1fr;
+    max-width: 520px;
+  }
+  .ev-login-brand {
+    padding: 28px 28px;
+  }
+  .ev-login-panel {
+    padding: 30px 28px;
+  }
+}

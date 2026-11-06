@@ -2,13 +2,14 @@
 
 ## 1. 访问与权限
 
+- 受邀登录页：<https://evidence-verifier.edgeone.dev/login.html>
 - 工作台：<https://evidence-verifier.edgeone.dev/>
 - 答案审查：<https://evidence-verifier.edgeone.dev/#audit>
 - 独立审查助手：<https://evidence-verifier.edgeone.dev/sidecar.html>
 - 项目控制台：<https://console.tencentcloud.com/edgeone/pages/project/makers-z7l7raqtginj>
-- 项目 ID：`makers-z7l7raqtginj`；使用国际站账号、海外部署区域，更新同一项目。
+- 项目 ID：`makers-z7l7raqtginj`；使用国际站账号、海外部署区域，更新同一项目（最新生产部署 ID：`dpuf2paozjkh`）。
 
-界面、配置状态、历史诊断数据和预设产品示例可免登录浏览。真实操作和私人报告使用独立访问码，点击右上角“填写访问码”；不要填 DeepSeek 密钥。访问码只保存在页面内存，刷新后重新填写；报告在服务端保存。同一访问码的持有者共享其记录，这不是多租户账号系统。
+v0.4.0 起，网页端启用 **受邀账号登录与服务端不透明会话（Invitation-Only Accounts）**：未登录直接访问工作台主页会自动跳转至 `/login.html`（亦可通过 `/?preview=demo` 查看公开演示模式）。公开自助注册接口（`POST /api/auth/register`）固定返回 `403 invitation_only`。受邀账号密码经 PBKDF2-HMAC-SHA256（600,000 次迭代）加盐哈希存储于 Upstash Redis（`ev:makers-z7l7raqtginj-trial-01:auth:*`），每个受邀账号拥有独立私有记录命名空间（`acct:<user_id>`），同时保留对 Python SDK / 回归测试 `Authorization: Bearer <EV_CLOUD_ACCESS_CODE>` 的向后兼容。管理员可在顶栏「个人中心 → 受邀账号管理」或通过 `scripts/manage_accounts.py` 创建受邀账号、重置临时密码与启停账户。
 
 默认域名的中国大陆访问受平台限制，需要三小时有效的签名预览地址；境外可直接访问。本次本机 Chrome 实际打开了默认 HTTPS 域名，终端直连曾返回平台 401。不能据此宣称中国大陆长期免登录访问已验收。用户选择先完成平台域名联调；自定义域名、DNS 和大陆长期公开访问 [待完成]。未购买域名，未交付临时签名链接作为正式地址。[平台域名说明](https://pages.edgeone.ai/document/domain-overview)
 

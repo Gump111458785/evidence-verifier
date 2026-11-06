@@ -24,6 +24,11 @@ from workflows import WorkflowService, WorkflowError
 from verification_api import VerificationService, VerificationRequestError, VerificationConflict, VerificationCanceled, VerificationUnavailable
 from plugin_scenarios import catalog as plugin_catalog
 from sidecar import report as sidecar_report
+import sys
+if str(Path(__file__).resolve().parents[1]) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from cloud_runtime.auth import Accounts, build_session_cookie, clear_session_cookie, session_token_from_headers
+from cloud_runtime.store import CloudError, Store
 
 ROOT = Path(__file__).parent
 DB = Path(os.environ.get('EV_DB', ROOT / 'data/workbench.sqlite'))
@@ -36,6 +41,52 @@ _repairer = None
 _curator = None
 _workflows = None
 _verifications = None
+_accounts = None
+_accounts_db = None
+
+
+class LocalAuthBacking:
+    configured = True
+    def __init__(self, db_fn):
+        self._db = db_fn
+        self._auth_kv = {}
+        self._auth_sets = {}
+        self._loaded = False
+
+    def _ensure_loaded(self):
+        if self._loaded:
+            return
+        self._loaded = True
+        with self._db() as c:
+            c.execute('CREATE TABLE IF NOT EXISTS local_auth_state(id INTEGER PRIMARY KEY, payload TEXT)')
+            row = c.execute('SELECT payload FROM local_auth_state WHERE id=1').fetchone()
+            if row and row['payload']:
+                data = json.loads(row['payload'])
+                self._auth_kv = {k: tuple(v) for k, v in data.get('kv', {}).items()}
+                self._auth_sets = {k: set(v) for k, v in data.get('sets', {}).items()}
+
+    def save(self):
+        self._ensure_loaded()
+        payload = json.dumps({
+            'kv': {k: list(v) for k, v in self._auth_kv.items()},
+            'sets': {k: sorted(v) for k, v in self._auth_sets.items()},
+        }, ensure_ascii=False)
+        with self._db() as c:
+            c.execute('CREATE TABLE IF NOT EXISTS local_auth_state(id INTEGER PRIMARY KEY, payload TEXT)')
+            c.execute('INSERT OR REPLACE INTO local_auth_state(id, payload) VALUES (1, ?)', (payload,))
+
+
+def accounts():
+    global _accounts, _accounts_db
+    cloud_store = Store(os.environ)
+    if cloud_store.configured:
+        return Accounts(cloud_store), None
+    if _accounts is None or _accounts_db != DB:
+        backing = LocalAuthBacking(db)
+        backing._ensure_loaded()
+        _accounts = Accounts(backing)
+        _accounts_db = DB
+    return _accounts, _accounts.store
 
 
 def corpus_db():
@@ -248,12 +299,14 @@ def create_workflow_check(agent_id, proposal_id, workflow_id):
 
 
 class Handler(BaseHTTPRequestHandler):
-    def send(self, value, status=200):
+    def send(self, value, status=200, cookie=None):
         payload = json.dumps(value, ensure_ascii=False).encode()
         self.send_response(status)
         self.send_header('Content-Type', 'application/json; charset=utf-8')
         self.send_header('Cache-Control', 'no-store')
         self.send_header('X-Content-Type-Options', 'nosniff')
+        if cookie:
+            self.send_header('Set-Cookie', cookie)
         self.end_headers()
         self.wfile.write(payload)
 
@@ -261,6 +314,34 @@ class Handler(BaseHTTPRequestHandler):
         path = urlsplit(self.path)
         query = parse_qs(path.query)
         try:
+            if path.path == '/api/auth/me':
+                acct, _ = accounts()
+                user = acct.authenticate(dict(self.headers.items()))
+                require_auth = bool(os.environ.get('EV_REQUIRE_AUTH') or Store(os.environ).configured)
+                return self.send({
+                    'authenticated': bool(user),
+                    'invitation_only': True,
+                    'registration_enabled': False,
+                    'auth_required': require_auth,
+                    'legacy_access_code_supported': True,
+                    'user': user,
+                })
+            if path.path == '/api/cloud/status':
+                acct, _ = accounts()
+                user = acct.authenticate(dict(self.headers.items()))
+                require_auth = bool(os.environ.get('EV_REQUIRE_AUTH') or Store(os.environ).configured)
+                return self.send({
+                    'ok': True,
+                    'cloud_runtime': False,
+                    'authenticated': bool(user),
+                    'invitation_only': True,
+                    'auth_required': require_auth,
+                    'user': user,
+                })
+            if path.path == '/api/auth/admin/users':
+                acct, _ = accounts()
+                acct.require_admin(dict(self.headers.items()))
+                return self.send({'users': acct.list_users(), 'invitation_only': True})
             if path.path == '/api/health':
                 with db() as c:
                     count = c.execute('SELECT count(*) FROM passages').fetchone()[0]
@@ -390,7 +471,8 @@ class Handler(BaseHTTPRequestHandler):
                                       events=[dict(e, payload=json.loads(e['payload'])) for e in events], reviews=[dict(r) for r in reviews]))
             if path.path.startswith('/api/'):
                 return self.send({'error': 'Not found'}, 404)
-            assets = {'/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css',
+            assets = {'/': 'index.html', '/index.html': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css',
+                      '/login.html': 'login.html', '/login.js': 'login.js', '/login.css': 'login.css',
                       '/cloud-access.js': 'cloud-access.js', '/favicon.svg': 'favicon.svg',
                       '/sidecar.html': 'sidecar.html', '/sidecar.js': 'sidecar.js', '/theme.css': 'theme.css', '/plugin.html': 'plugin.html', '/plugin.js': 'plugin.js', '/plugin.css': 'plugin.css',
                       '/downloads/evidence-verifier-extension.zip': 'downloads/evidence-verifier-extension.zip'}
@@ -401,12 +483,14 @@ class Handler(BaseHTTPRequestHandler):
             if path.path not in assets:
                 return self.send({'error': 'Not found'}, 404)
             file = ROOT / 'static' / assets[path.path]
-            types = {'.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.ttf': 'font/ttf', '.woff2': 'font/woff2', '.zip': 'application/zip'}
+            types = {'.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.ttf': 'font/ttf', '.woff2': 'font/woff2', '.zip': 'application/zip'}
             self.send_response(200)
-            self.send_header('Content-Type', types[file.suffix] + ('; charset=utf-8' if file.suffix in ('.html', '.js', '.css') else ''))
+            self.send_header('Content-Type', types[file.suffix] + ('; charset=utf-8' if file.suffix in ('.html', '.js', '.css', '.svg') else ''))
             self.send_header('X-Content-Type-Options', 'nosniff')
             self.end_headers()
             self.wfile.write(file.read_bytes())
+        except CloudError as exc:
+            self.send({'error': str(exc), 'code': exc.code}, exc.status)
         except RetrievalError as exc:
             self.send({'error': str(exc), 'code': exc.code}, 404 if exc.code == 'unknown_session' else 409)
         except AgentError as exc:
@@ -433,11 +517,83 @@ class Handler(BaseHTTPRequestHandler):
             return self.send({'error': 'Cross-origin mutation rejected'}, 403)
         try:
             size = int(self.headers.get('Content-Length', '0'))
-            if not 0 < size <= 200000:
-                return self.send({'error': 'Body must be 1–200000 bytes'}, 400)
-            body = json.loads(self.rfile.read(size))
-            if not isinstance(body, dict):
-                raise ValueError('Request body must be a JSON object')
+            if self.path == '/api/auth/logout' and size == 0:
+                body = {}
+            else:
+                if not 0 < size <= 200000:
+                    return self.send({'error': 'Body must be 1–200000 bytes'}, 400)
+                body = json.loads(self.rfile.read(size))
+                if not isinstance(body, dict):
+                    raise ValueError('Request body must be a JSON object')
+            if self.path == '/api/auth/register':
+                raise CloudError('invitation_only', '当前仅向受邀账号开放登录，不支持公开自助注册。请联系管理员开通账号。', 403)
+            if self.path == '/api/auth/login':
+                acct, backing = accounts()
+                ident = body.get('identifier') or body.get('username') or body.get('email') or ''
+                token, user = acct.login(ident, body.get('password') or '', user_agent=self.headers.get('User-Agent', ''))
+                if backing:
+                    backing.save()
+                return self.send({'authenticated': True, 'invitation_only': True, 'user': user, 'session_token': token},
+                                 200, build_session_cookie(token, secure=False))
+            if self.path == '/api/auth/logout':
+                acct, backing = accounts()
+                tok = session_token_from_headers(dict(self.headers.items()))
+                if tok:
+                    acct.revoke_session(tok)
+                    if backing:
+                        backing.save()
+                return self.send({'authenticated': False, 'logged_out': True}, 200, clear_session_cookie(secure=False))
+            if self.path == '/api/auth/profile':
+                acct, backing = accounts()
+                current = acct.require_user(dict(self.headers.items()))
+                updated = acct.update_profile(current['id'], display_name=body.get('display_name'), email=body.get('email'))
+                if backing:
+                    backing.save()
+                return self.send({'authenticated': True, 'user': updated})
+            if self.path == '/api/auth/password':
+                acct, backing = accounts()
+                current = acct.require_user(dict(self.headers.items()))
+                token, updated = acct.change_password(
+                    current['id'],
+                    body.get('current_password') or '',
+                    body.get('new_password') or '',
+                    keep_user_agent=self.headers.get('User-Agent', ''),
+                )
+                if backing:
+                    backing.save()
+                return self.send({'authenticated': True, 'user': updated, 'password_updated': True, 'session_token': token},
+                                 200, build_session_cookie(token, secure=False))
+            if self.path == '/api/auth/admin/users':
+                acct, backing = accounts()
+                admin = acct.require_admin(dict(self.headers.items()))
+                created = acct.create_user(
+                    username=body.get('username'),
+                    email=body.get('email'),
+                    password=body.get('password'),
+                    display_name=body.get('display_name') or '',
+                    role=body.get('role') or 'member',
+                    status=body.get('status') or 'active',
+                    created_by=admin.get('username', 'admin'),
+                )
+                if backing:
+                    backing.save()
+                return self.send({'user': created, 'generated_password': created.get('generated_password')}, 201)
+            m_admin = re.fullmatch(r'/api/auth/admin/users/(usr_[a-f0-9]{20})', self.path)
+            if m_admin:
+                acct, backing = accounts()
+                acct.require_admin(dict(self.headers.items()))
+                updated = acct.admin_update_user(
+                    m_admin[1],
+                    display_name=body.get('display_name'),
+                    email=body.get('email'),
+                    role=body.get('role'),
+                    status=body.get('status'),
+                    new_password=body.get('new_password'),
+                    generate_password=bool(body.get('generate_password')),
+                )
+                if backing:
+                    backing.save()
+                return self.send({'user': updated, 'generated_password': updated.get('generated_password')})
             if self.path == '/api/sidecar/plans':
                 job = planner().create(body.get('question'), body.get('candidate'), 'sidecar', uuid.uuid4().hex[:16])
                 POOL.submit(planner().execute, job['id'])
@@ -642,6 +798,8 @@ class Handler(BaseHTTPRequestHandler):
                     c.execute('INSERT INTO reviews VALUES (?,?,?,?,?)', (rid, body['run_id'], body['verdict'], note, time.time()))
                 return self.send({'id': rid}, 201)
             self.send({'error': 'Not found'}, 404)
+        except CloudError as exc:
+            return self.send({'error': str(exc), 'code': exc.code}, exc.status)
         except RetrievalError as exc:
             return self.send({'error': str(exc), 'code': exc.code}, 404 if exc.code == 'unknown_session' else 409)
         except VerificationConflict as exc:

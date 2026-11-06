@@ -5,6 +5,7 @@ import json
 import sys
 sys.path.insert(0,str(Path(__file__).parent/'evlib'))
 from cloud_runtime.api import route
+from cloud_runtime.auth import build_session_cookie,clear_session_cookie
 from cloud_runtime.store import CloudError
 
 class handler(BaseHTTPRequestHandler):
@@ -12,6 +13,7 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):self.dispatch()
     def do_POST(self):self.dispatch()
     def dispatch(self):
+        cookie_hdr=None
         try:
             raw=self.headers.get('Content-Length','0')
             length=int(raw)
@@ -19,6 +21,12 @@ class handler(BaseHTTPRequestHandler):
             body=json.loads(self.rfile.read(length)) if length else {}
             if not isinstance(body,dict):raise CloudError('invalid_request','请求体须为JSON对象',400)
             value=route(self.command,self.path,dict(self.headers.items()),body)
+            if isinstance(value,dict):
+                value=dict(value)
+                token=value.pop('_set_cookie',None)
+                cleared=value.pop('_clear_cookie',False)
+                if token:cookie_hdr=build_session_cookie(token,secure=True)
+                elif cleared:cookie_hdr=clear_session_cookie(secure=True)
             status=200
         except CloudError as exc:
             value={'code':exc.code,'error':str(exc)};status=exc.status
@@ -31,5 +39,6 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Content-Type','application/json; charset=utf-8')
         self.send_header('Cache-Control','no-store')
         self.send_header('X-Content-Type-Options','nosniff')
+        if cookie_hdr:self.send_header('Set-Cookie',cookie_hdr)
         self.send_header('Content-Length',str(len(data)))
         self.end_headers();self.wfile.write(data)
