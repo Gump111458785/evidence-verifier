@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>案例与历史：Trisight 三省</title>
+  <link rel="icon" href="/favicon.svg">
+  <link rel="stylesheet" href="/trisight.css">
+</head>
+<body>
+  <div class="ts-bar-wrap"><header id="ts-bar"></header></div>
+  <main class="ts-page">
+    <h1>案例与历史</h1>
+    <p class="lead" id="lead">案例库里的例子由项目团队编写，结果是预设演示，不是实时运行记录，也不收录任何用户的记录。</p>
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tab-cases" aria-selected="true" type="button">案例库</button>
+      <button role="tab" id="tab-history" aria-selected="false" type="button" hidden>我的问答历史</button>
+    </div>
+    <div class="ts-split">
+      <div>
+        <ul class="list" id="list"></ul>
+        <p class="ts-meta" id="list-meta"></p>
+      </div>
+      <section id="detail" class="ts-sheet" aria-live="polite"><p class="res-empty">从左侧选择一条查看。</p></section>
+    </div>
+  </main>
+
+  <script src="/trisight.js"></script>
+  <script>
+  (async () => {
+    const user = await TS.me();
+    TS.bar('library', user);
+    const $ = (id) => document.getElementById(id);
+    const list = $('list'), detail = $('detail');
+    const MODE = { correct: '纠错', supplement: '补充', predict: '预测' };
+    const VERDICT = { errors_found: '发现错误', no_error: '未发现错误', unverified: '有未能核实的断言', no_checkable_claims: '无可核实断言', not_run: '未纠错' };
+    let cases = [];
+
+    function select(btn) {
+      list.querySelectorAll('button').forEach((b) => b.setAttribute('aria-current', b === btn ? 'true' : 'false'));
+    }
+
+    async function showCases() {
+      $('tab-cases').setAttribute('aria-selected', 'true'); $('tab-history').setAttribute('aria-selected', 'false');
+      $('lead').textContent = '案例库里的例子由项目团队编写，结果是预设演示，不是实时运行记录，也不收录任何用户的记录。';
+      if (!cases.length) cases = (await TS.api('/api/library')).cases;
+      list.innerHTML = cases.map((c, i) => '<li><button type="button" data-i="' + i + '"><span class="t">' + TS.esc(c.title) + '</span>' +
+        '<span class="s">' + c.tags.map((t) => '<span><span class="dot ' + t + '"></span> ' + MODE[t] + '</span>').join('') + '<span>' + TS.esc(c.question) + '</span></span></button></li>').join('');
+      $('list-meta').textContent = '共 ' + cases.length + ' 个演示案例';
+      list.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+        select(b);
+        const c = cases[+b.dataset.i];
+        TS.render(detail, { question: c.question, answer: c.answer, result: c.result });
+        if (c.evidence.length) {
+          const ev = document.createElement('div');
+          ev.className = 'ts-note';
+          ev.style.marginTop = '16px';
+          ev.innerHTML = c.evidence.map((e) => TS.esc(e.title) + '：“' + TS.esc(e.text) + '”').join('<br>');
+          detail.appendChild(ev);
+        }
+      }));
+      const first = list.querySelector('button'); if (first) first.click();
+    }
+
+    async function showHistory() {
+      $('tab-cases').setAttribute('aria-selected', 'false'); $('tab-history').setAttribute('aria-selected', 'true');
+      $('lead').textContent = '你自己的审阅记录，只有你能看到。可以对结果点“有用”或“没用”。';
+      detail.innerHTML = '<p class="res-empty">从左侧选择一条查看。</p>';
+      let page;
+      try { page = await TS.api('/api/assist?limit=50'); } catch (e) { list.innerHTML = ''; TS.alertIn(detail, e.message); return; }
+      if (!page.rows.length) {
+        list.innerHTML = '';
+        $('list-meta').innerHTML = '还没有记录。<a href="/assist.html">去审阅第一条回答</a>';
+        return;
+      }
+      list.innerHTML = page.rows.map((r) => '<li><button type="button" data-id="' + r.id + '"><span class="t">' + TS.esc(r.question) + '</span><span class="s">' +
+        '<span>' + TS.time(r.created) + '</span>' +
+        (r.state !== 'completed' ? '<span>未完成</span>' : r.status !== 'ok' ? '<span>结果无效</span>' :
+          '<span>' + (VERDICT[r.correct] || '') + '</span>' + (r.supplement ? '<span>补充 ' + r.supplement + ' 点</span>' : '') + (r.predict ? '<span>预测 ' + r.predict + ' 问</span>' : '')) +
+        (r.client === 'extension' ? '<span>来自插件</span>' : '') + '</span></button></li>').join('');
+      $('list-meta').textContent = '共 ' + page.total + ' 条，显示最近 ' + page.rows.length + ' 条';
+      list.querySelectorAll('button').forEach((b) => b.addEventListener('click', async () => {
+        select(b);
+        try {
+          const job = await TS.api('/api/assist/' + b.dataset.id);
+          if (job.state !== 'completed') {
+            detail.innerHTML = '<div class="ts-note">这条审阅没有跑完。<a href="/assist.html?id=' + job.id + '">打开并继续</a></div>';
+            return;
+          }
+          TS.render(detail, { question: job.input.question, answer: job.input.answer, result: job.result, id: job.id, feedback: job.feedback });
+        } catch (e) { TS.alertIn(detail, e.message); }
+      }));
+    }
+
+    $('tab-cases').addEventListener('click', showCases);
+    $('tab-history').addEventListener('click', showHistory);
+    if (user) $('tab-history').hidden = false;
+    if (user && location.hash === '#history') showHistory(); else showCases();
+  })();
+  </script>
+</body>
+</html>

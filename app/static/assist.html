@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>审阅：Trisight 三省</title>
+  <link rel="icon" href="/favicon.svg">
+  <link rel="stylesheet" href="/trisight.css">
+</head>
+<body>
+  <div class="ts-bar-wrap"><header id="ts-bar"></header></div>
+  <main class="ts-page">
+    <h1>审阅一条回答</h1>
+    <p class="lead">粘贴你的问题和大模型的回答。系统先判断纠错、补充、预测各自是否需要，只运行需要的部分。</p>
+
+    <div class="ts-split">
+      <form id="form" class="ts-sheet ts-stack" novalidate>
+        <div>
+          <label class="ts-label" for="question">你的问题</label>
+          <textarea id="question" class="ts-field" rows="2" maxlength="1000" required placeholder="例如：埃菲尔铁塔是哪一年建成的？"></textarea>
+        </div>
+        <div>
+          <label class="ts-label" for="answer">大模型的回答 <span class="ts-hint">最多 5,000 字</span></label>
+          <textarea id="answer" class="ts-field" rows="8" maxlength="5000" required placeholder="把回答原文粘贴到这里"></textarea>
+        </div>
+        <details class="ts-more">
+          <summary>前几轮对话（可选，用于补充和预测）</summary>
+          <textarea id="context" class="ts-field" rows="4" maxlength="2000" placeholder="每行以“用户：”或“AI：”开头，最多 10 轮、2,000 字"></textarea>
+        </details>
+        <details class="ts-more">
+          <summary>来源原文（可选，提供后纠错只用它核对，不再检索）</summary>
+          <div class="ts-stack">
+            <textarea id="source" class="ts-field" rows="4" maxlength="4000" placeholder="粘贴来源中的原文段落，最多 4,000 字"></textarea>
+            <input id="source-url" class="ts-field" type="url" placeholder="来源链接（可选）">
+          </div>
+        </details>
+        <fieldset style="border:0;padding:0;margin-top:18px">
+          <legend class="ts-label">审阅方式</legend>
+          <div class="mode-pick" style="margin-bottom:10px">
+            <label><input type="radio" name="how" value="auto" checked>自动判定</label>
+            <label><input type="radio" name="how" value="manual">手动选择</label>
+          </div>
+          <div class="mode-pick" id="manual">
+            <label><input type="checkbox" name="mode" value="correct" checked disabled><span class="dot correct"></span>纠错</label>
+            <label><input type="checkbox" name="mode" value="supplement" checked disabled><span class="dot supplement"></span>补充</label>
+            <label><input type="checkbox" name="mode" value="predict" checked disabled><span class="dot predict"></span>预测</label>
+          </div>
+        </fieldset>
+        <div id="form-error" class="ts-alert" role="alert" hidden></div>
+        <div>
+          <button class="ts-btn" id="run" type="submit">开始审阅</button>
+          <p class="ts-cost" id="cost">每次审阅调用模型 1 至 3 次、检索最多 2 次。</p>
+        </div>
+      </form>
+
+      <section aria-live="polite">
+        <ol class="steps" id="steps" hidden>
+          <li data-p="review">判断与初审</li><li data-p="search">检索原文</li><li data-p="verify">逐条核验</li><li data-p="compose">修订回答</li>
+        </ol>
+        <div id="resume" class="ts-note" hidden>这次审阅没有跑完。<button class="ts-link" id="resume-btn" type="button">继续运行</button>（会继续产生模型调用）</div>
+        <div id="result" class="ts-sheet"><p class="res-empty">结果会显示在这里。<br>也可以先去<a href="/library.html">案例库</a>看看示例。</p></div>
+      </section>
+    </div>
+  </main>
+
+  <script src="/trisight.js"></script>
+  <script>
+  (async () => {
+    const user = await TS.guard('assist');
+    if (!user) return;
+    const $ = (id) => document.getElementById(id);
+    const form = $('form'), result = $('result'), steps = $('steps');
+    const ORDER = ['review', 'search', 'verify', 'compose', 'finish'];
+
+    document.querySelectorAll('input[name=how]').forEach((r) => r.addEventListener('change', () => {
+      const manual = document.querySelector('input[name=how]:checked').value === 'manual';
+      document.querySelectorAll('input[name=mode]').forEach((c) => { c.disabled = !manual; });
+    }));
+
+    TS.api('/api/budget').then((b) => {
+      $('cost').textContent += ' 试用额度已用 ¥' + (b.reserved_millicny / 1000).toFixed(2) + ' / ¥' + (b.limit_millicny / 1000).toFixed(2) + '（全站共享）。';
+    }).catch(() => {});
+
+    function parseContext(text) {
+      const turns = [];
+      for (const raw of text.split('\n')) {
+        const line = raw.trim();
+        if (!line) continue;
+        const m = line.match(/^(用户|我|User|AI|助手|Assistant)\s*[:：]\s*(.*)$/i);
+        if (m) turns.push({ role: /^(用户|我|user)$/i.test(m[1]) ? 'user' : 'assistant', text: m[2] });
+        else if (turns.length) turns[turns.length - 1].text += '\n' + line;
+        else turns.push({ role: 'user', text: line });
+      }
+      return turns;
+    }
+
+    function showPhase(phase, state) {
+      steps.hidden = false;
+      const at = ORDER.indexOf(phase);
+      steps.querySelectorAll('li').forEach((li) => {
+        const i = ORDER.indexOf(li.dataset.p);
+        li.className = state === 'completed' || i < at ? 'done' : i === at ? 'on' : '';
+      });
+    }
+
+    function show(job) {
+      showPhase((job.progress || {}).phase || 'review', job.state);
+      $('resume').hidden = job.state !== 'queued';
+      if (job.state === 'completed') {
+        TS.render(result, { question: job.input.question, answer: job.input.answer, result: job.result, id: job.id, feedback: job.feedback });
+      } else if (job.state === 'failed' || job.state === 'canceled') {
+        result.innerHTML = '<div class="ts-alert">审阅未完成：' + TS.esc(job.error || job.state) + '。已发生的调用不会自动重试。</div>';
+      }
+    }
+
+    let current = null;
+    async function drive(job) {
+      current = job.id;
+      $('run').disabled = true;
+      try {
+        while (job.state === 'queued') {
+          show(job);
+          result.innerHTML = '<p class="res-empty">正在' + ({ review: '判断三种模式并初审', search: '检索原文', verify: '逐条核验', compose: '修订回答' }[(job.progress || {}).phase] || '处理') + '……</p>';
+          job = await TS.api(job.advance_path, { method: 'POST' });
+        }
+        show(job);
+        history.replaceState(null, '', '/assist.html?id=' + job.id);
+      } catch (e) {
+        result.innerHTML = '';
+        TS.alertIn(result, e.message);
+        $('resume').hidden = false;
+      } finally {
+        $('run').disabled = false;
+      }
+    }
+
+    form.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      $('form-error').hidden = true;
+      const question = $('question').value.trim(), answer = $('answer').value.trim();
+      if (!question || !answer) { $('form-error').textContent = '请填写问题和大模型的回答。'; $('form-error').hidden = false; return; }
+      const body = { question, answer, compose: true, client: 'web' };
+      const ctx = parseContext($('context').value);
+      if (ctx.length) body.context = ctx;
+      if ($('source').value.trim()) body.sources = [{ text: $('source').value.trim(), url: $('source-url').value.trim() || null }];
+      if (document.querySelector('input[name=how]:checked').value === 'manual') {
+        body.modes = [...document.querySelectorAll('input[name=mode]:checked')].map((c) => c.value);
+        if (!body.modes.length) { $('form-error').textContent = '手动选择时至少勾选一种模式。'; $('form-error').hidden = false; return; }
+      } else body.modes = 'auto';
+      try {
+        const job = await TS.api('/api/assist', { method: 'POST', body });
+        await drive(job);
+      } catch (e) { $('form-error').textContent = e.message; $('form-error').hidden = false; }
+    });
+
+    $('resume-btn').addEventListener('click', async () => { if (current) await drive(await TS.api('/api/assist/' + current)); });
+
+    const id = new URLSearchParams(location.search).get('id');
+    if (id && /^[a-f0-9]{24}$/.test(id)) {
+      current = id;
+      try {
+        const job = await TS.api('/api/assist/' + id);
+        $('question').value = job.input.question; $('answer').value = job.input.answer;
+        show(job);
+      } catch (e) { TS.alertIn(result, e.message); }
+    }
+  })();
+  </script>
+</body>
+</html>

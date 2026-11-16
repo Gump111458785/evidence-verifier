@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>个人中心：Trisight 三省</title>
+  <link rel="icon" href="/favicon.svg">
+  <link rel="stylesheet" href="/trisight.css">
+</head>
+<body>
+  <div class="ts-bar-wrap"><header id="ts-bar"></header></div>
+  <main class="ts-page">
+    <h1>个人中心</h1>
+    <p class="lead">管理你的资料、密码和研究数据授权。</p>
+
+    <div id="consent-banner" class="ts-note" style="margin-bottom:20px" hidden>
+      请先在下方“研究数据”中做出选择。不论选哪一项，都可以正常使用。
+    </div>
+
+    <div class="acct-grid">
+      <section class="ts-sheet">
+        <h2>资料</h2>
+        <dl class="kv" id="profile-kv"></dl>
+        <form id="profile" class="ts-stack" style="margin-top:18px">
+          <div><label class="ts-label" for="p-name">显示名称</label><input id="p-name" class="ts-field" maxlength="64"></div>
+          <div><label class="ts-label" for="p-email">邮箱</label><input id="p-email" class="ts-field" type="email"></div>
+          <button class="ts-btn quiet" type="submit">保存资料</button>
+          <p class="ts-meta" id="profile-msg" role="status"></p>
+        </form>
+      </section>
+
+      <section class="ts-sheet">
+        <h2>修改密码</h2>
+        <form id="password" class="ts-stack">
+          <div><label class="ts-label" for="pw-old">当前密码</label><input id="pw-old" class="ts-field" type="password" autocomplete="current-password" required></div>
+          <div><label class="ts-label" for="pw-new">新密码 <span class="ts-hint">至少 10 位，含字母、数字或符号中的两类</span></label><input id="pw-new" class="ts-field" type="password" autocomplete="new-password" required></div>
+          <button class="ts-btn quiet" type="submit">修改密码</button>
+          <p class="ts-meta" id="password-msg" role="status"></p>
+        </form>
+      </section>
+
+      <section class="ts-sheet" id="consent">
+        <h2>研究数据</h2>
+        <p style="margin:0 0 12px;font-size:14px;color:var(--ink-2)">Trisight 是研究项目。你的审阅记录和“有用 / 没用”反馈可以帮助我们评测和改进审阅模型。授权后，这些数据只用于本项目的研究与模型训练，不会公开，也不会进入公开案例库。你可以随时撤回，撤回后新的反馈不再用于研究。</p>
+        <label class="switch"><input type="checkbox" id="consent-box"><span>同意将我的审阅记录与反馈用于研究</span></label>
+        <p class="ts-meta" id="consent-msg" role="status" style="margin-top:10px"></p>
+      </section>
+
+      <section class="ts-sheet">
+        <h2>用量</h2>
+        <dl class="kv" id="usage"></dl>
+        <p class="ts-meta" style="margin-top:12px">试用阶段所有账号共享一个额度。每次模型或检索调用预留 ¥0.25，额度用完后暂停新的审阅。</p>
+      </section>
+    </div>
+
+    <section class="ts-sheet" id="admin" style="margin-top:20px" hidden>
+      <h2>受邀账号管理</h2>
+      <p class="ts-meta" style="margin:-6px 0 16px">只有管理员可见。网站不开放自助注册，所有账号都在这里开通。</p>
+      <form id="create" class="row" style="margin-bottom:18px">
+        <div><label class="ts-label" for="c-user">用户名</label><input id="c-user" class="ts-field" required></div>
+        <div><label class="ts-label" for="c-email">邮箱</label><input id="c-email" class="ts-field" type="email" required></div>
+        <div><label class="ts-label" for="c-role">角色</label><select id="c-role" class="ts-field"><option value="member">成员</option><option value="admin">管理员</option></select></div>
+        <div style="flex:0"><button class="ts-btn" type="submit">开通账号</button></div>
+      </form>
+      <div id="admin-msg" role="status"></div>
+      <div style="overflow-x:auto"><table class="users"><thead><tr><th>用户名</th><th>邮箱</th><th>角色</th><th>状态</th><th>最近登录</th><th></th></tr></thead><tbody id="users"></tbody></table></div>
+    </section>
+  </main>
+
+  <script src="/trisight.js"></script>
+  <script>
+  (async () => {
+    const user = await TS.guard('account');
+    if (!user) return;
+    const $ = (id) => document.getElementById(id);
+    const esc = TS.esc;
+    const ROLE = { admin: '管理员', member: '成员' };
+
+    function fillProfile(u) {
+      $('profile-kv').innerHTML = '<dt>用户名</dt><dd>' + esc(u.username) + '</dd><dt>角色</dt><dd>' + (ROLE[u.role] || u.role) + '</dd>' +
+        '<dt>最近登录</dt><dd>' + (u.last_login_at ? TS.time(u.last_login_at) : '—') + '</dd>';
+      $('p-name').value = u.display_name || ''; $('p-email').value = u.email || '';
+    }
+    fillProfile(user);
+
+    $('profile').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        const d = await TS.api('/api/auth/profile', { method: 'POST', body: { display_name: $('p-name').value, email: $('p-email').value } });
+        fillProfile(d.user); TS.bar('account', d.user); $('profile-msg').textContent = '资料已保存。';
+      } catch (err) { $('profile-msg').textContent = err.message; }
+    });
+
+    $('password').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        const d = await TS.api('/api/auth/password', { method: 'POST', body: { current_password: $('pw-old').value, new_password: $('pw-new').value } });
+        try { if (d.session_token) sessionStorage.setItem('ev_session_token', d.session_token); } catch (_) {}
+        $('password').reset(); $('password-msg').textContent = '密码已修改，其他设备上的登录已退出。';
+      } catch (err) { $('password-msg').textContent = err.message; }
+    });
+
+    try {
+      const c = await TS.api('/api/consent');
+      $('consent-box').checked = c.research === true;
+      if (c.research === null || c.version !== c.current_version) {
+        $('consent-banner').hidden = false;
+        $('consent-msg').textContent = '你还没有做出选择。';
+      } else {
+        $('consent-msg').textContent = (c.research ? '已同意' : '未同意') + '，更新于 ' + TS.time(c.updated) + '。';
+      }
+    } catch (err) { $('consent-msg').textContent = err.message; }
+    $('consent-box').addEventListener('change', async () => {
+      try {
+        const c = await TS.api('/api/consent', { method: 'POST', body: { research: $('consent-box').checked } });
+        $('consent-msg').textContent = (c.research ? '已同意' : '已撤回同意') + '，更新于 ' + TS.time(c.updated) + '。';
+        $('consent-banner').hidden = true;
+      } catch (err) { $('consent-msg').textContent = err.message; $('consent-box').checked = !$('consent-box').checked; }
+    });
+
+    Promise.all([TS.api('/api/budget').catch(() => null), TS.api('/api/assist?limit=1').catch(() => null)]).then(([b, h]) => {
+      $('usage').innerHTML = '<dt>我的审阅</dt><dd>' + (h ? h.total + ' 次' : '—') + '</dd>' +
+        '<dt>全站额度</dt><dd>' + (b ? '已用 ¥' + (b.reserved_millicny / 1000).toFixed(2) + ' / ¥' + (b.limit_millicny / 1000).toFixed(2) : '—') + '</dd>';
+    });
+
+    if (user.role !== 'admin') return;
+    $('admin').hidden = false;
+    const note = (html) => { $('admin-msg').innerHTML = html ? '<div class="ts-note" style="margin-bottom:14px">' + html + '</div>' : ''; };
+
+    async function loadUsers() {
+      const d = await TS.api('/api/auth/admin/users');
+      $('users').innerHTML = d.users.map((u) => '<tr><td>' + esc(u.username) + '</td><td>' + esc(u.email) + '</td><td>' + (ROLE[u.role] || u.role) + '</td>' +
+        '<td>' + (u.status === 'active' ? '启用' : '停用') + '</td><td>' + (u.last_login_at ? TS.time(u.last_login_at) : '从未') + '</td>' +
+        '<td style="white-space:nowrap">' + (u.id === user.id ? '<span class="ts-meta">当前账号</span>' :
+          '<button class="ts-link" data-act="status" data-id="' + u.id + '" data-to="' + (u.status === 'active' ? 'disabled' : 'active') + '">' + (u.status === 'active' ? '停用' : '启用') + '</button> ' +
+          '<button class="ts-link" data-act="reset" data-id="' + u.id + '" data-name="' + esc(u.username) + '">重置密码</button>') + '</td></tr>').join('');
+      $('users').querySelectorAll('button').forEach((b) => b.addEventListener('click', async () => {
+        try {
+          const body = b.dataset.act === 'status' ? { status: b.dataset.to } : { generate_password: true };
+          const d2 = await TS.api('/api/auth/admin/users/' + b.dataset.id, { method: 'POST', body });
+          note(d2.generated_password ? esc(b.dataset.name) + ' 的临时密码：<b>' + esc(d2.generated_password) + '</b>。只显示这一次，请转交本人并提醒修改。' : '已更新。');
+          loadUsers();
+        } catch (err) { note(esc(err.message)); }
+      }));
+    }
+    $('create').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        const d = await TS.api('/api/auth/admin/users', { method: 'POST', body: { username: $('c-user').value, email: $('c-email').value, role: $('c-role').value } });
+        note('已开通 ' + esc(d.user.username) + '。临时密码：<b>' + esc(d.generated_password) + '</b>。只显示这一次，请转交本人并提醒修改。');
+        $('create').reset(); loadUsers();
+      } catch (err) { note(esc(err.message)); }
+    });
+    loadUsers().catch((err) => note(esc(err.message)));
+  })();
+  </script>
+</body>
+</html>

@@ -10,7 +10,7 @@
         return raw;
       }
     } catch (_) {}
-    return '/';
+    return '/assist.html';
   }
 
   function authHeaders() {
@@ -69,9 +69,9 @@
     try {
       const params = new URLSearchParams(window.location.search || '');
       if (params.get('reason') === 'auth_required') {
-        showNotice('请先登录受邀账号后再访问核验工作台。');
+        showNotice('请先登录后再继续。');
       } else if (params.get('reason') === 'logged_out') {
-        showNotice('您已安全退出当前受邀会话。');
+        showNotice('已退出登录。');
       }
       const res = await fetch('/api/auth/me', {
         method: 'GET',
@@ -103,12 +103,12 @@
       const identifier = (idInput.value || '').trim();
       const password = pwdInput.value || '';
       if (!identifier || !password) {
-        showError('请输入受邀账号用户名/邮箱和登录密码。');
+        showError('请输入用户名或邮箱，以及密码。');
         (!identifier ? idInput : pwdInput).focus();
         return;
       }
       submitBtn.disabled = true;
-      if (submitText) submitText.textContent = '正在核验受邀身份…';
+      if (submitText) submitText.textContent = '正在登录…';
       try {
         const res = await fetch('/api/auth/login', {
           method: 'POST',
@@ -133,7 +133,7 @@
         showError(err.message || '登录请求失败，请稍后重试。');
       } finally {
         submitBtn.disabled = false;
-        if (submitText) submitText.textContent = '登录并进入工作台';
+        if (submitText) submitText.textContent = '登录';
       }
     });
   }

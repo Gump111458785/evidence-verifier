@@ -105,6 +105,9 @@ def route(method,path,headers,body,env=None,store=None,model=None):
             if path in data:return data[path]
     if method=='POST' and path=='/api/scenarios/designer-education/run':
         value=scenario('designer-education');value['demonstration_id']=value['input_sha256'][:24];return value
+    if method=='GET' and path=='/api/library':
+        from .library_cases import catalog
+        return catalog()
     session_user=accounts.authenticate(headers) if (store.configured or hasattr(store,'_auth_kv')) else None
     if session_user:
         expected=env.get('EV_CLOUD_ACCESS_CODE','')
@@ -116,6 +119,9 @@ def route(method,path,headers,body,env=None,store=None,model=None):
         if not code.startswith('Bearer '):raise CloudError('access_denied','真实操作与私人记录需要受邀账号登录或访问凭证',401)
         code=code[7:].strip();owner=authorize(env,code)
     app=Orchestrator(store,env,model,code,owner)
+    if path=='/api/consent' or path.startswith('/api/assist'):
+        handled=assist_routes(method,path,query,body,app,store,owner,configured)
+        if handled is not None:return handled
     if method=='GET' and path=='/api/budget':
         spent=store.command(['GET',store.key('spent')])
         return {'reserved_millicny':int(spent or 0),'limit_millicny':10000,'refunds':False,'scope':'all_instances_all_restarts'}
@@ -232,6 +238,59 @@ def route(method,path,headers,body,env=None,store=None,model=None):
         if parent['kind']!='run' or parent['state']!='completed':raise CloudError('invalid_parent','需要完整历史记录',400)
         return app.search.create(owner,body.get('budget',6),parent['result']['input']['relation'],parent['id'])
     raise CloudError('route_not_found','接口不存在',404)
+
+
+CONSENT_VERSION='2026-11-16'
+
+
+def read_consent(store,owner):
+    try:return store.get(owner,'consent')
+    except CloudError as exc:
+        if exc.code!='record_not_found':raise
+        return {'research':None,'version':None,'updated':None}
+
+
+def assist_routes(method,path,query,body,app,store,owner,configured):
+    """Trisight endpoints. Returns None for paths handled by the generic family routes."""
+    from . import assist
+    if path=='/api/consent':
+        if method=='GET':return {**read_consent(store,owner),'current_version':CONSENT_VERSION}
+        if method=='POST':
+            if type(body.get('research')) is not bool:raise CloudError('invalid_consent','research 须为布尔值',400)
+            value={'research':body['research'],'version':CONSENT_VERSION,'updated':time.time()}
+            store.put(owner,'consent',value);return {**value,'current_version':CONSENT_VERSION}
+        raise CloudError('route_not_found','接口不存在',404)
+    if method=='POST' and path=='/api/assist':
+        if not configured:raise CloudError('model_not_configured','模型或持久化存储尚未配置')
+        spec=assist.validate_input(body)
+        key=body.get('request_key')
+        job=app.create('assist',spec,key)
+        if 'work' not in job:
+            job.update(work=assist.initial_work(),progress={'phase':'review','model_calls':0,'search_calls':0,'pending_searches':0})
+            store.put(owner,job['id'],job)
+        return app.expose(job)
+    if method=='GET' and path=='/api/assist':
+        offset=int(query.get('offset',['0'])[0]);limit=int(query.get('limit',['20'])[0])
+        page=store.page(owner,offset,limit,'assist')
+        return {**page,'rows':[assist.summary(r) for r in page['rows']]}
+    m=re.fullmatch(r'/api/assist/([a-f0-9]{24})/feedback',path)
+    if method=='POST' and m:
+        job=app.get(m[1])
+        if job['kind']!='assist' or job['state']!='completed':raise CloudError('invalid_feedback','只能对已完成的结果反馈',400)
+        target,value=body.get('target'),body.get('value')
+        if target not in ('correct','supplement','predict','answer') or value not in ('up','down'):
+            raise CloudError('invalid_feedback','反馈对象或取值无效',400)
+        note=body.get('note') or ''
+        if not isinstance(note,str) or len(note)>500:raise CloudError('invalid_feedback','备注最多500字符',400)
+        consent=read_consent(store,owner)
+        previous=copy.deepcopy(job)
+        rows=[f for f in job.get('feedback',[]) if f['target']!=target]
+        rows.append({'target':target,'value':value,'note':note,'created':time.time(),
+                     'research_consent':bool(consent.get('research')),'consent_version':consent.get('version')})
+        job['feedback']=rows
+        if not store.compare_and_set(owner,job['id'],previous,job):raise CloudError('feedback_conflict','记录已变化，请重新读取',409)
+        return {'id':job['id'],'feedback':rows}
+    return None
 
 
 def collected(app,ident):

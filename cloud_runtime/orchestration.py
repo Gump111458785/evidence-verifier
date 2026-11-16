@@ -15,7 +15,8 @@ from .search import Search
 from .store import CloudError
 
 FAMILIES={'verification':'verifications','plan':'plan-proposals','agent':'agent-jobs',
-          'repair':'repair-jobs','workflow':'workflows','run':'runs','check':'relation-checks'}
+          'repair':'repair-jobs','workflow':'workflows','run':'runs','check':'relation-checks',
+          'assist':'assist'}
 
 
 class Orchestrator:
@@ -69,6 +70,9 @@ class Orchestrator:
         if kind=='repair':return self.repair_step(job)
         if kind=='workflow':return self.workflow_step(job)
         if kind=='run':return self.run_step(job)
+        if kind=='assist':
+            from . import assist
+            return assist.step(job,self.model,self.code,lambda query:self.search.query(query,self.code))
         raise CloudError('unsupported_job','任务类型不支持',400)
 
     def agent_step(self,job):
@@ -230,6 +234,9 @@ class Orchestrator:
             value['usage']={'complete':False,'known_totals':{'model_calls':known,'cache_hits':0,'coalesced_hits':0}}
             value['result']=value['result'] or {'outcome':'pending','current_stage':'queued','candidate':None,'evidence':[]}
         if kind=='run':value.setdefault('reviews',[])
+        if kind=='assist':
+            value.setdefault('feedback',[])
+            value.setdefault('progress',{'phase':'review','model_calls':0,'search_calls':0,'pending_searches':0})
         return value
 
     def known_model_calls(self,job):

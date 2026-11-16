@@ -342,6 +342,11 @@ class Handler(BaseHTTPRequestHandler):
                 acct, _ = accounts()
                 acct.require_admin(dict(self.headers.items()))
                 return self.send({'users': acct.list_users(), 'invitation_only': True})
+            if path.path == '/api/library':
+                from cloud_runtime.library_cases import catalog
+                return self.send(catalog())
+            if path.path in ('/api/assist', '/api/consent') or path.path.startswith('/api/assist/'):
+                return self.send({'code': 'cloud_only', 'error': '三种审阅模式目前只在云端部署中运行；本地研究版未接入。'}, 501)
             if path.path == '/api/health':
                 with db() as c:
                     count = c.execute('SELECT count(*) FROM passages').fetchone()[0]
@@ -472,6 +477,8 @@ class Handler(BaseHTTPRequestHandler):
             if path.path.startswith('/api/'):
                 return self.send({'error': 'Not found'}, 404)
             assets = {'/': 'index.html', '/index.html': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css',
+                      '/workbench.html': 'workbench.html', '/assist.html': 'assist.html', '/library.html': 'library.html',
+                      '/account.html': 'account.html', '/trisight.css': 'trisight.css', '/trisight.js': 'trisight.js',
                       '/login.html': 'login.html', '/login.js': 'login.js', '/login.css': 'login.css',
                       '/cloud-access.js': 'cloud-access.js', '/favicon.svg': 'favicon.svg',
                       '/sidecar.html': 'sidecar.html', '/sidecar.js': 'sidecar.js', '/theme.css': 'theme.css', '/plugin.html': 'plugin.html', '/plugin.js': 'plugin.js', '/plugin.css': 'plugin.css',
@@ -516,6 +523,8 @@ class Handler(BaseHTTPRequestHandler):
         if origin and origin != 'http://' + self.headers.get('Host', '') and origin != extension_origin:
             return self.send({'error': 'Cross-origin mutation rejected'}, 403)
         try:
+            if self.path in ('/api/assist', '/api/consent') or self.path.startswith('/api/assist/'):
+                return self.send({'code': 'cloud_only', 'error': '三种审阅模式目前只在云端部署中运行；本地研究版未接入。'}, 501)
             size = int(self.headers.get('Content-Length', '0'))
             if self.path == '/api/auth/logout' and size == 0:
                 body = {}

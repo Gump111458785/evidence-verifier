@@ -31,6 +31,7 @@ jobs:
           node --check app/extension/page-adapter.js
           node --check app/static/sidecar.js
           node --check app/static/cloud-access.js
+          node --check app/static/trisight.js
       - name: Publication source check
         run: python scripts/check_publication.py
       - name: Extension DOM and sidecar contracts (no external API calls)

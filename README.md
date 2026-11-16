@@ -12,6 +12,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![API mode](https://img.shields.io/badge/API_mode-no_local_GPU-227755)](api_edition/README.md)
 
+> **v0.5.0 起，项目改名为 Trisight（三省），定位为大模型回答的外置审阅者：纠错、补充、预测。** 网页版三种模式已在云端实现（DeepSeek 提示词版本），插件三种模式与小模型微调进行中。接口见 [Trisight 审阅接口](docs/trisight-assist.md)，变更见 [CHANGELOG](CHANGELOG.md)。下文仍是 v0.4 的证据核验说明，将在后续版本按新定位重写。[待完成]
+
 [在线工作台](https://evidence-verifier.edgeone.dev/) · [网页版与插件版](#2-网页版与插件版) · [补证案例](#3-补证案例) · [系统架构](#4-系统架构) · [核心机制](#5-核心机制) · [后训练](#6-后训练证据核验模型的任务适配) · [快速开始](#7-快速开始)
 
 </div>
