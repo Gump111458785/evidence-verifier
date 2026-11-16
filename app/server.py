@@ -477,7 +477,7 @@ class Handler(BaseHTTPRequestHandler):
             if path.path.startswith('/api/'):
                 return self.send({'error': 'Not found'}, 404)
             assets = {'/': 'index.html', '/index.html': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css',
-                      '/workbench.html': 'workbench.html', '/assist.html': 'assist.html', '/library.html': 'library.html',
+                      '/assist.html': 'assist.html', '/library.html': 'library.html',
                       '/account.html': 'account.html', '/trisight.css': 'trisight.css', '/trisight.js': 'trisight.js',
                       '/login.html': 'login.html', '/login.js': 'login.js', '/login.css': 'login.css',
                       '/cloud-access.js': 'cloud-access.js', '/favicon.svg': 'favicon.svg',
@@ -555,7 +555,7 @@ class Handler(BaseHTTPRequestHandler):
             if self.path == '/api/auth/profile':
                 acct, backing = accounts()
                 current = acct.require_user(dict(self.headers.items()))
-                updated = acct.update_profile(current['id'], display_name=body.get('display_name'), email=body.get('email'))
+                updated = acct.update_profile(current['id'], display_name=body.get('display_name'), email=body.get('email'), avatar=body.get('avatar'))
                 if backing:
                     backing.save()
                 return self.send({'authenticated': True, 'user': updated})

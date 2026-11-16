@@ -195,6 +195,27 @@ class AssistTests(unittest.TestCase):
         for p in parts:
             self.assertEqual(text[p['start']:p['end']], p['text'])
 
+    def test_markdown_fenced_json_and_omitted_optional_fields_normalize(self):
+        from cloud_runtime.model import _parse_json_object
+        raw = '```json\n{"modes": {"correct": {"needed": false}, "supplement": {"needed": true}, "predict": {"needed": true}}, "missing": [{"point": "建造背景", "content": "世博会拱门"}], "next_questions": ["铁塔有多高？"]}\n```'
+        parsed = _parse_json_object(raw)
+        normalized = assist._normalize_for_schema(parsed, 'review')
+        self.assertEqual(normalized['missing'][0]['id'], 'M1')
+        self.assertIsNone(normalized['missing'][0]['query'])
+        self.assertEqual(normalized['next_questions'][0]['question'], '铁塔有多高？')
+
+    def test_admin_avatar_and_unlimited_budget(self):
+        from cloud_runtime.auth import Accounts
+        acct = Accounts(self.s)
+        created = acct.create_user(username='admin01', email='admin01@example.com', password='AdminPassword!123', role='admin')
+        token, _ = acct.login('admin01', 'AdminPassword!123')
+        headers = {'Authorization': 'Bearer ' + token}
+        prof = route('POST', '/api/auth/profile', headers, {'display_name': '管理员一号', 'avatar': 'preset:emerald'}, self.env, self.s, AssistModel())
+        self.assertEqual(prof['user']['avatar'], 'preset:emerald')
+        self.s.command = lambda cmd: 25000 if cmd[0] == 'GET' else 'OK'
+        budget = route('GET', '/api/budget', headers, {}, self.env, self.s, AssistModel())
+        self.assertTrue(budget['unlimited'])
+
 
 if __name__ == '__main__':
     unittest.main()

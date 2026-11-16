@@ -63,7 +63,7 @@ def route(method,path,headers,body,env=None,store=None,model=None):
         return {'authenticated':False,'logged_out':True,'_clear_cookie':True}
     if method=='POST' and path=='/api/auth/profile':
         current=accounts.require_user(headers)
-        updated=accounts.update_profile(current['id'],display_name=(body or {}).get('display_name'),email=(body or {}).get('email'))
+        updated=accounts.update_profile(current['id'],display_name=(body or {}).get('display_name'),email=(body or {}).get('email'),avatar=(body or {}).get('avatar'))
         return {'authenticated':True,'user':updated}
     if method=='POST' and path=='/api/auth/password':
         current=accounts.require_user(headers)
@@ -109,11 +109,13 @@ def route(method,path,headers,body,env=None,store=None,model=None):
         from .library_cases import catalog
         return catalog()
     session_user=accounts.authenticate(headers) if (store.configured or hasattr(store,'_auth_kv')) else None
+    is_admin=bool(session_user and session_user.get('role')=='admin')
     if session_user:
         expected=env.get('EV_CLOUD_ACCESS_CODE','')
         if len(expected)<24:raise CloudError('access_not_configured','尚未配置服务端访问码')
         code=expected
         owner=hashlib.sha256(('ev-acct:'+session_user['id']).encode()).hexdigest()[:32]
+        store.unlimited=is_admin
     else:
         code={k.lower():v for k,v in (headers or {}).items()}.get('authorization','')
         if not code.startswith('Bearer '):raise CloudError('access_denied','真实操作与私人记录需要受邀账号登录或访问凭证',401)
@@ -124,7 +126,11 @@ def route(method,path,headers,body,env=None,store=None,model=None):
         if handled is not None:return handled
     if method=='GET' and path=='/api/budget':
         spent=store.command(['GET',store.key('spent')])
-        return {'reserved_millicny':int(spent or 0),'limit_millicny':10000,'refunds':False,'scope':'all_instances_all_restarts'}
+        admin_spent=store.command(['GET',store.key('admin_spent')]) if is_admin else 0
+        return {'reserved_millicny':int(admin_spent or spent or 0) if is_admin else int(spent or 0),
+                'shared_reserved_millicny':int(spent or 0),
+                'limit_millicny':10000,'unlimited':is_admin,
+                'refunds':False,'scope':'all_instances_all_restarts'}
     if method=='POST' and path=='/api/sidecar/report':
         check=app.get(body.get('verification_id'));repair=app.get(body['repair_id']) if body.get('repair_id') else None
         return report(check,body.get('question'),body.get('candidate'),repair)

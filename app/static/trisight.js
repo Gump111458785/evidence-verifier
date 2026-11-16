@@ -43,24 +43,76 @@
 
   const MARK = '<svg class="ts-mark" viewBox="0 0 20 20" aria-hidden="true"><path d="M2 6h9" stroke="#c03a2b" stroke-width="2.2" stroke-linecap="round"/><path d="M5 15l3-5 3 5" fill="none" stroke="#2353b8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 13h5m-2-2.5 2 2.5-2 2.5" fill="none" stroke="#0d7566" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
+  const PRESET_AVATARS = {
+    'preset:ink': { bg: '#1c2230', fg: '#ffffff', label: '墨黑' },
+    'preset:cobalt': { bg: '#2353b8', fg: '#ffffff', label: '群青' },
+    'preset:emerald': { bg: '#0d7566', fg: '#ffffff', label: '松绿' },
+    'preset:crimson': { bg: '#c03a2b', fg: '#ffffff', label: '朱红' },
+    'preset:amber': { bg: '#94600c', fg: '#ffffff', label: '琥珀' },
+    'preset:plum': { bg: '#6c3483', fg: '#ffffff', label: '紫檀' },
+  };
+
+  function avatarHtml(user, size = 28) {
+    const name = String((user && (user.display_name || user.username)) || 'U').trim();
+    const initial = esc((name[0] || 'U').toUpperCase());
+    const av = String((user && user.avatar) || '').trim();
+    const style = `width:${size}px;height:${size}px;font-size:${Math.max(11, Math.round(size * 0.44))}px;`;
+    if (av.startsWith('data:image/') || av.startsWith('https://')) {
+      return `<span class="ts-avatar" style="${style}"><img src="${esc(av)}" alt="${esc(name)}"></span>`;
+    }
+    const preset = PRESET_AVATARS[av] || PRESET_AVATARS['preset:ink'];
+    return `<span class="ts-avatar" style="${style}background:${preset.bg};color:${preset.fg}">${initial}</span>`;
+  }
+
   /* Top bar. `active` is the page key; pass user to show the account menu. */
   function bar(active, user) {
     const host = document.getElementById('ts-bar');
     if (!host) return;
     const links = user
-      ? [['assist', '/assist.html', '审阅'], ['library', '/library.html', '案例与历史'], ['account', '/account.html', '个人中心']]
+      ? [['assist', '/assist.html', '审阅'], ['library', '/library.html', '案例与历史']]
       : [['home', '/', '首页'], ['library', '/library.html', '案例库']];
-    if (user && user.role === 'admin') links.push(['workbench', '/workbench.html', '研究工作台']);
     host.innerHTML = '<div class="ts-bar">' +
       '<a class="ts-brand" href="/">' + MARK + '<b>Trisight</b><span>三省</span></a>' +
       '<nav class="ts-nav" aria-label="主导航">' + links.map(([k, href, label]) =>
         '<a href="' + href + '"' + (k === active ? ' aria-current="page"' : '') + '>' + label + '</a>').join('') + '</nav>' +
       '<div class="ts-user">' + (user
-        ? '<span>' + esc(user.display_name || user.username) + '</span><button class="ts-link" id="ts-logout" type="button">退出</button>'
+        ? '<div class="ts-user-menu" id="ts-user-menu">' +
+            '<button class="ts-user-trigger" id="ts-user-trigger" type="button" aria-expanded="false" aria-haspopup="menu">' +
+              avatarHtml(user, 26) +
+              '<span class="ts-user-name">' + esc(user.display_name || user.username) + '</span>' +
+              '<svg class="ts-caret" viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M2.2 4.2 6 8l3.8-3.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+            '</button>' +
+            '<div class="ts-dropdown" id="ts-dropdown" role="menu" hidden>' +
+              '<div class="ts-dropdown-head"><strong>' + esc(user.display_name || user.username) + '</strong><span>@' + esc(user.username) + (user.role === 'admin' ? ' · 管理员' : '') + '</span></div>' +
+              '<a class="ts-dropdown-item' + (active === 'account' ? ' active' : '') + '" href="/account.html" role="menuitem">个人中心</a>' +
+              '<button class="ts-dropdown-item danger" id="ts-logout" type="button" role="menuitem">退出登录</button>' +
+            '</div>' +
+          '</div>'
         : '<a href="' + REPO + '" rel="noopener">GitHub</a><a class="ts-btn small" href="/login.html?next=%2Fassist.html">登录</a>') +
       '</div></div>';
     const out = document.getElementById('ts-logout');
     if (out) out.addEventListener('click', logout);
+    const trigger = document.getElementById('ts-user-trigger');
+    const dropdown = document.getElementById('ts-dropdown');
+    const menuWrap = document.getElementById('ts-user-menu');
+    if (trigger && dropdown && menuWrap) {
+      const closeMenu = () => {
+        dropdown.hidden = true;
+        trigger.setAttribute('aria-expanded', 'false');
+      };
+      trigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const open = dropdown.hidden;
+        dropdown.hidden = !open;
+        trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+      document.addEventListener('click', (e) => {
+        if (!menuWrap.contains(e.target)) closeMenu();
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeMenu();
+      });
+    }
   }
 
   /* Page guard: returns the user or redirects to login. */
@@ -195,5 +247,5 @@
 
   const time = (ts) => { try { return new Date(ts * 1000).toLocaleString('zh-CN', { hour12: false }); } catch (_) { return ''; } };
 
-  window.TS = { api, me, guard, bar, render, esc, time, logout, REPO, alertIn };
+  window.TS = { api, me, guard, bar, render, esc, time, logout, REPO, alertIn, avatarHtml, PRESET_AVATARS };
 })();

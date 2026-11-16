@@ -220,7 +220,8 @@ class Orchestrator:
         value={k:v for k,v in job.items() if k!='work'}
         if job['state']=='failed' and job.get('work'):value['partial_artifacts']=copy.deepcopy(job['work'])
         kind=job['kind']
-        if kind in FAMILIES and job['state']=='queued':value['advance_path']='/api/'+FAMILIES[kind]+'/'+job['id']+'/advance'
+        if kind in FAMILIES and (job['state']=='queued' or (kind=='assist' and job['state']=='failed')):
+            value['advance_path']='/api/'+FAMILIES[kind]+'/'+job['id']+'/advance'
         if kind in ('repair','agent'):value['session']=self.get(job['session_id'])
         if kind=='plan':
             value['revisions']=[{'id':r['id'],'created':r['created'],**r['input']} for r in

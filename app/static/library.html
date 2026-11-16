@@ -11,7 +11,7 @@
   <div class="ts-bar-wrap"><header id="ts-bar"></header></div>
   <main class="ts-page">
     <h1>案例与历史</h1>
-    <p class="lead" id="lead">案例库里的例子由项目团队编写，结果是预设演示，不是实时运行记录，也不收录任何用户的记录。</p>
+    <p class="lead" id="lead" hidden></p>
     <div class="tabs" role="tablist">
       <button role="tab" id="tab-cases" aria-selected="true" type="button">案例库</button>
       <button role="tab" id="tab-history" aria-selected="false" type="button" hidden>我的问答历史</button>
@@ -42,7 +42,7 @@
 
     async function showCases() {
       $('tab-cases').setAttribute('aria-selected', 'true'); $('tab-history').setAttribute('aria-selected', 'false');
-      $('lead').textContent = '案例库里的例子由项目团队编写，结果是预设演示，不是实时运行记录，也不收录任何用户的记录。';
+      $('lead').textContent = ''; $('lead').hidden = true;
       if (!cases.length) cases = (await TS.api('/api/library')).cases;
       list.innerHTML = cases.map((c, i) => '<li><button type="button" data-i="' + i + '"><span class="t">' + TS.esc(c.title) + '</span>' +
         '<span class="s">' + c.tags.map((t) => '<span><span class="dot ' + t + '"></span> ' + MODE[t] + '</span>').join('') + '<span>' + TS.esc(c.question) + '</span></span></button></li>').join('');
@@ -64,7 +64,7 @@
 
     async function showHistory() {
       $('tab-cases').setAttribute('aria-selected', 'false'); $('tab-history').setAttribute('aria-selected', 'true');
-      $('lead').textContent = '你自己的审阅记录，只有你能看到。可以对结果点“有用”或“没用”。';
+      $('lead').textContent = '你自己的审阅记录，只有你能看到。可以对结果点“有用”或“没用”。'; $('lead').hidden = false;
       detail.innerHTML = '<p class="res-empty">从左侧选择一条查看。</p>';
       let page;
       try { page = await TS.api('/api/assist?limit=50'); } catch (e) { list.innerHTML = ''; TS.alertIn(detail, e.message); return; }

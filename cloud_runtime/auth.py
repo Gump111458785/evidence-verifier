@@ -61,6 +61,25 @@ def clean_display_name(value, fallback=''):
     return text
 
 
+def clean_avatar(value):
+    if value is None or value == '':
+        return ''
+    if not isinstance(value, str):
+        raise CloudError('invalid_avatar', '头像格式无效。', 400)
+    text = value.strip()
+    if not text:
+        return ''
+    if len(text) > 120_000:
+        raise CloudError('invalid_avatar', '头像数据过大，请选择更小的图片。', 400)
+    if re.fullmatch(r'preset:[a-z0-9_-]{1,32}', text):
+        return text
+    if re.fullmatch(r'data:image/(?:png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/=\s]+', text):
+        return re.sub(r'\s+', '', text)
+    if re.match(r'^https://[^\s"\'<>]{4,480}$', text):
+        return text
+    raise CloudError('invalid_avatar', '头像仅支持预设样式、HTTPS 图片链接或 PNG/JPG/WebP 图片。', 400)
+
+
 def validate_password(password):
     if not isinstance(password, str) or not PASSWORD_MIN <= len(password) <= PASSWORD_MAX:
         raise CloudError('weak_password', f'密码长度需为 {PASSWORD_MIN}–{PASSWORD_MAX} 位。', 400)
@@ -138,6 +157,7 @@ def public_user(user):
         'username': user.get('username', ''),
         'email': user.get('email', ''),
         'display_name': user.get('display_name') or user.get('username', ''),
+        'avatar': user.get('avatar') or '',
         'role': user.get('role', 'member'),
         'status': user.get('status', 'active'),
         'created_at': int(user.get('created_at') or 0),
@@ -199,6 +219,7 @@ class Accounts:
     def _mem(self):
         if not hasattr(self.store, '_auth_kv'):
             self.store._auth_kv = {}
+        if not hasattr(self.store, '_auth_sets'):
             self.store._auth_sets = {}
         return self.store._auth_kv, self.store._auth_sets
 
@@ -472,7 +493,7 @@ class Accounts:
                 self._kv_del(self._key('session', token))
         self._kv_del(self._key('user_sessions', user_id))
 
-    def update_profile(self, user_id, *, display_name=None, email=None):
+    def update_profile(self, user_id, *, display_name=None, email=None, avatar=None):
         user = self.get_user(user_id)
         if not user:
             raise CloudError('user_not_found', '账号不存在。', 404)
@@ -487,6 +508,8 @@ class Accounts:
             if old_email:
                 self._kv_del(self._key('email', old_email))
             user['email'] = new_email
+        if avatar is not None:
+            user['avatar'] = clean_avatar(avatar)
         user['updated_at'] = int(self.clock())
         self._put_json(self._key('user', user['id']), user)
         return public_user(user)

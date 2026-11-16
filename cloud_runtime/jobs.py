@@ -45,6 +45,14 @@ class Jobs:
 
     def advance(self, owner, ident, perform):
         job=self.get(owner,ident)
+        if job['state']=='failed' and job.get('kind')=='assist':
+            # Allow user-initiated retry of a failed assist phase
+            claim_key=self.store.key('step',owner+':'+ident+':'+str(job['step']))
+            try:self.store.command(['DEL',claim_key])
+            except Exception:pass
+            previous=copy.deepcopy(job)
+            job.update(state='queued',error=None,error_code=None,error_type=None)
+            self.store.compare_and_set(owner,ident,previous,job)
         if job['state'] in ('completed','failed','canceled'):return job
         if job['state']=='running':return job
         step=job['step']

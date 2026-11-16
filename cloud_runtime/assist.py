@@ -144,8 +144,105 @@ def compose_schema():
         'finding_ids': {'type': 'array', 'items': S, 'minItems': 1}, 'summary': S})}})
 
 
-def _complete(model, system, schema, payload, code):
-    reply = model.complete(system + '\n输出必须符合此 JSON Schema：' + json.dumps(schema, ensure_ascii=False), payload, code)
+def _normalize_for_schema(parsed, stage):
+    if not isinstance(parsed, dict):
+        return parsed
+    if stage == 'review':
+        if not isinstance(parsed.get('modes'), dict):
+            return parsed
+        out = {
+            'modes': {},
+            'claims': [],
+            'missing': [],
+            'next_questions': [],
+        }
+        for m in MODES:
+            raw_m = parsed['modes'].get(m)
+            if isinstance(raw_m, dict) and isinstance(raw_m.get('needed'), bool):
+                out['modes'][m] = {'needed': raw_m['needed'], 'reason': str(raw_m.get('reason') or '')}
+            else:
+                return parsed
+        for i, c in enumerate(parsed.get('claims') or []):
+            if isinstance(c, dict) and isinstance(c.get('text'), str):
+                out['claims'].append({
+                    'id': str(c.get('id') or f'C{i + 1}'),
+                    'text': c['text'],
+                    'query': str(c.get('query') or c['text'][:60]),
+                })
+        for i, m_item in enumerate(parsed.get('missing') or []):
+            if isinstance(m_item, dict) and isinstance(m_item.get('point'), str) and isinstance(m_item.get('content'), str):
+                kind = m_item.get('kind') if m_item.get('kind') in ('factual', 'explanatory') else 'explanatory'
+                q = m_item.get('query')
+                out['missing'].append({
+                    'id': str(m_item.get('id') or f'M{i + 1}'),
+                    'point': m_item['point'],
+                    'why': str(m_item.get('why') or '补充关键背景信息'),
+                    'kind': kind,
+                    'content': m_item['content'],
+                    'query': str(q) if (kind == 'factual' and isinstance(q, str) and q.strip()) else None,
+                })
+        for i, q_item in enumerate(parsed.get('next_questions') or []):
+            if isinstance(q_item, dict) and isinstance(q_item.get('question'), str):
+                out['next_questions'].append({
+                    'id': str(q_item.get('id') or f'Q{i + 1}'),
+                    'question': q_item['question'],
+                })
+            elif isinstance(q_item, str) and q_item.strip():
+                out['next_questions'].append({'id': f'Q{i + 1}', 'question': q_item.strip()})
+        return out
+    if stage == 'verify':
+        if 'claims' not in parsed and 'supplements' not in parsed:
+            return parsed
+        claims = []
+        for i, c in enumerate(parsed.get('claims') or []):
+            if not isinstance(c, dict) or c.get('verdict') not in ('supported', 'contradicted', 'insufficient'):
+                return parsed
+            raw_q = c.get('quote')
+            quote = {'evidence_id': str(raw_q['evidence_id']), 'text': str(raw_q['text'])} if (
+                isinstance(raw_q, dict) and isinstance(raw_q.get('evidence_id'), str) and isinstance(raw_q.get('text'), str)
+            ) else None
+            corr = c.get('correction')
+            claims.append({
+                'id': str(c.get('id') or f'C{i + 1}'),
+                'verdict': c['verdict'],
+                'quote': quote,
+                'explanation': str(c.get('explanation') or ''),
+                'correction': str(corr) if isinstance(corr, str) and corr.strip() else None,
+            })
+        supps = []
+        for i, s in enumerate(parsed.get('supplements') or []):
+            if not isinstance(s, dict):
+                continue
+            raw_q = s.get('quote')
+            quote = {'evidence_id': str(raw_q['evidence_id']), 'text': str(raw_q['text'])} if (
+                isinstance(raw_q, dict) and isinstance(raw_q.get('evidence_id'), str) and isinstance(raw_q.get('text'), str)
+            ) else None
+            cnt = s.get('content')
+            supps.append({
+                'id': str(s.get('id') or f'M{i + 1}'),
+                'supported': bool(s.get('supported')),
+                'content': str(cnt) if isinstance(cnt, str) and cnt.strip() else None,
+                'quote': quote,
+            })
+        return {'claims': claims, 'supplements': supps}
+    if stage == 'compose':
+        if not isinstance(parsed.get('revised_answer'), str):
+            return parsed
+        changes = []
+        for ch in parsed.get('changes') or []:
+            if isinstance(ch, dict) and isinstance(ch.get('finding_ids'), list) and ch['finding_ids']:
+                changes.append({
+                    'finding_ids': [str(x) for x in ch['finding_ids']],
+                    'summary': str(ch.get('summary') or '已根据审阅结果修订'),
+                })
+        return {'revised_answer': parsed['revised_answer'], 'changes': changes}
+    return parsed
+
+
+def _complete(model, system, schema, payload, code, stage=None):
+    reply = model.complete(system + '\n输出必须符合此 JSON Schema（直接输出纯 JSON 对象，不要包含 ``` 代码块）：' + json.dumps(schema, ensure_ascii=False), payload, code)
+    if stage:
+        reply['parsed'] = _normalize_for_schema(reply.get('parsed'), stage)
     try:
         jsonschema.validate(reply['parsed'], schema)
     except jsonschema.ValidationError as exc:
@@ -227,6 +324,58 @@ def initial_work():
             'compose': None, 'usage': {'model_calls': 0, 'search_calls': 0}, 'invalid': []}
 
 
+def _wiki_fallback_search(query):
+    """Fallback to Wikipedia public search when DeepSeek search tool is unavailable."""
+    import urllib.parse
+    import urllib.request
+    docs = []
+    for host in ('zh.wikipedia.org', 'en.wikipedia.org'):
+        try:
+            params = urllib.parse.urlencode({
+                'action': 'query',
+                'list': 'search',
+                'srsearch': query[:100],
+                'srlimit': 2,
+                'format': 'json',
+                'utf8': 1,
+            })
+            req = urllib.request.Request(
+                f'https://{host}/w/api.php?{params}',
+                headers={'User-Agent': 'TrisightVerifier/0.5 (research)'},
+            )
+            with urllib.request.urlopen(req, timeout=8) as r:
+                data = json.loads(r.read(500_000))
+            hits = (data.get('query') or {}).get('search') or []
+            for h in hits[:2]:
+                title = h.get('title')
+                if not title:
+                    continue
+                ext_params = urllib.parse.urlencode({
+                    'action': 'query',
+                    'prop': 'extracts',
+                    'explaintext': 1,
+                    'exchars': 2400,
+                    'titles': title,
+                    'format': 'json',
+                })
+                req2 = urllib.request.Request(
+                    f'https://{host}/w/api.php?{ext_params}',
+                    headers={'User-Agent': 'TrisightVerifier/0.5 (research)'},
+                )
+                with urllib.request.urlopen(req2, timeout=8) as r2:
+                    pages = ((json.loads(r2.read(500_000)).get('query') or {}).get('pages') or {})
+                for p in pages.values():
+                    text = (p.get('extract') or '').strip()
+                    if text:
+                        url = f'https://{host}/wiki/{urllib.parse.quote(title.replace(" ", "_"))}'
+                        docs.append({'doc_id': url, 'title': title, 'text': text, 'score': 1.0})
+            if docs:
+                return docs[:2]
+        except Exception:
+            continue
+    return []
+
+
 def step(job, model, code, search):
     spec = job['input']
     work = copy.deepcopy(job.get('work') or initial_work())
@@ -236,7 +385,7 @@ def step(job, model, code, search):
         payload = {'question': spec['question'], 'answer': spec['answer'], 'context': spec['context'],
                    'requested': _requested(spec)}
         try:
-            reply = _complete(model, REVIEW_SYSTEM, review_schema(), payload, code)
+            reply = _complete(model, REVIEW_SYSTEM, review_schema(), payload, code, stage='review')
         except _Invalid as exc:
             work['usage']['model_calls'] += 1
             return _fail_invalid(work, events, 'review', exc)
@@ -255,7 +404,13 @@ def step(job, model, code, search):
                 {'title': d.get('title'), 'url': d.get('doc_id'), 'excerpts': excerpt(d['text'], item['query'])}
                 for d in docs]}
         except CloudError as exc:
-            record = {**item, 'ok': False, 'error': exc.code, 'documents': []}
+            fallback_docs = _wiki_fallback_search(item['query']) if exc.code == 'search_failure' else []
+            if fallback_docs:
+                record = {**item, 'ok': True, 'documents': [
+                    {'title': d.get('title'), 'url': d.get('doc_id'), 'excerpts': excerpt(d['text'], item['query'])}
+                    for d in fallback_docs]}
+            else:
+                record = {**item, 'ok': False, 'error': exc.code, 'documents': []}
         work['searches'].append(record)
         events.append(_event('search', {'query': item['query'], 'ok': record['ok'],
                                         'documents': len(record['documents'])}))
@@ -265,7 +420,7 @@ def step(job, model, code, search):
     if phase == 'verify':
         payload, shown = _verify_payload(work, spec)
         try:
-            reply = _complete(model, VERIFY_SYSTEM, verify_schema(), payload, code)
+            reply = _complete(model, VERIFY_SYSTEM, verify_schema(), payload, code, stage='verify')
         except _Invalid as exc:
             work['usage']['model_calls'] += 1
             return _fail_invalid(work, events, 'verify', exc)
@@ -278,7 +433,7 @@ def step(job, model, code, search):
         result = assemble(spec, work)
         payload = {'original_answer': spec['answer'], 'findings': _findings(result)}
         try:
-            reply = _complete(model, COMPOSE_SYSTEM, compose_schema(), payload, code)
+            reply = _complete(model, COMPOSE_SYSTEM, compose_schema(), payload, code, stage='compose')
         except _Invalid as exc:
             work['usage']['model_calls'] += 1
             work['compose'] = {'status': 'invalid_output', 'error': exc.message}
@@ -524,10 +679,15 @@ def prompts(question, result):
 def summary(job):
     result = job.get('result') or {}
     modes = result.get('modes') or {}
+    usage = result.get('usage') or job.get('progress') or (job.get('work') or {}).get('usage') or {}
+    m_calls = int(usage.get('model_calls') or (1 if job.get('state') == 'failed' else 0))
+    s_calls = int(usage.get('search_calls') or 0)
     return {'id': job['id'], 'state': job['state'], 'created': job['created'],
             'question': job['input']['question'][:120], 'client': job['input'].get('client', 'web'),
             'status': result.get('status'),
             'correct': (modes.get('correct') or {}).get('verdict'),
             'supplement': len((modes.get('supplement') or {}).get('points', [])),
             'predict': len((modes.get('predict') or {}).get('questions', [])),
-            'feedback': len(job.get('feedback', []))}
+            'feedback': len(job.get('feedback', [])),
+            'model_calls': m_calls,
+            'search_calls': s_calls}

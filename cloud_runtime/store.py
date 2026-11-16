@@ -36,6 +36,18 @@ if used + amount > cap then return -1 end
 return redis.call('INCRBY', KEYS[1], amount)
 '''
 
+RESERVE_UNLIMITED = '''
+local current = redis.call('GET', KEYS[1])
+if not current then
+  redis.call('SET', KEYS[1], '0')
+  redis.call('SET', KEYS[2], '1')
+  current = '0'
+end
+local used = tonumber(current) or 0
+local amount = tonumber(ARGV[1])
+return redis.call('INCRBY', KEYS[1], amount)
+'''
+
 
 class Store:
     def __init__(self, env, transport=None):
@@ -43,6 +55,7 @@ class Store:
         self.token = env.get('EV_REDIS_REST_TOKEN', '')
         self.namespace = env.get('EV_CLOUD_BUDGET_ID', 'makers-z7l7raqtginj-trial-01')
         self.transport = transport
+        self.unlimited = False
 
     @property
     def configured(self):
@@ -84,6 +97,11 @@ class Store:
         # not an entire multi-call verification. IDs and cap are not client input.
         if type(amount_millicny) is not int or amount_millicny != 250:
             raise ValueError('Only the fixed audited reservation is allowed')
+        if getattr(self, 'unlimited', False):
+            result = self.command(['EVAL', RESERVE_UNLIMITED, '2', self.key('admin_spent'), self.key('admin_initialized'), '250'])
+            if type(result) is not int or result < 250:
+                raise CloudError('budget_unavailable', '费用账本异常，付费调用已停止')
+            return {'reserved_millicny': result, 'limit_millicny': None, 'unlimited': True}
         result = self.command(['EVAL', RESERVE, '2', self.key('spent'), self.key('initialized'), '250', '10000'])
         if result == -1:
             raise CloudError('budget_exhausted', '本轮10元联调额度已耗尽', 429)

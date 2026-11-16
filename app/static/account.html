@@ -11,20 +11,28 @@
   <div class="ts-bar-wrap"><header id="ts-bar"></header></div>
   <main class="ts-page">
     <h1>个人中心</h1>
-    <p class="lead">管理你的资料、密码和研究数据授权。</p>
-
-    <div id="consent-banner" class="ts-note" style="margin-bottom:20px" hidden>
-      请先在下方“研究数据”中做出选择。不论选哪一项，都可以正常使用。
-    </div>
+    <p class="lead">管理你的个人资料、头像、登录密码与近期 API 调用统计。</p>
 
     <div class="acct-grid">
       <section class="ts-sheet">
-        <h2>资料</h2>
+        <h2>个人资料与头像</h2>
+        <div class="avatar-editor">
+          <div id="avatar-preview" class="avatar-preview-box"></div>
+          <div class="avatar-controls">
+            <div class="avatar-btn-row">
+              <label class="ts-btn quiet small" for="avatar-file" style="cursor:pointer">上传头像图片</label>
+              <input id="avatar-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+              <button class="ts-link" id="avatar-reset" type="button" style="font-size:13px">恢复默认</button>
+            </div>
+            <div class="avatar-presets" id="avatar-presets" aria-label="预设头像配色"></div>
+            <span class="ts-hint">支持 JPG / PNG / WebP 本地图片（自动裁剪为方形）或选择预设配色。</span>
+          </div>
+        </div>
         <dl class="kv" id="profile-kv"></dl>
         <form id="profile" class="ts-stack" style="margin-top:18px">
-          <div><label class="ts-label" for="p-name">显示名称</label><input id="p-name" class="ts-field" maxlength="64"></div>
+          <div><label class="ts-label" for="p-name">显示名称</label><input id="p-name" class="ts-field" maxlength="48"></div>
           <div><label class="ts-label" for="p-email">邮箱</label><input id="p-email" class="ts-field" type="email"></div>
-          <button class="ts-btn quiet" type="submit">保存资料</button>
+          <button class="ts-btn quiet" type="submit">保存资料与头像</button>
           <p class="ts-meta" id="profile-msg" role="status"></p>
         </form>
       </section>
@@ -39,23 +47,35 @@
         </form>
       </section>
 
-      <section class="ts-sheet" id="consent">
-        <h2>研究数据</h2>
-        <p style="margin:0 0 12px;font-size:14px;color:var(--ink-2)">Trisight 是研究项目。你的审阅记录和“有用 / 没用”反馈可以帮助我们评测和改进审阅模型。授权后，这些数据只用于本项目的研究与模型训练，不会公开，也不会进入公开案例库。你可以随时撤回，撤回后新的反馈不再用于研究。</p>
-        <label class="switch"><input type="checkbox" id="consent-box"><span>同意将我的审阅记录与反馈用于研究</span></label>
-        <p class="ts-meta" id="consent-msg" role="status" style="margin-top:10px"></p>
-      </section>
+      <section class="ts-sheet acct-full">
+        <div class="usage-head">
+          <div>
+            <h2 style="margin-bottom:4px">近期用量统计（近 14 天）</h2>
+            <p class="ts-meta" style="margin:0" id="usage-sub">按日统计审阅任务触发的模型推理与原文检索调用。</p>
+          </div>
+          <div class="usage-toolbar">
+            <div class="usage-legend">
+              <span><i class="u-swatch model"></i>模型调用</span>
+              <span><i class="u-swatch search"></i>检索调用</span>
+            </div>
+            <div class="usage-switch" role="group" aria-label="统计维度">
+              <button type="button" class="fbtn" data-metric="calls" aria-pressed="true">调用次数</button>
+              <button type="button" class="fbtn" data-metric="cost" aria-pressed="false">预留金额 (¥)</button>
+            </div>
+          </div>
+        </div>
 
-      <section class="ts-sheet">
-        <h2>用量</h2>
-        <dl class="kv" id="usage"></dl>
-        <p class="ts-meta" style="margin-top:12px">试用阶段所有账号共享一个额度。每次模型或检索调用预留 ¥0.25，额度用完后暂停新的审阅。</p>
+        <div class="usage-kpis" id="usage-kpis"></div>
+
+        <div class="usage-chart-wrap">
+          <div class="usage-chart" id="usage-chart" aria-label="近期每日用量柱状图"></div>
+        </div>
       </section>
     </div>
 
     <section class="ts-sheet" id="admin" style="margin-top:20px" hidden>
       <h2>受邀账号管理</h2>
-      <p class="ts-meta" style="margin:-6px 0 16px">只有管理员可见。网站不开放自助注册，所有账号都在这里开通。</p>
+      <p class="ts-meta" style="margin:-6px 0 16px">只有管理员可见。网站不开放自助注册，所有账号都在这里开通；管理员账号额度不设上限。</p>
       <form id="create" class="row" style="margin-bottom:18px">
         <div><label class="ts-label" for="c-user">用户名</label><input id="c-user" class="ts-field" required></div>
         <div><label class="ts-label" for="c-email">邮箱</label><input id="c-email" class="ts-field" type="email" required></div>
@@ -74,20 +94,70 @@
     if (!user) return;
     const $ = (id) => document.getElementById(id);
     const esc = TS.esc;
-    const ROLE = { admin: '管理员', member: '成员' };
+    const ROLE = { admin: '管理员（额度不设上限）', member: '成员' };
+    let pendingAvatar = user.avatar || '';
+
+    function renderAvatarEditor() {
+      const previewUser = { ...user, display_name: $('p-name').value || user.display_name || user.username, avatar: pendingAvatar };
+      $('avatar-preview').innerHTML = TS.avatarHtml(previewUser, 60);
+      const presets = TS.PRESET_AVATARS || {};
+      $('avatar-presets').innerHTML = Object.entries(presets).map(([key, cfg]) =>
+        '<button type="button" class="avatar-swatch' + (pendingAvatar === key || (!pendingAvatar && key === 'preset:ink') ? ' on' : '') +
+        '" data-preset="' + key + '" title="' + esc(cfg.label) + '" style="background:' + cfg.bg + '"></button>'
+      ).join('');
+      $('avatar-presets').querySelectorAll('button').forEach((btn) => btn.addEventListener('click', () => {
+        pendingAvatar = btn.dataset.preset;
+        renderAvatarEditor();
+      }));
+    }
 
     function fillProfile(u) {
+      Object.assign(user, u);
+      pendingAvatar = u.avatar || '';
       $('profile-kv').innerHTML = '<dt>用户名</dt><dd>' + esc(u.username) + '</dd><dt>角色</dt><dd>' + (ROLE[u.role] || u.role) + '</dd>' +
         '<dt>最近登录</dt><dd>' + (u.last_login_at ? TS.time(u.last_login_at) : '—') + '</dd>';
       $('p-name').value = u.display_name || ''; $('p-email').value = u.email || '';
+      renderAvatarEditor();
     }
     fillProfile(user);
 
+    $('avatar-reset').addEventListener('click', () => {
+      pendingAvatar = 'preset:ink';
+      renderAvatarEditor();
+    });
+
+    $('avatar-file').addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const size = 128;
+          canvas.width = size; canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          const minSide = Math.min(img.width, img.height);
+          const sx = (img.width - minSide) / 2;
+          const sy = (img.height - minSide) / 2;
+          ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+          pendingAvatar = canvas.toDataURL('image/jpeg', 0.86);
+          renderAvatarEditor();
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
     $('profile').addEventListener('submit', async (e) => {
       e.preventDefault();
+      $('profile-msg').textContent = '正在保存…';
       try {
-        const d = await TS.api('/api/auth/profile', { method: 'POST', body: { display_name: $('p-name').value, email: $('p-email').value } });
-        fillProfile(d.user); TS.bar('account', d.user); $('profile-msg').textContent = '资料已保存。';
+        const d = await TS.api('/api/auth/profile', {
+          method: 'POST',
+          body: { display_name: $('p-name').value, email: $('p-email').value, avatar: pendingAvatar },
+        });
+        fillProfile(d.user); TS.bar('account', d.user); $('profile-msg').textContent = '资料与头像已保存。';
       } catch (err) { $('profile-msg').textContent = err.message; }
     });
 
@@ -100,27 +170,95 @@
       } catch (err) { $('password-msg').textContent = err.message; }
     });
 
-    try {
-      const c = await TS.api('/api/consent');
-      $('consent-box').checked = c.research === true;
-      if (c.research === null || c.version !== c.current_version) {
-        $('consent-banner').hidden = false;
-        $('consent-msg').textContent = '你还没有做出选择。';
-      } else {
-        $('consent-msg').textContent = (c.research ? '已同意' : '未同意') + '，更新于 ' + TS.time(c.updated) + '。';
-      }
-    } catch (err) { $('consent-msg').textContent = err.message; }
-    $('consent-box').addEventListener('change', async () => {
-      try {
-        const c = await TS.api('/api/consent', { method: 'POST', body: { research: $('consent-box').checked } });
-        $('consent-msg').textContent = (c.research ? '已同意' : '已撤回同意') + '，更新于 ' + TS.time(c.updated) + '。';
-        $('consent-banner').hidden = true;
-      } catch (err) { $('consent-msg').textContent = err.message; $('consent-box').checked = !$('consent-box').checked; }
-    });
+    // ---------------- API Platform Usage Bar Chart ----------------
+    let currentMetric = 'calls';
+    let budgetData = null;
+    let assistRows = [];
 
-    Promise.all([TS.api('/api/budget').catch(() => null), TS.api('/api/assist?limit=1').catch(() => null)]).then(([b, h]) => {
-      $('usage').innerHTML = '<dt>我的审阅</dt><dd>' + (h ? h.total + ' 次' : '—') + '</dd>' +
-        '<dt>全站额度</dt><dd>' + (b ? '已用 ¥' + (b.reserved_millicny / 1000).toFixed(2) + ' / ¥' + (b.limit_millicny / 1000).toFixed(2) : '—') + '</dd>';
+    function dayKey(dateObj) {
+      const y = dateObj.getFullYear();
+      const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const d = String(dateObj.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function buildDailySeries(rows) {
+      const days = [];
+      const map = {};
+      const now = new Date();
+      for (let i = 13; i >= 0; i--) {
+        const dt = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+        const key = dayKey(dt);
+        const label = String(dt.getMonth() + 1).padStart(2, '0') + '/' + String(dt.getDate()).padStart(2, '0');
+        const item = { key, label, model_calls: 0, search_calls: 0, assists: 0 };
+        days.push(item);
+        map[key] = item;
+      }
+      for (const r of rows || []) {
+        if (!r.created) continue;
+        const dt = new Date(r.created * 1000);
+        const key = dayKey(dt);
+        const bucket = map[key];
+        if (!bucket) continue;
+        bucket.assists += 1;
+        const mc = typeof r.model_calls === 'number' ? r.model_calls : (r.state === 'completed' ? 2 : 1);
+        const sc = typeof r.search_calls === 'number' ? r.search_calls : 0;
+        bucket.model_calls += mc;
+        bucket.search_calls += sc;
+      }
+      return days;
+    }
+
+    function renderUsage() {
+      const series = buildDailySeries(assistRows);
+      const totalModel = series.reduce((a, b) => a + b.model_calls, 0);
+      const totalSearch = series.reduce((a, b) => a + b.search_calls, 0);
+      const totalCalls = totalModel + totalSearch;
+      const isUnlimited = Boolean((budgetData && budgetData.unlimited) || user.role === 'admin');
+      const spentYuan = budgetData ? (budgetData.reserved_millicny / 1000).toFixed(2) : (totalCalls * 0.25).toFixed(2);
+      const limitText = isUnlimited
+        ? '<span class="u-badge-unlimited">不设上限</span> <span class="ts-meta">已累计 ¥' + spentYuan + '</span>'
+        : '¥' + spentYuan + ' <span class="ts-meta">/ ¥' + (budgetData ? (budgetData.limit_millicny / 1000).toFixed(2) : '10.00') + '</span>';
+
+      $('usage-kpis').innerHTML =
+        '<div class="u-kpi"><span class="u-kpi-label">近 14 天审阅任务</span><strong class="u-kpi-val">' + assistRows.length + ' <small>次</small></strong></div>' +
+        '<div class="u-kpi"><span class="u-kpi-label">近 14 天 API 调用</span><strong class="u-kpi-val">' + totalCalls + ' <small>次</small></strong><span class="ts-meta">模型 ' + totalModel + ' · 检索 ' + totalSearch + '</span></div>' +
+        '<div class="u-kpi"><span class="u-kpi-label">账号额度状态</span><strong class="u-kpi-val">' + limitText + '</strong></div>';
+
+      const values = series.map((d) => currentMetric === 'cost' ? (d.model_calls + d.search_calls) * 0.25 : (d.model_calls + d.search_calls));
+      const maxVal = Math.max(currentMetric === 'cost' ? 1.5 : 6, ...values);
+
+      $('usage-chart').innerHTML = series.map((d) => {
+        const mVal = currentMetric === 'cost' ? d.model_calls * 0.25 : d.model_calls;
+        const sVal = currentMetric === 'cost' ? d.search_calls * 0.25 : d.search_calls;
+        const total = mVal + sVal;
+        const mPct = Math.min(100, (mVal / maxVal) * 100);
+        const sPct = Math.min(100 - mPct, (sVal / maxVal) * 100);
+        const topLabel = total > 0 ? (currentMetric === 'cost' ? '¥' + total.toFixed(2) : String(total)) : '';
+        const tip = `${d.key}：模型 ${d.model_calls} 次，检索 ${d.search_calls} 次（预留 ¥${((d.model_calls + d.search_calls) * 0.25).toFixed(2)}）`;
+        return '<div class="u-col" title="' + esc(tip) + '">' +
+          '<div class="u-bar-track">' +
+            (topLabel ? '<span class="u-bar-val" style="bottom:' + Math.min(92, mPct + sPct + 2) + '%">' + esc(topLabel) + '</span>' : '') +
+            '<div class="u-bar-stack" style="height:' + (mPct + sPct) + '%">' +
+              (sVal > 0 ? '<div class="u-seg search" style="flex:' + sVal + '"></div>' : '') +
+              (mVal > 0 ? '<div class="u-seg model" style="flex:' + mVal + '"></div>' : '') +
+            '</div>' +
+          '</div>' +
+          '<span class="u-col-label">' + esc(d.label) + '</span>' +
+        '</div>';
+      }).join('');
+    }
+
+    document.querySelectorAll('[data-metric]').forEach((btn) => btn.addEventListener('click', () => {
+      currentMetric = btn.dataset.metric;
+      document.querySelectorAll('[data-metric]').forEach((b) => b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'));
+      renderUsage();
+    }));
+
+    Promise.all([TS.api('/api/budget').catch(() => null), TS.api('/api/assist?limit=100').catch(() => null)]).then(([b, h]) => {
+      budgetData = b;
+      assistRows = (h && h.rows) || [];
+      renderUsage();
     });
 
     if (user.role !== 'admin') return;
@@ -129,7 +267,7 @@
 
     async function loadUsers() {
       const d = await TS.api('/api/auth/admin/users');
-      $('users').innerHTML = d.users.map((u) => '<tr><td>' + esc(u.username) + '</td><td>' + esc(u.email) + '</td><td>' + (ROLE[u.role] || u.role) + '</td>' +
+      $('users').innerHTML = d.users.map((u) => '<tr><td>' + TS.avatarHtml(u, 22) + ' <span style="vertical-align:middle;margin-left:6px">' + esc(u.username) + '</span></td><td>' + esc(u.email) + '</td><td>' + (ROLE[u.role] || u.role) + '</td>' +
         '<td>' + (u.status === 'active' ? '启用' : '停用') + '</td><td>' + (u.last_login_at ? TS.time(u.last_login_at) : '从未') + '</td>' +
         '<td style="white-space:nowrap">' + (u.id === user.id ? '<span class="ts-meta">当前账号</span>' :
           '<button class="ts-link" data-act="status" data-id="' + u.id + '" data-to="' + (u.status === 'active' ? 'disabled' : 'active') + '">' + (u.status === 'active' ? '停用' : '启用') + '</button> ' +

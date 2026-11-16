@@ -78,7 +78,11 @@
     }));
 
     TS.api('/api/budget').then((b) => {
-      $('cost').textContent += ' 试用额度已用 ¥' + (b.reserved_millicny / 1000).toFixed(2) + ' / ¥' + (b.limit_millicny / 1000).toFixed(2) + '（全站共享）。';
+      if (b.unlimited) {
+        $('cost').textContent += ' 当前为管理员账号，调用额度不设上限。';
+      } else {
+        $('cost').textContent += ' 试用额度已用 ¥' + (b.reserved_millicny / 1000).toFixed(2) + ' / ¥' + (b.limit_millicny / 1000).toFixed(2) + '（全站共享）。';
+      }
     }).catch(() => {});
 
     function parseContext(text) {
@@ -105,19 +109,23 @@
 
     function show(job) {
       showPhase((job.progress || {}).phase || 'review', job.state);
-      $('resume').hidden = job.state !== 'queued';
+      $('resume').hidden = !(job.state === 'queued' || (job.state === 'failed' && job.advance_path));
       if (job.state === 'completed') {
         TS.render(result, { question: job.input.question, answer: job.input.answer, result: job.result, id: job.id, feedback: job.feedback });
       } else if (job.state === 'failed' || job.state === 'canceled') {
-        result.innerHTML = '<div class="ts-alert">审阅未完成：' + TS.esc(job.error || job.state) + '。已发生的调用不会自动重试。</div>';
+        result.innerHTML = '<div class="ts-alert">审阅未完成：' + TS.esc(job.error || job.state) + '。可点击上方“继续运行”重试当前步骤。</div>';
       }
     }
 
     let current = null;
-    async function drive(job) {
+    async function drive(job, allowRetry = false) {
       current = job.id;
       $('run').disabled = true;
       try {
+        if (allowRetry && job.state === 'failed' && job.advance_path) {
+          result.innerHTML = '<p class="res-empty">正在重试当前审阅步骤……</p>';
+          job = await TS.api(job.advance_path, { method: 'POST' });
+        }
         while (job.state === 'queued') {
           show(job);
           result.innerHTML = '<p class="res-empty">正在' + ({ review: '判断三种模式并初审', search: '检索原文', verify: '逐条核验', compose: '修订回答' }[(job.progress || {}).phase] || '处理') + '……</p>';
@@ -153,7 +161,7 @@
       } catch (e) { $('form-error').textContent = e.message; $('form-error').hidden = false; }
     });
 
-    $('resume-btn').addEventListener('click', async () => { if (current) await drive(await TS.api('/api/assist/' + current)); });
+    $('resume-btn').addEventListener('click', async () => { if (current) await drive(await TS.api('/api/assist/' + current), true); });
 
     const id = new URLSearchParams(location.search).get('id');
     if (id && /^[a-f0-9]{24}$/.test(id)) {
