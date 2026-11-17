@@ -155,8 +155,8 @@
     if (!enabled) return '';
     const cur = (feedback || []).find((f) => f.target === target);
     const on = (v) => (cur && cur.value === v ? 'true' : 'false');
-    return '<span class="fb"><button class="fbtn" data-fb="' + target + '" data-v="up" aria-pressed="' + on('up') + '" title="有用">有用</button>' +
-      '<button class="fbtn" data-fb="' + target + '" data-v="down" aria-pressed="' + on('down') + '" title="没用">没用</button></span>';
+    return '<span class="fb"><button class="fbtn" data-fb="' + target + '" data-v="up" aria-pressed="' + on('up') + '" title="有用" aria-label="有用">👍</button>' +
+      '<button class="fbtn" data-fb="' + target + '" data-v="down" aria-pressed="' + on('down') + '" title="没用" aria-label="没用">👎</button></span>';
   }
 
   function promptBlock(label, text) {
@@ -183,7 +183,7 @@
     // correction
     let c = '<div class="res-block"><div class="res-head"><h3><span class="dot correct"></span>纠错</h3>' +
       '<span class="verdict ' + m.correct.verdict + '">' + (VERDICT[m.correct.verdict] || m.correct.verdict) + '</span>' +
-      '<span class="why">' + esc(m.correct.reason) + '</span>' + fbButtons('correct', opts.feedback, fbOn && m.correct.needed) + '</div>';
+      fbButtons('correct', opts.feedback, fbOn && m.correct.needed) + '</div>';
     for (const cl of m.correct.claims || []) {
       c += '<div class="claim ' + cl.verdict + '"><span class="tag">' + (CLAIM[cl.verdict] || cl.verdict) + '</span>“' + esc(cl.text) + '”' +
         (cl.explanation ? '<div class="ts-meta">' + esc(cl.explanation) + '</div>' : '') +
@@ -195,7 +195,7 @@
     // supplement
     let s = '<div class="res-block"><div class="res-head"><h3><span class="dot supplement"></span>补充</h3>' +
       '<span class="verdict ' + (m.supplement.needed ? '' : 'not_run') + '">' + (m.supplement.needed ? (m.supplement.points.length + ' 个遗漏点') : '无需补充') + '</span>' +
-      '<span class="why">' + esc(m.supplement.reason) + '</span>' + fbButtons('supplement', opts.feedback, fbOn && m.supplement.needed) + '</div>';
+      fbButtons('supplement', opts.feedback, fbOn && m.supplement.needed) + '</div>';
     for (const p of m.supplement.points || []) {
       s += '<div class="point"><b>' + esc(p.point) + '</b>：' + esc(p.content) +
         '<span class="src">' + esc(p.why) + '。' + (SOURCE[p.source_status] || '') + '</span>' + quote(p.quote) + '</div>';
@@ -206,7 +206,7 @@
     // prediction
     let p = '<div class="res-block"><div class="res-head"><h3><span class="dot predict"></span>预测</h3>' +
       '<span class="verdict ' + (m.predict.needed ? '' : 'not_run') + '">' + (m.predict.needed ? '你接下来可能会问' : '无需预测') + '</span>' +
-      '<span class="why">' + esc(m.predict.reason) + '</span>' + fbButtons('predict', opts.feedback, fbOn && m.predict.needed) + '</div>';
+      fbButtons('predict', opts.feedback, fbOn && m.predict.needed) + '</div>';
     if ((m.predict.questions || []).length) {
       p += '<div class="nextq">' + m.predict.questions.map((q) => '<button type="button" data-copy="' + esc(q.question) + '" title="点击复制">' + esc(q.question) + '</button>').join('') + '</div>';
     }
