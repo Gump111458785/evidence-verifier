@@ -4,15 +4,16 @@
 (() => {
  if(globalThis.evPage)return;
  const providers={
+  'chat.deepseek.com':{name:'DeepSeek',assistant:'div.ds-markdown:not(.ds-think-content *), [data-message-author-role="assistant"]',user:'.ds-message:not(:has(.ds-markdown)):not(:has(.ds-think-content)):not(:has(.ds-markdown--block)), .fbb737a4, [data-message-author-role="user"]',input:'textarea, [contenteditable="true"][role="textbox"]'},
   'chatgpt.com':{name:'ChatGPT',assistant:'[data-message-author-role="assistant"], h4[data-conversation-role="assistant"]',user:'[data-message-author-role="user"], h4[data-conversation-role="user"]',input:'#prompt-textarea, main textarea, main [contenteditable="true"]'},
   'claude.ai':{name:'Claude',assistant:'[data-is-streaming], .font-claude-message',user:'[data-testid="user-message"]',input:'[contenteditable="true"][role="textbox"]'},
   'gemini.google.com':{name:'Gemini',assistant:'model-response',user:'user-query',input:'.ql-editor[contenteditable="true"]'}};
  const CONTEXT_TURNS=6, CONTEXT_CHARS=2000;
  const visible=n=>{if(!(n instanceof Element)||n.getAttribute('aria-hidden')==='true')return false;const style=getComputedStyle(n);if(style.visibility==='hidden'||style.display==='none')return false;return !!n.getClientRects().length||(style.display==='contents'&&[...n.children].some(visible))};
- const ignored='script,style,nav,textarea,h4[data-conversation-role],[hidden],[aria-hidden="true"],[data-testid*="thinking"],[data-testid*="reasoning"],.thinking-block';
+ const ignored='script,style,nav,textarea,h4[data-conversation-role],[hidden],[aria-hidden="true"],[data-testid*="thinking"],[data-testid*="reasoning"],.thinking-block,.ds-think-content,[class*="ds-think"],.md-code-block-banner';
  function text(n){if(!n||!visible(n))return '';const walk=node=>{if(node.nodeType===3)return node.textContent;if(node.nodeType!==1||!visible(node)||node.matches(ignored))return '';if(node.tagName==='BUTTON'&&!node.closest('p,li,td,th,blockquote,figcaption'))return '';return Array.from(node.childNodes).map(walk).join(' ')};return walk(n).replace(/\s+/g,' ').trim()}
- function messageNodes(selector){return [...new Set([...document.querySelectorAll(selector)].map(n=>n.matches('h4[data-conversation-role]')?n.parentElement:n))].filter(visible)}
- function provider(){const p=providers[location.hostname];if(!p)throw Error('仅适配 ChatGPT、Claude 与 Gemini 网页。');return p}
+ function messageNodes(selector){const raw=[...new Set([...document.querySelectorAll(selector)].map(n=>n.matches('h4[data-conversation-role]')?n.parentElement:n))].filter(visible);return raw.filter(n=>!raw.some(o=>o!==n&&o.contains?.(n)))}
+ function provider(){const p=providers[location.hostname];if(!p)throw Error('仅适配 DeepSeek、ChatGPT、Claude 与 Gemini 网页。');return p}
  const before=(a,b)=>Boolean(a.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_FOLLOWING);
 
  /* Earlier visible turns, newest first, until the turn or character budget is used.
@@ -39,7 +40,7 @@
   if(a.length>5000||q.length>1000)throw Error('当前问答超过审阅上限（问题 1,000 字、回答 5,000 字），未截断。');
   const citations=[...answer.querySelectorAll('a[href]')].filter(visible).map(n=>({title:text(n)||n.hostname,url:n.href})).filter(n=>{try{const u=new URL(n.url);return u.protocol==='https:'&&u.hostname!==location.hostname&&!u.username&&!u.password}catch{return false}});
   const unique=[...new Map(citations.map(n=>[n.url,n])).values()];
-  const streaming=Boolean(answer.getAttribute?.('data-is-streaming')==='true'||document.querySelector?.('[data-testid*="stop-button"]'));
+  const streaming=Boolean(answer.getAttribute?.('data-is-streaming')==='true'||document.querySelector?.('[data-testid*="stop-button"], button[aria-label*="Stop" i], button[aria-label*="停止"], [role="button"][aria-label*="Stop" i], [role="button"][aria-label*="停止"], .ds-markdown--streaming'));
   const earlier=[...users.map(n=>({role:'user',n})),...answers.map(n=>({role:'assistant',n}))].filter(t=>t.n!==current&&t.n!==answer&&before(t.n,current));
   return {platform:p.name,page_url:location.origin+location.pathname,question:q,candidate:a,citations:unique,...context(earlier),
    streaming_complete:!streaming,retrieval_scope:'visible_dom_only',captured_at:new Date().toISOString()};

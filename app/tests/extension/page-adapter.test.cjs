@@ -38,3 +38,23 @@ test('earlier turns become context, newest kept first, whole turns only',()=>{
  assert.equal(s.question,'Who designed the Analytical Engine?');
 });
 test('ambiguous visible editors are rejected',()=>{const f=fixture();f.context.document.querySelectorAll=s=>s.includes('textarea')?[f.input,new TA('textarea')]:[];assert.throws(()=>f.api.run('insert','prompt'),/找不到输入框/);});
+test('DeepSeek web capture filters ds-think-content and code banners while inserting draft into textarea',()=>{
+ const u=new E('div',{class:'ds-message'},[new E('p',{},[T('埃菲尔铁塔哪年建成？')])]);u.order=1;
+ const think=new E('div',{class:'ds-think-content'},[T('internal chain')]);
+ const banner=new E('div',{class:'md-code-block-banner'},[T('Copy')]);
+ const ans=new E('div',{class:'ds-markdown'},[think,banner,new E('p',{},[T('1889年建成。')])]);ans.order=2;
+ const origMatch=E.prototype.matches;
+ const matchClass=(el,sel)=>sel.split(',').some(s=>s.trim().startsWith('.')&&String(el.attrs.class||'').split(/\s+/).includes(s.trim().slice(1)));
+ E.prototype.matches=function(sel){return origMatch.call(this,sel)||matchClass(this,sel);};
+ try{
+  const ta=new TA('textarea');
+  const ctx={Element:E,HTMLTextAreaElement:TA,Node:{DOCUMENT_POSITION_FOLLOWING:4},Event:class{constructor(type){this.type=type;}},URL,Date,Set,clearTimeout,setTimeout,getComputedStyle:n=>({display:n.attrs.display||'block',visibility:'visible'}),location:{hostname:'chat.deepseek.com',origin:'https://chat.deepseek.com',pathname:'/a/chat/s/1'},window:{getSelection:()=>''},document:{querySelectorAll:s=>s.includes('ds-markdown:')?[ans]:s.includes('.ds-message')?[u]:s.includes('textarea')?[ta]:[],querySelector:()=>null}};
+  vm.createContext(ctx);vm.runInContext(code,ctx);
+  const snap=ctx.evPage.run('capture');
+  assert.equal(snap.platform,'DeepSeek');
+  assert.equal(snap.question,'埃菲尔铁塔哪年建成？');
+  assert.equal(snap.candidate,'1889年建成。');
+  assert.equal(ctx.evPage.run('insert','请核对年份').sent,false);
+  assert.equal(ta.value,'请核对年份');
+ }finally{E.prototype.matches=origMatch;}
+});

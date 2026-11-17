@@ -1,7 +1,7 @@
 /* Service worker. Content scripts push a snapshot per tab as soon as an answer settles;
    this worker keeps the active tab's snapshot in `liveSnapshot`, so the panel shows
    a ready conversation the moment it opens and a review starts without a page read. */
-const SITES=['https://chatgpt.com/*','https://claude.ai/*','https://gemini.google.com/*'];
+const SITES=['https://chat.deepseek.com/*','https://chatgpt.com/*','https://claude.ai/*','https://gemini.google.com/*'];
 const snapKey=id=>'snap:'+id;
 
 chrome.action.onClicked.addListener(tab=>{
