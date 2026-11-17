@@ -10,8 +10,7 @@
 <body>
   <div class="ts-bar-wrap"><header id="ts-bar"></header></div>
   <main class="ts-page">
-    <h1>审阅一条回答</h1>
-    <p class="lead">粘贴你的问题和大模型的回答。系统先判断纠错、补充、预测各自是否需要，只运行需要的部分。</p>
+    <h1 style="margin-bottom:22px">审阅</h1>
 
     <div class="ts-split">
       <form id="form" class="ts-sheet ts-stack" novalidate>
@@ -139,11 +138,14 @@
 
     function show(job) {
       stopTimelineClock();
-      $('resume').hidden = !(job.state === 'queued' || (job.state === 'failed' && job.advance_path));
+      const errText = String(job.error || job.state || '');
+      const nonRetryable = /402|余额不足|密钥/.test(errText);
+      $('resume').hidden = nonRetryable || !(job.state === 'queued' || (job.state === 'failed' && job.advance_path));
       if (job.state === 'completed') {
         TS.render(result, { question: job.input.question, answer: job.input.answer, result: job.result, id: job.id, feedback: job.feedback });
       } else if (job.state === 'failed' || job.state === 'canceled') {
-        result.innerHTML = '<div class="ts-alert">审阅未完成：' + TS.esc(job.error || job.state) + '。可点击上方“继续运行”重试当前步骤。</div>';
+        const suffix = nonRetryable ? '' : '。可点击上方“继续运行”重试当前步骤。';
+        result.innerHTML = '<div class="ts-alert">审阅未完成：' + TS.esc(errText) + suffix + '</div>';
       }
     }
 

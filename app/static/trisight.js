@@ -9,19 +9,42 @@
   const headers = (extra = {}) => (token() ? { ...extra, Authorization: 'Bearer ' + token() } : extra);
 
   async function api(path, options = {}) {
-    const res = await fetch(path, {
-      method: options.method || 'GET',
-      credentials: 'same-origin',
-      headers: headers(options.body ? { 'Content-Type': 'application/json' } : {}),
-      body: options.body ? JSON.stringify(options.body) : undefined,
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      const err = new Error(data.error || ('请求失败（' + res.status + '）'));
-      err.status = res.status; err.code = data.code;
-      throw err;
+    const method = (options.method || 'GET').toUpperCase();
+    const retryable = method === 'GET' || method === 'HEAD';
+    const maxAttempts = retryable ? 3 : 1;
+    let lastErr = null;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const res = await fetch(path, {
+          method,
+          credentials: 'same-origin',
+          headers: headers(options.body ? { 'Content-Type': 'application/json' } : {}),
+          body: options.body ? JSON.stringify(options.body) : undefined,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          if (retryable && [502, 503, 504].includes(res.status) && attempt < maxAttempts - 1) {
+            await new Promise((r) => setTimeout(r, 250 * (attempt + 1)));
+            continue;
+          }
+          const err = new Error(data.error || ('请求失败（' + res.status + '）'));
+          err.status = res.status; err.code = data.code;
+          throw err;
+        }
+        return data;
+      } catch (err) {
+        if (err && typeof err.status === 'number') throw err;
+        lastErr = err;
+        if (attempt < maxAttempts - 1) {
+          await new Promise((r) => setTimeout(r, 250 * (attempt + 1)));
+          continue;
+        }
+      }
     }
-    return data;
+    const msg = lastErr && /failed to fetch|network|load failed|abort/i.test(String(lastErr.message || ''))
+      ? '网络请求暂时中断，请刷新或重试'
+      : ((lastErr && lastErr.message) || '网络请求失败');
+    throw new Error(msg);
   }
 
   async function me() {

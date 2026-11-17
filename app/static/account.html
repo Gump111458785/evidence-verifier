@@ -263,7 +263,15 @@
         $('create').reset(); loadUsers();
       } catch (err) { note(esc(err.message)); }
     });
-    loadUsers().catch((err) => note(esc(err.message)));
+    function loadUsersWithRetryBtn() {
+      note('');
+      loadUsers().catch((err) => {
+        note(esc(err.message) + ' <button type="button" class="ts-link" id="retry-users" style="margin-left:8px">重新加载</button>');
+        const btn = $('retry-users');
+        if (btn) btn.addEventListener('click', loadUsersWithRetryBtn);
+      });
+    }
+    loadUsersWithRetryBtn();
   })();
   </script>
 </body>

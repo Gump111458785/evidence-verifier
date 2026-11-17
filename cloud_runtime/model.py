@@ -69,6 +69,7 @@ class DeepSeek:
                 'thinking': {'type': 'disabled'}, 'response_format': {'type': 'json_object'}, 'messages': messages}
         reserved = self.store.reserve()
         detail = ''
+        http_code = None
         try:
             if self.transport:
                 reply = self.transport(body)
@@ -76,7 +77,10 @@ class DeepSeek:
                 try:
                     reply = self._http_post(body, key, timeout=25)
                 except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, ValueError) as first_err:
-                    detail = f' ({type(first_err).__name__}{" " + str(getattr(first_err, "code", "")) if hasattr(first_err, "code") else ""})'
+                    http_code = getattr(first_err, 'code', None)
+                    detail = f' ({type(first_err).__name__}{" " + str(http_code) if http_code is not None else ""})'
+                    if http_code in (401, 402):
+                        raise
                     fallback_body = {
                         'model': self.env.get('EV_DEEPSEEK_FALLBACK_MODEL', 'deepseek-chat'),
                         'temperature': 0,
@@ -94,6 +98,11 @@ class DeepSeek:
             return {'parsed': result, 'usage': reply.get('usage'),
                     'source': 'remote_api', 'provider_model': reply.get('model', MODEL), 'reservation': reserved}
         except Exception as exc:
+            err_code = getattr(exc, 'code', http_code)
+            if err_code == 402:
+                raise CloudError('model_failure', 'DeepSeek API 账户余额不足（HTTP 402），请联系管理员充值或更换服务端密钥', 502) from None
+            if err_code == 401:
+                raise CloudError('model_failure', 'DeepSeek API 服务端密钥无效（HTTP 401），请联系管理员检查配置', 502) from None
             if not self.transport and not detail:
                 code_str = f' HTTP {exc.code}' if hasattr(exc, 'code') else ''
                 detail = f'（{type(exc).__name__}{code_str}）'
