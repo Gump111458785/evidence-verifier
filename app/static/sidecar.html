@@ -4,145 +4,99 @@
   <meta charset="utf-8">
   <link rel="icon" href="/favicon.svg?v=053" type="image/svg+xml">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Trisight 三省 · 对话审查助手</title>
+  <title>Trisight 三省 · 对话伴随插件</title>
   <link rel="stylesheet" href="plugin.css">
 </head>
-<body class="conversation">
-  <header class="panel-brand">
-    <div class="panel-brand-left">
+<body class="ts-sc-body">
+  <header class="sc-bar">
+    <div class="sc-brand">
       <svg viewBox="0 0 20 20" aria-hidden="true">
         <path d="M2 6h9" stroke="#c03a2b" stroke-width="2.2" stroke-linecap="round"/>
         <path d="M5 15l3-5 3 5" fill="none" stroke="#2353b8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
         <path d="M13 13h5m-2-2.5 2 2.5-2 2.5" fill="none" stroke="#1c2230" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
-      <div>
-        <h1>Trisight 三省</h1>
-        <p>对话审查与纠偏侧栏</p>
-      </div>
+      <strong>Trisight</strong>
+      <span>三省</span>
     </div>
-    <span id="mode-label" class="mode">当前会话</span>
+    <div class="sc-bar-right">
+      <span id="sc-sync" class="sc-sync" title="当前对话读取状态">
+        <i class="sc-sync-dot" aria-hidden="true"></i>
+        <span id="sc-sync-text">自动同步</span>
+      </span>
+      <button type="button" id="sc-edit-toggle" class="sc-icon-btn" title="填写或修改待审内容" aria-label="填写或修改待审内容" hidden>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+      </button>
+      <button type="button" id="sc-logout" class="sc-icon-btn" title="退出登录" aria-label="退出登录" hidden>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </button>
+    </div>
   </header>
-  <main>
-    <div class="auto-assist-bar">
-      <label class="auto-toggle-label">
-        <input type="checkbox" id="auto-assist-toggle" checked>
-        <span><strong>自动辅助</strong> · 回答完成后自动读取可见问答与引用</span>
-      </label>
-      <div class="preset-actions">
-        <button type="button" id="preset-gap" class="secondary">示例：缺证案例</button>
-        <button type="button" id="preset-supported" class="secondary">示例：证据充分</button>
-      </div>
-    </div>
 
-    <section class="audit-step">
-      <div class="step-heading">
-        <span>1</span>
-        <h2>捕获或输入待审问答</h2>
-      </div>
-      <div class="capture-actions">
-        <button id="capture" class="secondary" style="margin:0;flex:1">读取当前回答</button>
-        <button id="watch" class="secondary" style="margin:0;flex:1">自动监听</button>
-        <button id="stop" class="secondary" style="margin:0">停止</button>
-      </div>
-      <p id="status" role="status" class="meta">在 AI 对话页点击读取或自动监听，也可在下方手动输入。</p>
-      <label>用户问题
-        <textarea id="question" rows="2" placeholder="输入或捕获当前问题（最多 2,000 字）"></textarea>
-      </label>
-      <label>待审回答片段
-        <textarea id="candidate" rows="3" placeholder="粘贴需要核查的 AI 回答（最多 1,000 字）"></textarea>
-      </label>
-      <p id="input-count" class="meta"></p>
-      <details>
-        <summary>查看已捕获引用与页面记录</summary>
-        <pre id="capture-trace"></pre>
-      </details>
+  <main class="sc-main">
+    <!-- Unauthenticated cloud login view -->
+    <section id="sc-login-card" class="sc-card sc-login" hidden>
+      <h2>登录 Trisight</h2>
+      <div id="sc-login-err" class="sc-err" role="alert" hidden></div>
+      <form id="sc-login-form" class="sc-login" novalidate>
+        <input id="sc-login-id" class="sc-field" type="text" autocomplete="username" placeholder="受邀用户名或邮箱" required>
+        <div class="sc-pw">
+          <input id="sc-login-pw" class="sc-field" type="password" autocomplete="current-password" placeholder="登录密码" required>
+          <button type="button" id="sc-pw-toggle" aria-label="显示密码">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2.2 12s3.6-6.5 9.8-6.5 9.8 6.5 9.8 6.5-3.6 6.5-9.8 6.5S2.2 12 2.2 12Z"/><circle cx="12" cy="12" r="3.1"/></svg>
+          </button>
+        </div>
+        <button type="submit" id="sc-login-btn" class="sc-run" style="width:100%">登录</button>
+      </form>
     </section>
 
-    <section class="audit-step">
-      <div class="step-heading">
-        <span>2</span>
-        <h2>来源原文</h2>
-      </div>
-      <div id="evidence-summary" class="source-summary"></div>
-      <button id="source" class="secondary">收集当前来源页原文</button>
-      <details class="manual-source">
-        <summary>手动粘贴来源原文</summary>
-        <label>原文段落
-          <textarea id="manual-source-text" rows="3" placeholder="粘贴来源中直接相关的原文段落"></textarea>
-        </label>
-        <label>来源链接（可选）
-          <input id="manual-source-url" type="url" placeholder="https://...">
-        </label>
-        <button id="manual-source-add" class="secondary">添加到证据</button>
-      </details>
-      <details>
-        <summary>高级：编辑证据 JSON</summary>
-        <textarea id="evidence" rows="4" spellcheck="false">[]</textarea>
-      </details>
-    </section>
+    <!-- Single-page Workspace -->
+    <section id="sc-app" hidden>
+      <div class="sc-card sc-controls">
+        <div class="sc-controls-top">
+          <div class="sc-seg" role="radiogroup" aria-label="审阅方式">
+            <label><input type="radio" name="sc-how" value="auto" checked><span>自动审查</span></label>
+            <label><input type="radio" name="sc-how" value="manual"><span>手动审查</span></label>
+          </div>
+          <button type="button" id="sc-run" class="sc-run">开始审阅</button>
+        </div>
 
-    <section class="audit-step">
-      <div class="step-heading">
-        <span>3</span>
-        <h2>事实核验与补证</h2>
+        <div id="sc-manual-modes" class="sc-checks" hidden>
+          <label><input type="checkbox" name="sc-mode" value="correct" checked><span class="dot correct"></span>纠错</label>
+          <label><input type="checkbox" name="sc-mode" value="supplement" checked><span class="dot supplement"></span>补充</label>
+          <label><input type="checkbox" name="sc-mode" value="predict" checked><span class="dot predict"></span>预测</label>
+        </div>
+
+        <!-- Hidden storage for auto-captured Q&A; toggleable only on web preview when user taps edit -->
+        <div id="sc-ctx-drawer" class="sc-manual-ctx" hidden>
+          <input id="question" class="sc-field" type="text" maxlength="1000" placeholder="问题（插件自动读取）">
+          <textarea id="candidate" class="sc-field" rows="3" maxlength="5000" placeholder="待审回答（插件自动读取）"></textarea>
+        </div>
       </div>
-      <div class="audit-actions">
-        <button id="plan" class="secondary">拆解待核验关系</button>
-        <button id="verify" class="primary">开始核验</button>
-        <button id="repair" class="secondary" disabled>缺口补搜并复核</button>
-      </div>
-      <div id="relation-summary" class="source-summary"></div>
-      <details>
-        <summary>高级：编辑关系 JSON</summary>
-        <textarea id="relations" rows="4" spellcheck="false">[]</textarea>
-      </details>
-      <div class="audit-actions">
-        <button id="resume" class="secondary" hidden>恢复观察上次任务</button>
-        <button id="cancel" class="text-action" disabled>停止任务</button>
-      </div>
-      <p id="error" class="error" role="alert" hidden></p>
-      <section aria-live="polite">
-        <div id="verdict" class="verdict-box" hidden></div>
-        <div id="concise-summary" class="concise-action-card" hidden></div>
-        <ol id="stages"></ol>
-        <details>
-          <summary>查看核验引文与轨迹详情</summary>
-          <pre id="trace"></pre>
-        </details>
+
+      <div id="sc-error" class="sc-err" role="alert" hidden></div>
+
+      <section id="sc-result" class="sc-card sc-result-card" aria-live="polite">
+        <div class="sc-tabs" role="tablist">
+          <button type="button" class="sc-tab" data-tab="correct" role="tab" aria-selected="true">
+            <span class="dot correct"></span>纠错<span class="sc-badge" id="b-correct" hidden></span>
+          </button>
+          <button type="button" class="sc-tab" data-tab="supplement" role="tab" aria-selected="false">
+            <span class="dot supplement"></span>补充<span class="sc-badge" id="b-supplement" hidden></span>
+          </button>
+          <button type="button" class="sc-tab" data-tab="predict" role="tab" aria-selected="false">
+            <span class="dot predict"></span>预测<span class="sc-badge" id="b-predict" hidden></span>
+          </button>
+          <button type="button" class="sc-tab" data-tab="answer" role="tab" aria-selected="false">
+            修订
+          </button>
+        </div>
+        <div id="sc-pane" class="sc-pane">
+          <div class="sc-empty">已就绪</div>
+        </div>
       </section>
-      <div id="gap-search"></div>
     </section>
-
-    <section class="audit-step">
-      <div class="step-heading">
-        <span>4</span>
-        <h2>生成修订提示并填入对话</h2>
-      </div>
-      <button id="prompt" class="secondary" disabled>生成对话修订提示</button>
-      <textarea id="supplement" rows="5" readonly aria-label="补充prompt" placeholder="核验完成后可在此生成发回原对话的修订提示词"></textarea>
-      <div class="audit-actions">
-        <button id="copy" class="secondary" disabled>复制提示词</button>
-        <button id="insert" class="primary" disabled>确认填入原对话草稿</button>
-      </div>
-      <button id="export" class="text-action">导出审查记录 (.json)</button>
-    </section>
-
-    <details class="connection-settings">
-      <summary>服务连接设置</summary>
-      <label>核验服务地址
-        <select id="service">
-          <option>http://127.0.0.1:8790</option>
-          <option>http://127.0.0.1:18790</option>
-        </select>
-      </label>
-      <p class="meta" id="setup"></p>
-    </details>
-    <footer>
-      <a href="plugin.html">插件交互演练</a>
-      <a href="/assist.html" target="_blank" rel="noopener">打开网页审阅</a>
-    </footer>
   </main>
-  <script src="cloud-access.js"></script>
+
   <script src="sidecar.js"></script>
 </body>
 </html>

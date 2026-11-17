@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Evidence Verifier · 答案审查助手",
-  "version": "0.3.3",
+  "name": "Trisight 三省 · 对话伴随插件",
+  "version": "0.5.4",
   "minimum_chrome_version": "116",
-  "description": "主动读取主流AI网页可见回答与引用，独立核验后生成补证prompt；不读取隐藏思维链。",
+  "description": "自动读取 AI 对话页可见问答与引用，完成纠错、补充与预测审阅；提示词仅填入输入框，不自动发送。",
   "permissions": [
     "sidePanel",
     "contextMenus",
@@ -12,6 +12,7 @@
     "scripting"
   ],
   "host_permissions": [
+    "https://evidence-verifier.edgeone.dev/*",
     "http://127.0.0.1/*"
   ],
   "background": {
@@ -21,9 +22,9 @@
     "default_path": "sidecar.html"
   },
   "action": {
-    "default_title": "打开答案审查助手"
+    "default_title": "打开 Trisight 三省审阅侧栏"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' http://127.0.0.1:18790 http://127.0.0.1:8790;"
+    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://evidence-verifier.edgeone.dev http://127.0.0.1:18790 http://127.0.0.1:8790;"
   }
 }

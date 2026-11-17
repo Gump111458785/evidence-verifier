@@ -7,76 +7,93 @@
   <title>Trisight 三省 · 对话伴随插件</title>
   <link rel="stylesheet" href="plugin.css">
 </head>
-<body>
-  <header class="panel-brand">
-    <div class="panel-brand-left">
+<body class="ts-sc-body">
+  <header class="sc-bar">
+    <div class="sc-brand">
       <svg viewBox="0 0 20 20" aria-hidden="true">
         <path d="M2 6h9" stroke="#c03a2b" stroke-width="2.2" stroke-linecap="round"/>
         <path d="M5 15l3-5 3 5" fill="none" stroke="#2353b8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
         <path d="M13 13h5m-2-2.5 2 2.5-2 2.5" fill="none" stroke="#1c2230" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
-      <div>
-        <h1>Trisight 三省</h1>
-        <p>对话伴随审阅插件</p>
-      </div>
+      <strong>Trisight</strong>
+      <span>三省</span>
     </div>
-    <span class="mode">自动辅助</span>
+    <div class="sc-bar-right">
+      <span id="sc-sync" class="sc-sync" title="当前对话读取状态">
+        <i class="sc-sync-dot" aria-hidden="true"></i>
+        <span id="sc-sync-text">自动同步</span>
+      </span>
+      <button type="button" id="sc-edit-toggle" class="sc-icon-btn" title="填写或修改待审内容" aria-label="填写或修改待审内容" hidden>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+      </button>
+      <button type="button" id="sc-logout" class="sc-icon-btn" title="退出登录" aria-label="退出登录" hidden>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </button>
+    </div>
   </header>
-  <main>
-    <p id="panel-source" class="source-note">演示示例 · 展示插件在对话页旁的精简审阅形态。</p>
 
-    <section id="selection" hidden>
-      <label for="selected-answer">当前选中的回答</label>
-      <textarea id="selected-answer" rows="3" readonly></textarea>
-      <p id="selection-note" class="meta">选中内容仅保留在当前插件会话。</p>
+  <main class="sc-main">
+    <section id="sc-login-card" class="sc-card sc-login" hidden>
+      <h2>登录 Trisight</h2>
+      <div id="sc-login-err" class="sc-err" role="alert" hidden></div>
+      <form id="sc-login-form" class="sc-login" novalidate>
+        <input id="sc-login-id" class="sc-field" type="text" autocomplete="username" placeholder="受邀用户名或邮箱" required>
+        <div class="sc-pw">
+          <input id="sc-login-pw" class="sc-field" type="password" autocomplete="current-password" placeholder="登录密码" required>
+          <button type="button" id="sc-pw-toggle" aria-label="显示密码">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2.2 12s3.6-6.5 9.8-6.5 9.8 6.5 9.8 6.5-3.6 6.5-9.8 6.5S2.2 12 2.2 12Z"/><circle cx="12" cy="12" r="3.1"/></svg>
+          </button>
+        </div>
+        <button type="submit" id="sc-login-btn" class="sc-run" style="width:100%">登录</button>
+      </form>
     </section>
 
-    <div class="plugin-case-bar">
-      <label for="panel-case">演练场景</label>
-      <select id="panel-case" disabled>
-        <option>正在载入案例</option>
-      </select>
-    </div>
+    <section id="sc-app" hidden>
+      <div class="sc-card sc-controls">
+        <div class="sc-controls-top">
+          <div class="sc-seg" role="radiogroup" aria-label="审阅方式">
+            <label><input type="radio" name="sc-how" value="auto" checked><span>自动审查</span></label>
+            <label><input type="radio" name="sc-how" value="manual"><span>手动审查</span></label>
+          </div>
+          <button type="button" id="sc-run" class="sc-run">开始审阅</button>
+        </div>
 
-    <div class="captured-box">
-      <span class="captured-kicker">已捕获当前 AI 回答</span>
-      <p id="panel-answer" class="candidate"></p>
-    </div>
+        <div id="sc-manual-modes" class="sc-checks" hidden>
+          <label><input type="checkbox" name="sc-mode" value="correct" checked><span class="dot correct"></span>纠错</label>
+          <label><input type="checkbox" name="sc-mode" value="supplement" checked><span class="dot supplement"></span>补充</label>
+          <label><input type="checkbox" name="sc-mode" value="predict" checked><span class="dot predict"></span>预测</label>
+        </div>
 
-    <button id="panel-run" class="primary" disabled>重新执行审阅</button>
-    <p id="panel-error" class="error" role="alert" hidden></p>
-
-    <section id="panel-result" aria-live="polite" hidden>
-      <div id="panel-verdict" class="verdict-box"></div>
-      <div id="panel-action-card" class="concise-action-card"></div>
-
-      <div id="panel-repair-row" class="repair-row">
-        <button id="panel-repair" class="secondary">补入教育证据 E3 并复核</button>
+        <div id="sc-ctx-drawer" class="sc-manual-ctx" hidden>
+          <input id="question" class="sc-field" type="text" maxlength="1000" placeholder="问题（插件自动读取）">
+          <textarea id="candidate" class="sc-field" rows="3" maxlength="5000" placeholder="待审回答（插件自动读取）"></textarea>
+        </div>
       </div>
 
-      <div id="panel-draft-box" class="draft-box" hidden>
-        <label for="panel-draft-input">原对话输入框草稿预览（已填入，未发送）</label>
-        <textarea id="panel-draft-input" rows="4" readonly></textarea>
-      </div>
+      <div id="sc-error" class="sc-err" role="alert" hidden></div>
 
-      <details class="evidence-details" open>
-        <summary>原文引文与关系定位 (<span id="relation-count"></span>)</summary>
-        <div id="panel-relations"></div>
-        <div id="panel-citation"></div>
-      </details>
-
-      <details class="reason-details">
-        <summary>核验说明与检索词</summary>
-        <p id="panel-explanation"></p>
-        <div id="panel-queries"></div>
-      </details>
+      <section id="sc-result" class="sc-card sc-result-card" aria-live="polite">
+        <div class="sc-tabs" role="tablist">
+          <button type="button" class="sc-tab" data-tab="correct" role="tab" aria-selected="true">
+            <span class="dot correct"></span>纠错<span class="sc-badge" id="b-correct" hidden></span>
+          </button>
+          <button type="button" class="sc-tab" data-tab="supplement" role="tab" aria-selected="false">
+            <span class="dot supplement"></span>补充<span class="sc-badge" id="b-supplement" hidden></span>
+          </button>
+          <button type="button" class="sc-tab" data-tab="predict" role="tab" aria-selected="false">
+            <span class="dot predict"></span>预测<span class="sc-badge" id="b-predict" hidden></span>
+          </button>
+          <button type="button" class="sc-tab" data-tab="answer" role="tab" aria-selected="false">
+            修订
+          </button>
+        </div>
+        <div id="sc-pane" class="sc-pane">
+          <div class="sc-empty">已就绪</div>
+        </div>
+      </section>
     </section>
-
-    <footer>
-      <span>无错不打扰 · 有缺口一键填入草稿</span>
-      <button id="panel-workbench" class="text-action">打开网页审阅</button>
-    </footer>
   </main>
-  <script src="plugin.js"></script>
+
+  <script src="sidecar.js"></script>
 </body>
 </html>

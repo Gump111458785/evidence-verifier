@@ -2,18 +2,37 @@
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 import json
+import re
 import sys
 sys.path.insert(0,str(Path(__file__).parent/'evlib'))
 from cloud_runtime.api import route
 from cloud_runtime.auth import build_session_cookie,clear_session_cookie
 from cloud_runtime.store import CloudError
 
+EXT_ORIGIN_RE=re.compile(r'^chrome-extension://[a-p]{32}$')
+
+
 class handler(BaseHTTPRequestHandler):
     def log_message(self,*args):pass
+    def _cors_origin(self):
+        origin=(self.headers.get('Origin') or '').strip()
+        return origin if EXT_ORIGIN_RE.fullmatch(origin) else None
+    def do_OPTIONS(self):
+        origin=self._cors_origin()
+        self.send_response(204)
+        if origin:
+            self.send_header('Access-Control-Allow-Origin',origin)
+            self.send_header('Access-Control-Allow-Methods','GET, POST, OPTIONS')
+            self.send_header('Access-Control-Allow-Headers','Content-Type, Authorization')
+            self.send_header('Access-Control-Max-Age','600')
+            self.send_header('Vary','Origin')
+        self.send_header('Content-Length','0')
+        self.end_headers()
     def do_GET(self):self.dispatch()
     def do_POST(self):self.dispatch()
     def dispatch(self):
         cookie_hdr=None
+        origin=self._cors_origin()
         try:
             raw=self.headers.get('Content-Length','0')
             length=int(raw)
@@ -39,6 +58,9 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Content-Type','application/json; charset=utf-8')
         self.send_header('Cache-Control','no-store')
         self.send_header('X-Content-Type-Options','nosniff')
+        if origin:
+            self.send_header('Access-Control-Allow-Origin',origin)
+            self.send_header('Vary','Origin')
         if cookie_hdr:self.send_header('Set-Cookie',cookie_hdr)
         self.send_header('Content-Length',str(len(data)))
         self.end_headers();self.wfile.write(data)
