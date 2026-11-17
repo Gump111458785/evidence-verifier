@@ -135,10 +135,10 @@ function renderPlugin(){
  notifyPreview();
 }
 
-async function loadPlugin(){
+ async function loadPlugin(){
  $p('#panel-error').hidden=true;
  try{
-  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),2500);
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),9000);
   try{
    const r=await fetch(localService+'/api/plugin-demo',{signal:controller.signal});
    if(!r.ok)throw Error('本地案例服务暂不可用');
@@ -146,10 +146,8 @@ async function loadPlugin(){
    pluginTransport='local_program';
   }finally{clearTimeout(timer)}
  }catch(error){
-  if(extensionMode){
-   try{const r=await fetch('plugin-demo.json');pluginData=await r.json();pluginTransport='bundled_snapshot'}
-   catch{$p('#panel-error').textContent='无法载入演示素材，请重新打开侧栏。';$p('#panel-error').hidden=false;return}
-  }else{
+  try{const r=await fetch('plugin-demo.json');if(!r.ok)throw Error();pluginData=await r.json();pluginTransport='bundled_snapshot'}
+  catch{
    $p('#panel-error').textContent='案例暂未载入，点击下方按钮重试。';
    $p('#panel-error').hidden=false;
    $p('#panel-run').textContent='重新载入';

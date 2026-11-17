@@ -432,26 +432,27 @@ details.ts-more[open] summary { margin-bottom: 10px; }
 }
 
 .usage-chart-wrap {
-  padding: 18px 16px 12px; border: 1px solid var(--rule);
+  padding: 24px 16px 12px; border: 1px solid var(--rule);
   border-radius: var(--r-panel); background: #fbfcfd;
 }
 .usage-chart {
   display: grid; grid-template-columns: repeat(14, minmax(0, 1fr));
-  gap: 8px; height: 190px; align-items: end;
+  gap: 8px; height: 196px; align-items: end;
 }
 .u-col {
   display: flex; flex-direction: column; align-items: center; height: 100%;
   justify-content: flex-end; min-width: 0;
 }
 .u-bar-track {
-  position: relative; width: 100%; max-width: 34px; height: 152px;
+  position: relative; width: 100%; max-width: 34px; height: 146px;
+  margin-top: 18px;
   background: linear-gradient(to top, rgba(221,225,232,.45) 1px, transparent 1px);
   background-size: 100% 25%;
   border-bottom: 1px solid var(--rule-strong);
   display: flex; align-items: flex-end; justify-content: center;
 }
 .u-bar-val {
-  position: absolute; left: 50%; transform: translateX(-50%);
+  position: absolute; left: 50%; transform: translateX(-50%); margin-bottom: 4px;
   font-size: 11px; font-weight: 600; color: var(--ink-2); white-space: nowrap;
 }
 .u-bar-stack {

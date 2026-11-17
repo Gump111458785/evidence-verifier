@@ -213,7 +213,7 @@
         const tip = `${d.key}：共 ${total} 次调用（模型 ${d.model_calls} 次，检索 ${d.search_calls} 次）`;
         return '<div class="u-col" title="' + esc(tip) + '">' +
           '<div class="u-bar-track">' +
-            (topLabel ? '<span class="u-bar-val" style="bottom:' + Math.min(92, mPct + sPct + 2) + '%">' + esc(topLabel) + '</span>' : '') +
+            (topLabel ? '<span class="u-bar-val" style="bottom:' + (mPct + sPct) + '%">' + esc(topLabel) + '</span>' : '') +
             '<div class="u-bar-stack" style="height:' + (mPct + sPct) + '%">' +
               (sVal > 0 ? '<div class="u-seg search" style="flex:' + sVal + '"></div>' : '') +
               (mVal > 0 ? '<div class="u-seg model" style="flex:' + mVal + '"></div>' : '') +
