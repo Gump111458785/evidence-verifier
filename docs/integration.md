@@ -4,7 +4,7 @@
 
 `GET /api/plugin-demo`返回两组教学案例和程序绑定结果。响应携带`source=ideal_plugin_demo`、`measured=false`、`model_inference_performed=false`。无需模型即可运行。
 
-真实网页与MV3侧栏共享sidecar.html/js及plugin.css，用户主动读取可见回答、采集来源，再确认提交核验。plugin.html/js为独立教学示例；不读取隐藏思维链。构建及权限见[扩展README](../app/extension/README.md)。
+MV3 侧栏使用 sidecar.html/css/js，内容脚本在支持的对话页自动读取可见问答；plugin.html/js 为网页上的独立教学示例，不进入插件包；不读取隐藏思维链。构建及权限见[扩展README](../app/extension/README.md)。
 
 ## 真实核验接口
 
