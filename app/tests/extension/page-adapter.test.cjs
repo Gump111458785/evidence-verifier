@@ -26,4 +26,15 @@ function fixture(){
 }
 test('display:contents question and inline entity buttons survive, headings and controls do not',()=>{const {api}=fixture(),s=api.run('capture');assert.equal(s.question,'Who designed the Analytical Engine?');assert.equal(s.candidate,'Designed by Charles Babbage .');assert(!s.candidate.includes('Copy'));assert(!s.candidate.includes('hidden internal'));});
 test('draft insertion emits input, never sends, and refuses to overwrite',()=>{const {api,input}=fixture();assert.equal(api.run('insert','audit prompt').sent,false);assert.equal(input.value,'audit prompt');assert.deepEqual(input.events,['input']);assert.throws(()=>api.run('insert','replacement'),/已有草稿/);assert.equal(input.value,'audit prompt');});
+test('earlier turns become context, newest kept first, whole turns only',()=>{
+ const f=fixture();
+ const turn=(role,order,body)=>{const n=new E('div',{'data-message-author-role':role},[new E('p',{},[T(body)])]);n.order=order;return n;};
+ const u1=turn('user',-5,'First question'),a1=turn('assistant',-4,'x'.repeat(1990)),u2=turn('user',-3,'Second question'),a2=turn('assistant',-2,'Second answer');
+ const user=f.context.document.querySelectorAll('user')[0],answer=f.context.document.querySelectorAll('assistant')[0];
+ f.context.document.querySelectorAll=s=>s.includes('assistant')?[a1,a2,answer]:s.includes('user')?[u1,u2,user]:[];
+ const s=f.api.run('capture');
+ assert.equal(JSON.stringify(s.context.map(t=>t.text)),JSON.stringify(['First question','Second question','Second answer']));
+ assert.equal(s.context_dropped,1);
+ assert.equal(s.question,'Who designed the Analytical Engine?');
+});
 test('ambiguous visible editors are rejected',()=>{const f=fixture();f.context.document.querySelectorAll=s=>s.includes('textarea')?[f.input,new TA('textarea')]:[];assert.throws(()=>f.api.run('insert','prompt'),/找不到输入框/);});

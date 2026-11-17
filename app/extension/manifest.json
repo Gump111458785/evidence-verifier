@@ -1,19 +1,26 @@
 {
   "manifest_version": 3,
-  "name": "Trisight 三省 · 对话伴随插件",
-  "version": "0.5.4",
+  "name": "Trisight 三省",
+  "version": "0.6.0",
   "minimum_chrome_version": "116",
-  "description": "自动读取 AI 对话页可见问答与引用，完成纠错、补充与预测审阅；提示词仅填入输入框，不自动发送。",
+  "description": "在 AI 对话页旁审阅回答：纠错、补充、预测。只读取页面可见问答，提示词只填入输入框，不自动发送。",
   "permissions": [
     "sidePanel",
-    "contextMenus",
     "storage",
-    "activeTab",
     "scripting"
   ],
   "host_permissions": [
     "https://evidence-verifier.edgeone.dev/*",
-    "http://127.0.0.1/*"
+    "https://chatgpt.com/*",
+    "https://claude.ai/*",
+    "https://gemini.google.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://chatgpt.com/*", "https://claude.ai/*", "https://gemini.google.com/*"],
+      "js": ["page-adapter.js"],
+      "run_at": "document_idle"
+    }
   ],
   "background": {
     "service_worker": "background.js"
@@ -22,9 +29,9 @@
     "default_path": "sidecar.html"
   },
   "action": {
-    "default_title": "打开 Trisight 三省审阅侧栏"
+    "default_title": "Trisight 三省"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://evidence-verifier.edgeone.dev http://127.0.0.1:18790 http://127.0.0.1:8790;"
+    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://evidence-verifier.edgeone.dev;"
   }
 }

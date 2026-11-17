@@ -481,7 +481,7 @@ class Handler(BaseHTTPRequestHandler):
                       '/account.html': 'account.html', '/trisight.css': 'trisight.css', '/trisight.js': 'trisight.js',
                       '/login.html': 'login.html', '/login.js': 'login.js', '/login.css': 'login.css',
                       '/cloud-access.js': 'cloud-access.js', '/favicon.svg': 'favicon.svg',
-                      '/sidecar.html': 'sidecar.html', '/sidecar.js': 'sidecar.js', '/theme.css': 'theme.css', '/plugin.html': 'plugin.html', '/plugin.js': 'plugin.js', '/plugin.css': 'plugin.css',
+                      '/sidecar.html': 'sidecar.html', '/sidecar.js': 'sidecar.js', '/sidecar.css': 'sidecar.css', '/theme.css': 'theme.css', '/plugin.html': 'plugin.html', '/plugin.js': 'plugin.js', '/plugin.css': 'plugin.css',
                       '/downloads/evidence-verifier-extension.zip': 'downloads/evidence-verifier-extension.zip'}
             if path.path.startswith('/fonts/'):
                 name = path.path.removeprefix('/fonts/')

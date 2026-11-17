@@ -1,422 +1,324 @@
+/* Trisight side panel. The conversation arrives already captured (content script ->
+   background -> storage.session.liveSnapshot); a review posts it immediately. */
 (() => {
   const isExtension = location.protocol === 'chrome-extension:';
   const API_BASE = isExtension ? 'https://evidence-verifier.edgeone.dev' : location.origin;
   const TOKEN_KEY = 'ev_session_token';
+  const MODES = ['correct', 'supplement', 'predict'];
+  const PHASES = ['review', 'search', 'verify'];
   const $ = (id) => document.getElementById(id);
-
-  const VERDICT = {
-    errors_found: ['err', '发现错误'],
-    no_error: ['ok', '未发现错误'],
-    unverified: ['warn', '部分未能核实'],
-    no_checkable_claims: ['neutral', '无核实断言'],
-    not_run: ['neutral', '未运行'],
-  };
-  const CLAIM = {
-    contradicted: '有误',
-    supported: '有证据支持',
-    insufficient: '未能核实',
-    invalid_output: '结果无效',
-  };
-  const STAGES = [
-    { key: 'review', num: '1', name: '初审' },
-    { key: 'search', num: '2', name: '检索' },
-    { key: 'verify', num: '3', name: '核验' },
-    { key: 'compose', num: '4', name: '修订' },
-  ];
-
-  let activeTab = 'correct';
-  let currentJob = null;
-  let busy = false;
-  let danmakuTimer = null;
-  let memToken = '';
-
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-  function danmaku(text, state = 'running', hideMs = 2000) {
-    let stage = document.querySelector('.sc-danmaku-stage');
-    if (!stage) {
-      stage = document.createElement('div');
-      stage.className = 'sc-danmaku-stage';
-      stage.innerHTML = '<div id="sc-danmaku" class="sc-danmaku" role="status" hidden><span id="sc-danmaku-text"></span></div>';
-      document.body.appendChild(stage);
-    }
-    const box = $('sc-danmaku'), label = $('sc-danmaku-text');
-    if (!box || !label) return;
-    if (danmakuTimer) { clearTimeout(danmakuTimer); danmakuTimer = null; }
-    label.textContent = text;
-    box.dataset.state = state;
-    box.hidden = false;
-    box.classList.remove('enter');
-    void box.offsetWidth;
-    box.classList.add('enter');
-    if (hideMs > 0) danmakuTimer = setTimeout(() => { box.hidden = true; }, hideMs);
-  }
+  const ICON = {
+    mark: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 6h9" stroke="#1c2230" stroke-width="2.2" stroke-linecap="round"/><path d="M5 15l3-5 3 5" fill="none" stroke="#1c2230" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 13h5m-2-2.5 2 2.5-2 2.5" fill="none" stroke="#1c2230" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    arrow: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>',
+    check: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>',
+    cross: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+    query: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.5"/></svg>',
+    link: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>',
+    nosrc: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-dasharray="3 3" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg>',
+    fill: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 10 4 15l5 5"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></svg>',
+  };
 
+  const state = { snap: null, snapKey: '', job: null, tab: 'correct', armed: false, picked: new Set(MODES), busy: false, ran: [] };
+  let memToken = '';
+  let toastTimer = null;
+
+  // ------------------------------------------------------------ auth + api
   async function getToken() {
     if (memToken) return memToken;
     try {
       if (isExtension && chrome.storage?.local) {
         const res = await chrome.storage.local.get(TOKEN_KEY);
-        if (res[TOKEN_KEY]) { memToken = res[TOKEN_KEY]; return memToken; }
+        if (res[TOKEN_KEY]) return (memToken = res[TOKEN_KEY]);
       }
       const ss = globalThis.sessionStorage?.getItem(TOKEN_KEY) || '';
-      if (/^[a-f0-9]{64}$/.test(ss)) { memToken = ss; return ss; }
+      if (/^[a-f0-9]{64}$/.test(ss)) return (memToken = ss);
     } catch (_) {}
     return '';
   }
-
   async function saveToken(tok) {
     memToken = tok || '';
     try {
-      if (isExtension && chrome.storage?.local) {
-        if (tok) await chrome.storage.local.set({ [TOKEN_KEY]: tok });
-        else await chrome.storage.local.remove(TOKEN_KEY);
-      }
-      if (globalThis.sessionStorage) {
-        if (tok) sessionStorage.setItem(TOKEN_KEY, tok);
-        else sessionStorage.removeItem(TOKEN_KEY);
-      }
+      if (isExtension && chrome.storage?.local) await (tok ? chrome.storage.local.set({ [TOKEN_KEY]: tok }) : chrome.storage.local.remove(TOKEN_KEY));
+      if (globalThis.sessionStorage) tok ? sessionStorage.setItem(TOKEN_KEY, tok) : sessionStorage.removeItem(TOKEN_KEY);
     } catch (_) {}
   }
-
   async function api(path, options = {}) {
     const tok = await getToken();
-    const hdr = {};
-    if (tok) hdr.Authorization = 'Bearer ' + tok;
-    if (options.body) hdr['Content-Type'] = 'application/json';
+    const headers = {};
+    if (tok) headers.Authorization = 'Bearer ' + tok;
+    if (options.body) headers['Content-Type'] = 'application/json';
     const res = await fetch(API_BASE + path, {
-      method: options.method || 'GET',
+      method: options.method || 'GET', headers,
       credentials: isExtension ? 'omit' : 'same-origin',
-      headers: hdr,
       body: options.body ? JSON.stringify(options.body) : undefined,
-      signal: AbortSignal.timeout(options.timeoutMs || 45000),
+      signal: AbortSignal.timeout(options.timeoutMs || 60000),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      const err = new Error(data.error || `请求失败（${res.status}）`);
-      err.status = res.status;
-      err.code = data.code;
-      throw err;
-    }
+    if (!res.ok) { const e = new Error(data.error || '请求失败（' + res.status + '）'); e.status = res.status; e.code = data.code; throw e; }
     return data;
   }
-
   async function pageCmd(mode, prompt) {
-    if (!isExtension) throw new Error('浏览器网页预览无法跨标签页插入，已为您复制');
     const r = await chrome.runtime.sendMessage({ type: 'ev-page-command', mode, prompt });
-    if (!r || !r.ok) throw new Error(r?.error || '读取对话失败');
+    if (!r || !r.ok) throw new Error(r?.error || '页面没有响应');
     return r.value;
   }
 
-  function setSyncState(ready, label) {
-    const pill = $('sc-sync'), text = $('sc-sync-text');
-    if (!pill || !text) return;
-    pill.classList.toggle('ready', Boolean(ready));
-    text.textContent = label;
+  // ------------------------------------------------------------ small ui helpers
+  function toast(text) {
+    const t = $('toast');
+    t.textContent = text; t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.hidden = true; }, 1800);
+  }
+  function alertMsg(text) { $('alert').textContent = text || ''; $('alert').hidden = !text; }
+  const fields = () => ({ question: $('question').value.trim(), answer: $('candidate').value.trim() });
+
+  function syncButtons() {
+    const { question, answer } = fields();
+    const ready = Boolean(question && answer) && !state.busy;
+    $('run-auto').disabled = !ready;
+    $('run-manual').disabled = !ready || (state.armed && state.picked.size === 0);
   }
 
-  function applySnapshot(snap) {
+  // ------------------------------------------------------------ captured conversation
+  function apply(snap) {
     if (!snap || typeof snap !== 'object') return;
-    $('question').value = snap.question || '';
-    $('candidate').value = snap.candidate || '';
-    const ready = Boolean(snap.question && snap.candidate);
-    setSyncState(ready, ready ? `${snap.platform || '对话'} · 已同步` : '等待对话');
+    const src = $('src');
+    src.hidden = false;
+    $('src-name').textContent = snap.platform || '—';
+    src.title = snap.error || '查看读取到的问答';
+    if (snap.idle || (!snap.platform && !snap.question)) src.dataset.state = 'idle';
+    else if (snap.streaming) src.dataset.state = 'live';
+    else if (snap.error) src.dataset.state = 'error';
+    else src.dataset.state = 'ready';
+    if (!(snap.question && snap.candidate)) { syncButtons(); return; }
+    const key = JSON.stringify([snap.question, snap.candidate]);
+    if (key !== state.snapKey) {
+      state.snapKey = key;
+      state.snap = snap;
+      $('question').value = snap.question;
+      $('candidate').value = snap.candidate;
+      const n = (snap.context || []).length;
+      $('ctx').textContent = n ? '+ 上文 ' + n + ' 段' + (snap.context_dropped ? '（另有 ' + snap.context_dropped + ' 段超出长度未带）' : '') : '';
+      if (state.job) reset();
+    }
+    syncButtons();
   }
 
-  async function autoAttachConversation() {
+  async function attach() {
     if (!isExtension) {
-      $('sc-edit-toggle').hidden = false;
-      setSyncState(false, '可编辑输入');
+      $('src').hidden = false; $('src').dataset.state = 'ready'; $('src-name').textContent = '手动';
+      $('drawer').hidden = false; $('src').setAttribute('aria-expanded', 'true');
+      syncButtons();
       return;
     }
-    try {
-      chrome.storage.onChanged.addListener((changes, area) => {
-        if (area === 'session' && changes.liveSnapshot?.newValue) {
-          applySnapshot(changes.liveSnapshot.newValue);
-        }
-      });
-      const stored = await chrome.storage.session.get('liveSnapshot');
-      if (stored?.liveSnapshot) applySnapshot(stored.liveSnapshot);
-      const fresh = await pageCmd('watch');
-      applySnapshot(fresh);
-    } catch (_) {
-      setSyncState(false, '等待 AI 对话页');
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area === 'session' && changes.liveSnapshot?.newValue) apply(changes.liveSnapshot.newValue);
+    });
+    const stored = await chrome.storage.session.get('liveSnapshot');
+    if (stored?.liveSnapshot) apply(stored.liveSnapshot);
+    if (!stored?.liveSnapshot?.question) {
+      try { apply(await pageCmd('capture')); } catch (e) { apply({ idle: true }); }
     }
   }
 
-  function renderTimeline(activePhase, doneSet) {
-    const idx = STAGES.findIndex((s) => s.key === activePhase);
-    $('sc-pane').innerHTML = '<div class="sc-tl">' + STAGES.map((st, i) => {
-      const s = doneSet.has(st.key) || i < idx ? 'done' : st.key === activePhase ? 'active' : 'wait';
-      return `<div class="sc-tl-step" data-s="${s}"><span class="sc-tl-dot">${s === 'done' ? '✓' : st.num}</span><span class="sc-tl-name">${st.name}</span></div>`;
-    }).join('') + '</div>';
+  // ------------------------------------------------------------ results
+  function reset() {
+    state.job = null; state.ran = [];
+    document.querySelectorAll('.tab').forEach((b) => { b.disabled = true; });
+    MODES.forEach((m) => { $('n-' + m).hidden = true; });
+    $('meter').hidden = true;
+    const pane = $('pane');
+    pane.className = 'pane empty';
+    pane.innerHTML = ICON.mark;
   }
 
-  function updateBadges(result) {
-    const m = result?.modes;
-    if (!m) return;
-    const bc = $('b-correct'), bs = $('b-supplement'), bp = $('b-predict');
-    const cErr = (m.correct.claims || []).filter((x) => x.verdict === 'contradicted').length;
-    if (cErr > 0) { bc.hidden = false; bc.textContent = String(cErr); bc.className = 'sc-badge err'; }
-    else if (m.correct.verdict === 'no_error') { bc.hidden = false; bc.textContent = '✓'; bc.className = 'sc-badge ok'; }
-    else { bc.hidden = true; }
-
-    const sLen = (m.supplement.points || []).length;
-    if (sLen > 0) { bs.hidden = false; bs.textContent = String(sLen); bs.className = 'sc-badge sup'; }
-    else { bs.hidden = true; }
-
-    const pLen = (m.predict.questions || []).length;
-    if (pLen > 0) { bp.hidden = false; bp.textContent = String(pLen); bp.className = 'sc-badge'; }
-    else { bp.hidden = true; }
+  function meter(phase, done) {
+    const at = PHASES.indexOf(phase);
+    $('meter').hidden = false;
+    $('meter').querySelectorAll('i').forEach((seg, i) => { seg.dataset.s = done || i < at ? 'done' : i === at ? 'on' : ''; });
   }
 
-  async function fillOrCopy(text) {
-    if (!text) return;
-    if (isExtension) {
-      try {
-        await pageCmd('insert', text);
-        danmaku('已填入原对话草稿', 'done', 2000);
-        return;
-      } catch (e) {
-        try { await navigator.clipboard.writeText(text); } catch (_) {}
-        danmaku(e.message + '（已复制）', 'done', 2400);
-        return;
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(text);
-      danmaku('已复制到剪贴板', 'done', 2000);
-    } catch (_) {
-      danmaku('复制失败', 'error', 2000);
-    }
+  function counts(r) {
+    const m = r.modes;
+    const set = (mode, n, cls) => { const c = $('n-' + mode); c.hidden = n === null; c.textContent = n === null ? '' : String(n); c.className = 'count' + (cls ? ' ' + cls : ''); };
+    const wrong = (m.correct.claims || []).filter((c) => c.verdict === 'contradicted').length;
+    if (wrong) set('correct', wrong, 'err');
+    else if (m.correct.verdict === 'no_error') { set('correct', '✓', 'ok'); }
+    else set('correct', null);
+    const pts = (m.supplement.points || []).length; set('supplement', pts || null, 'sup');
+    const qs = (m.predict.questions || []).length; set('predict', qs || null, '');
   }
+
+  function firstTab(r) {
+    const m = r.modes;
+    if (state.ran.includes('correct') && (m.correct.claims || []).length) return 'correct';
+    if (state.ran.includes('supplement') && (m.supplement.points || []).length) return 'supplement';
+    if (state.ran.includes('predict') && (m.predict.questions || []).length) return 'predict';
+    return state.ran[0] || 'correct';
+  }
+
+  function quote(q) {
+    if (!q || !q.text) return '';
+    const where = q.url ? ' <a href="' + esc(q.url) + '" target="_blank" rel="noopener" title="' + esc(q.title || q.url) + '">' + ICON.link + '</a>' : '';
+    return '<div class="q">“' + esc(q.text) + '”' + where + '</div>';
+  }
+
+  const fillBtn = (text) => (text ? '<button type="button" class="fill" data-fill="' + esc(text) + '">' + ICON.fill + (isExtension ? '填入对话' : '复制提示词') + '</button>' : '');
 
   function renderTab(tab) {
-    activeTab = tab;
-    document.querySelectorAll('.sc-tab').forEach((b) => {
-      b.setAttribute('aria-selected', b.dataset.tab === tab ? 'true' : 'false');
-    });
-    const pane = $('sc-pane');
-    if (!currentJob || !currentJob.result) {
-      pane.innerHTML = '<div class="sc-empty">选择方式并点击「开始审阅」</div>';
-      return;
-    }
-    const r = currentJob.result;
-    if (r.status !== 'ok') {
-      pane.innerHTML = `<div class="sc-err">${esc(r.error || r.status)}</div>`;
-      return;
-    }
+    state.tab = tab;
+    document.querySelectorAll('.tab').forEach((b) => b.setAttribute('aria-selected', b.dataset.tab === tab ? 'true' : 'false'));
+    const pane = $('pane');
+    const r = state.job?.result;
+    if (!r) { pane.className = 'pane empty'; pane.innerHTML = ICON.mark; return; }
+    pane.className = 'pane';
+    if (r.status !== 'ok') { pane.innerHTML = '<div class="head err">' + ICON.cross + esc(r.error || '本次结果无效') + '</div>'; return; }
     const m = r.modes;
-    const actionLabel = isExtension ? '填入原对话草稿' : '复制';
-
+    let html = '';
     if (tab === 'correct') {
-      const [cls, label] = VERDICT[m.correct.verdict] || ['neutral', m.correct.verdict];
-      let html = `<div class="sc-verdict-row"><span class="sc-verdict-pill ${cls}">${label}</span></div>`;
-      for (const cl of m.correct.claims || []) {
-        const q = cl.quote;
-        const qHtml = q && q.text ? `<blockquote class="sc-quote">“${esc(q.text)}”${q.url ? ` · <a href="${esc(q.url)}" target="_blank" rel="noopener">${esc(q.title || '来源')}</a>` : ''}</blockquote>` : '';
-        html += `<div class="sc-item ${cl.verdict}"><span class="sc-item-tag">${CLAIM[cl.verdict] || cl.verdict}</span>“${esc(cl.text)}”` +
-          (cl.correction ? `<div class="sc-fix">更正：${esc(cl.correction)}</div>` : '') + qHtml + `</div>`;
+      const claims = m.correct.claims || [];
+      const wrong = claims.filter((c) => c.verdict === 'contradicted').length;
+      const unsure = claims.filter((c) => c.verdict === 'insufficient' || c.verdict === 'invalid_output').length;
+      if (wrong) html += '<div class="head err">' + ICON.cross + wrong + ' 处有误</div>';
+      else if (m.correct.verdict === 'no_error') html += '<div class="head ok">' + ICON.check + '未发现错误</div>';
+      else if (unsure) html += '<div class="head warn">' + ICON.query + unsure + ' 处未能核实</div>';
+      else html += '<div class="head mute">无可核实的事实</div>';
+      const order = { contradicted: 0, insufficient: 1, invalid_output: 1, supported: 2 };
+      for (const c of claims.slice().sort((a, b) => order[a.verdict] - order[b.verdict])) {
+        if (c.verdict === 'contradicted') {
+          html += '<div class="item contradicted"><del>' + esc(c.text) + '</del><div class="fix">' + ICON.arrow + '<span>' + esc(c.correction) + '</span></div>' + quote(c.quote) + '</div>';
+        } else if (c.verdict === 'supported') {
+          html += '<div class="item supported">' + esc(c.text) + quote(c.quote) + '</div>';
+        } else {
+          html += '<div class="item ' + c.verdict + '">' + esc(c.text) + '<div class="why">' + esc(c.explanation) + '</div></div>';
+        }
       }
-      if (!m.correct.claims?.length && m.correct.verdict !== 'not_run') {
-        html += `<div class="sc-empty" style="padding:14px 0">未检测到需纠偏的事实断言</div>`;
-      }
-      if (r.prompts?.correct) {
-        html += `<div class="sc-act-row"><button type="button" class="sc-act-btn primary" data-fill="${esc(r.prompts.correct)}">${actionLabel}纠错提示</button></div>`;
-      }
-      pane.innerHTML = html;
+      html += fillBtn(r.prompts?.correct);
     } else if (tab === 'supplement') {
       const pts = m.supplement.points || [];
-      let html = `<div class="sc-verdict-row"><span class="sc-verdict-pill ${pts.length ? 'sup' : 'neutral'}">${pts.length ? pts.length + ' 项建议补充' : '无需补充'}</span></div>`;
+      if (!pts.length) html += '<div class="head mute">' + ICON.check + '无需补充</div>';
+      const mark = { sourced: ['sourced', ICON.link, '有来源'], unsourced: ['unsourced', ICON.nosrc, '未找到来源'] };
       for (const p of pts) {
-        const q = p.quote;
-        const qHtml = q && q.text ? `<blockquote class="sc-quote">“${esc(q.text)}”</blockquote>` : '';
-        html += `<div class="sc-item supplement"><b>${esc(p.point)}</b>：${esc(p.content)}${qHtml}</div>`;
+        const s = mark[p.source_status];
+        html += '<div class="item supplement"><b>' + esc(p.point) + '</b>' +
+          (s ? '<span class="src-mark ' + s[0] + '" title="' + s[2] + '">' + s[1] + '</span>' : '') +
+          '<div>' + esc(p.content) + '</div>' + quote(p.quote) + '</div>';
       }
-      if (r.prompts?.supplement) {
-        html += `<div class="sc-act-row"><button type="button" class="sc-act-btn primary" data-fill="${esc(r.prompts.supplement)}">${actionLabel}补充提示</button></div>`;
-      }
-      pane.innerHTML = html;
-    } else if (tab === 'predict') {
-      const qs = m.predict.questions || [];
-      let html = `<div class="sc-verdict-row"><span class="sc-verdict-pill neutral">${qs.length ? '点击问题直接填入' : '暂无追问建议'}</span></div>`;
-      for (const q of qs) {
-        html += `<button type="button" class="sc-qbtn" data-fill="${esc(q.question)}">${esc(q.question)}</button>`;
-      }
-      pane.innerHTML = html;
-    } else if (tab === 'answer') {
-      if (r.answer?.status === 'ok') {
-        pane.innerHTML = `<div class="sc-revised">${esc(r.answer.revised_answer)}</div>` +
-          `<div class="sc-act-row"><button type="button" class="sc-act-btn primary" data-fill="${esc(r.answer.revised_answer)}">${actionLabel}修订稿</button></div>`;
-      } else {
-        pane.innerHTML = `<div class="sc-empty">${r.answer ? esc(r.answer.error) : '原回答无需整体修订'}</div>`;
-      }
-    }
-
-    pane.querySelectorAll('[data-fill]').forEach((btn) => {
-      btn.addEventListener('click', () => fillOrCopy(btn.dataset.fill));
-    });
-  }
-
-  function pickDefaultTab(result) {
-    const m = result?.modes;
-    if (!m) return 'correct';
-    if ((m.correct.claims || []).some((x) => x.verdict === 'contradicted')) return 'correct';
-    if (m.correct.needed) return 'correct';
-    if (m.supplement.needed && (m.supplement.points || []).length) return 'supplement';
-    if (m.predict.needed && (m.predict.questions || []).length) return 'predict';
-    return 'correct';
-  }
-
-  async function startReview() {
-    if (busy) return;
-    $('sc-error').hidden = true;
-
-    // In extension mode, ensure latest Q&A from active tab before submitting
-    if (isExtension) {
-      try {
-        const snap = await pageCmd('capture');
-        applySnapshot(snap);
-      } catch (_) {}
-    }
-
-    const question = $('question').value.trim();
-    const candidate = $('candidate').value.trim();
-    if (!question || !candidate) {
-      if (!isExtension) $('sc-ctx-drawer').hidden = false;
-      $('sc-error').textContent = isExtension ? '未捕获到当前对话问答，请在 ChatGPT / Claude / Gemini 回答页面试。' : '请填写问题与待审回答。';
-      $('sc-error').hidden = false;
-      return;
-    }
-
-    const how = document.querySelector('input[name="sc-how"]:checked')?.value || 'auto';
-    let modes;
-    if (how === 'auto') {
-      // Auto mode runs all three modes unconditionally
-      modes = ['correct', 'supplement', 'predict'];
+      html += fillBtn(r.prompts?.supplement);
     } else {
-      modes = [...document.querySelectorAll('input[name="sc-mode"]:checked')].map((c) => c.value);
-      if (!modes.length) {
-        $('sc-error').textContent = '请至少选择一种审查模式。';
-        $('sc-error').hidden = false;
+      const qs = m.predict.questions || [];
+      if (!qs.length) html += '<div class="head mute">—</div>';
+      for (const q of qs) html += '<button type="button" class="nq" data-fill="' + esc(q.question) + '"><span>' + esc(q.question) + '</span>' + ICON.fill + '</button>';
+    }
+    pane.innerHTML = html;
+    pane.querySelectorAll('[data-fill]').forEach((b) => b.addEventListener('click', () => fill(b.dataset.fill)));
+  }
+
+  async function fill(text) {
+    if (isExtension) {
+      try { await pageCmd('insert', text); toast('已填入'); return; }
+      catch (e) {
+        try { await navigator.clipboard.writeText(text); toast(e.message + '，已复制'); } catch (_) { toast(e.message); }
         return;
       }
     }
+    try { await navigator.clipboard.writeText(text); toast('已复制'); } catch (_) { toast('复制失败'); }
+  }
 
-    busy = true;
-    $('sc-run').disabled = true;
-    danmaku('正在审阅…', 'running', 1800);
-    const done = new Set();
-    renderTimeline('review', done);
-
+  // ------------------------------------------------------------ run
+  async function run(modes) {
+    const { question, answer } = fields();
+    if (state.busy || !question || !answer || !modes.length) return;
+    alertMsg('');
+    state.busy = true; syncButtons();
+    reset();
+    state.ran = modes.slice();
+    const pane = $('pane'); pane.className = 'pane empty'; pane.innerHTML = '';
+    meter('review');
+    const snapUsed = state.snap && state.snap.question === question && state.snap.candidate === answer;
+    const body = { question, answer, modes, compose: false, client: isExtension ? 'extension' : 'web' };
+    if (snapUsed && (state.snap.context || []).length) body.context = state.snap.context;
     try {
-      let job = await api('/api/assist', {
-        method: 'POST',
-        body: { question, answer: candidate, modes, compose: true, client: isExtension ? 'extension' : 'web' },
-      });
+      let job = await api('/api/assist', { method: 'POST', body });
       while (job.state === 'queued') {
-        const phase = (job.progress || {}).phase || 'review';
-        renderTimeline(phase, done);
+        meter((job.progress || {}).phase || 'review');
         job = await api(job.advance_path, { method: 'POST' });
-        if (job.state !== 'failed') done.add(phase);
       }
-      if (job.state !== 'completed') {
-        throw new Error(job.error || job.state);
-      }
-      currentJob = job;
-      updateBadges(job.result);
-      renderTab(pickDefaultTab(job.result));
-      danmaku('审阅完成', 'done', 1800);
-    } catch (err) {
-      $('sc-error').textContent = err.message;
-      $('sc-error').hidden = false;
-      renderTab(activeTab);
-      if (err.status === 401) {
-        await saveToken('');
-        showAuthView();
-      }
+      if (job.state !== 'completed') throw new Error(job.error || '审查未完成');
+      state.job = job;
+      $('meter').hidden = true;
+      document.querySelectorAll('.tab').forEach((b) => { b.disabled = !state.ran.includes(b.dataset.tab); });
+      if (job.result.status === 'ok') counts(job.result);
+      renderTab(firstTab(job.result));
+    } catch (e) {
+      $('meter').hidden = true;
+      renderTab(state.tab);
+      if (e.status === 401) { await saveToken(''); showLogin(); return; }
+      alertMsg(e.message);
     } finally {
-      busy = false;
-      $('sc-run').disabled = false;
+      state.busy = false; syncButtons();
     }
   }
 
-  function showAuthView() {
-    $('sc-app').hidden = true;
-    $('sc-logout').hidden = true;
-    $('sc-login-card').hidden = false;
+  function arm(on) {
+    state.armed = on;
+    $('chips').hidden = !on;
+    $('run-manual').classList.toggle('armed', on);
+    $('run-manual').parentElement.classList.toggle('manual', on);
+    $('run-manual').setAttribute('aria-expanded', on ? 'true' : 'false');
+    syncButtons();
   }
 
-  async function showAppView() {
-    $('sc-login-card').hidden = true;
-    $('sc-app').hidden = false;
-    $('sc-logout').hidden = false;
-    await autoAttachConversation();
-  }
+  // ------------------------------------------------------------ views
+  function showLogin() { $('work').hidden = true; $('drawer').hidden = true; $('src').hidden = true; $('logout').hidden = true; $('login').hidden = false; }
+  async function showWork() { $('login').hidden = true; $('work').hidden = false; $('logout').hidden = false; reset(); await attach(); }
 
-  function bindUI() {
-    document.querySelectorAll('input[name="sc-how"]').forEach((r) => {
-      r.addEventListener('change', () => {
-        const isManual = document.querySelector('input[name="sc-how"]:checked').value === 'manual';
-        $('sc-manual-modes').hidden = !isManual;
-      });
+  function bind() {
+    $('src').addEventListener('click', () => {
+      const open = $('drawer').hidden;
+      $('drawer').hidden = !open;
+      $('src').setAttribute('aria-expanded', open ? 'true' : 'false');
     });
-
-    document.querySelectorAll('.sc-tab').forEach((b) => {
-      b.addEventListener('click', () => renderTab(b.dataset.tab));
+    $('question').addEventListener('input', syncButtons);
+    $('candidate').addEventListener('input', syncButtons);
+    $('run-auto').addEventListener('click', () => { arm(false); run(MODES); });
+    $('run-manual').addEventListener('click', () => {
+      if (!state.armed) { arm(true); return; }
+      run(MODES.filter((m) => state.picked.has(m)));
     });
-
-    $('sc-run').addEventListener('click', startReview);
-    $('sc-edit-toggle').addEventListener('click', () => {
-      $('sc-ctx-drawer').hidden = !$('sc-ctx-drawer').hidden;
-    });
-
-    $('sc-pw-toggle')?.addEventListener('click', () => {
-      const pw = $('sc-login-pw');
-      pw.type = pw.type === 'password' ? 'text' : 'password';
-    });
-
-    $('sc-login-form').addEventListener('submit', async (e) => {
+    document.querySelectorAll('.chip').forEach((c) => c.addEventListener('click', () => {
+      const m = c.dataset.mode;
+      state.picked.has(m) ? state.picked.delete(m) : state.picked.add(m);
+      c.setAttribute('aria-pressed', state.picked.has(m) ? 'true' : 'false');
+      syncButtons();
+    }));
+    document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => { if (!b.disabled) renderTab(b.dataset.tab); }));
+    $('login').addEventListener('submit', async (e) => {
       e.preventDefault();
-      $('sc-login-err').hidden = true;
-      const btn = $('sc-login-btn');
-      btn.disabled = true;
+      $('login-err').hidden = true; $('login-btn').disabled = true;
       try {
-        const res = await api('/api/auth/login', {
-          method: 'POST',
-          body: { identifier: $('sc-login-id').value.trim(), password: $('sc-login-pw').value },
-        });
+        const res = await api('/api/auth/login', { method: 'POST', body: { identifier: $('login-id').value.trim(), password: $('login-pw').value } });
         if (!res.authenticated) throw new Error('登录失败');
         if (res.session_token) await saveToken(res.session_token);
-        await showAppView();
-      } catch (err) {
-        $('sc-login-err').textContent = err.message;
-        $('sc-login-err').hidden = false;
-      } finally {
-        btn.disabled = false;
-      }
+        await showWork();
+      } catch (err) { $('login-err').textContent = err.message; $('login-err').hidden = false; }
+      finally { $('login-btn').disabled = false; }
     });
-
-    $('sc-logout').addEventListener('click', async () => {
+    $('logout').addEventListener('click', async () => {
       try { await api('/api/auth/logout', { method: 'POST' }); } catch (_) {}
-      await saveToken('');
-      showAuthView();
+      await saveToken(''); showLogin();
     });
   }
 
   async function init() {
-    bindUI();
-    try {
-      const me = await api('/api/auth/me');
-      if (me && me.authenticated) await showAppView();
-      else showAuthView();
-    } catch (_) {
-      showAuthView();
-    }
+    bind();
+    try { const me = await api('/api/auth/me'); me && me.authenticated ? await showWork() : showLogin(); }
+    catch (_) { showLogin(); }
   }
 
-  if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { startReview, applySnapshot, renderTab, init };
-  }
+  if (typeof module !== 'undefined' && module.exports) module.exports = { run, apply, renderTab, init, state, arm };
   init();
 })();

@@ -1,16 +1,19 @@
-# Evidence Verifier Chrome sidecar
+# Trisight 三省 Chrome 插件
 
-从当前main源码构建插件ZIP并解压，在Chrome扩展管理页手动加载manifest.json所在目录。Chrome 116+。本项目不会自动安装或变更权限。构建步骤见[首页](../../README.md#72-使用插件)；旧v0.3.2 Release尚未包含最新ChatGPT适配修复。
+在 Chrome 扩展管理页打开“开发者模式”，选择“加载已解压的扩展程序”，指向包含 `manifest.json` 的目录。需要 Chrome 116+，使用受邀账号登录。
 
-默认打开真实对话侧栏sidecar.html，教学案例另在plugin.html。主动读取ChatGPT、Claude、Gemini可见回答、引用与工具片段。2026-11-02完成ChatGPT单案例交互验收；Gemini被地区限制阻断，Claude未测试，不能宣称三站点兼容。失效时手动粘贴。不能提取模型隐藏思维链或完整内部检索历史。
+打开 ChatGPT、Claude 或 Gemini 对话页后，插件自动读取页面上可见的最新问题、回答和前 3 轮上文；点击工具栏图标打开侧栏即可审查，不需要手动读取。2026-11-02 在 ChatGPT 上完成过单案例验收；本版的自动读取尚未在三个站点实机验收，Gemini 曾被地区限制阻断，Claude 未测试。
 
-先在目标对话页点击工具栏图标，取得该页临时读取权限，再点“读取当前回答”；切换到引用来源页后也要点击图标授权。侧栏保持打开不等于新标签页已授权。源代码main包含本次兼容性修复，旧v0.3.2下载包未更新。
+- 自动审查：运行纠错、补充、预测三种模式。
+- 手动审查：第一次点击展开选择，第二次点击运行所选模式。
+- 结果中的提示词和预测问题只填入原对话的空输入框，不自动发送，不覆盖已有草稿；对话变化后拒绝填入。
 
-- activeTab / scripting：在用户主动授权的活动页读取可见DOM、跟随更新或填入草稿。
-- sidePanel / contextMenus：打开侧栏及保留原主动选中文本入口。
-- storage：仅扩展会话保存快照与任务ID，未自动读取整段聊天历史。
-- 本机127.0.0.1权限与CSP：只连接8790/18790服务，不自动发送到站点后台。
+权限说明：
 
-真实核验须配置本机服务及精确EV_EXTENSION_ID，点击提交才发送证据。服务可能调用用户配置的模型，请自行确认配置。原文由用户打开引用页后采集，不静默抓取远程链接；无模型、无证据不伪造结果。补充prompt可以复制或填入空草稿，不自动发送、不覆盖现有草稿。
+- chatgpt.com、claude.ai、gemini.google.com 站点权限与内容脚本：只读取可见 DOM 中的问答，不读取隐藏思维链，不发起网络请求。
+- scripting：为安装前已打开的对话页补注入同一脚本。
+- storage：会话内保存每个标签页的快照；登录令牌保存在本地。
+- sidePanel：侧栏界面。
+- 审查请求只发往 `https://evidence-verifier.edgeone.dev`，且只在点击审查时发送。
 
-完整步骤、上下文长度、额外工具预算、状态与隐私范围见仓库docs/conversation-sidecar.md。设计依据Chrome官方[activeTab](https://developer.chrome.com/docs/extensions/develop/concepts/activeTab)与[Scripting API](https://developer.chrome.com/docs/extensions/reference/api/scripting)。
+接口说明见 [Trisight 审阅接口](../../docs/trisight-assist.md)。
