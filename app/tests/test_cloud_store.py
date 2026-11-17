@@ -45,5 +45,17 @@ class CloudStoreTests(unittest.TestCase):
         self.assertEqual(len(authorize(self.env(),'a'*24)),32)
         with self.assertRaises(CloudError):authorize({},'a'*24)
 
+    def test_page_batches_records_via_mget(self):
+        calls=[]
+        def transport(cmd):
+            calls.append(cmd)
+            if cmd[0]=='ZCARD':return {'result':2}
+            if cmd[0]=='ZREVRANGE':return {'result':['id2','id1']}
+            if cmd[0]=='MGET':return {'result':['{"id":"id2"}','{"id":"id1"}']}
+            return {'result':None}
+        page=Store(self.env(),transport).page('owner',0,20,'assist')
+        self.assertEqual([r['id'] for r in page['rows']],['id2','id1'])
+        self.assertEqual([c[0] for c in calls],['ZCARD','ZREVRANGE','MGET'])
+
 
 if __name__=='__main__':unittest.main()

@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>问答历史：Trisight 三省</title>
+  <link rel="icon" href="/favicon.svg">
+  <link rel="stylesheet" href="/trisight.css">
+</head>
+<body>
+  <div class="ts-bar-wrap"><header id="ts-bar"></header></div>
+  <main class="ts-page">
+    <h1>问答历史</h1>
+    <p class="lead">你自己的审阅记录，只有你能看到。点击记录即可查看详情或给予反馈。</p>
+    <div class="ts-split">
+      <div>
+        <ul class="list" id="list"><li style="padding:18px;color:var(--ink-3);font-size:14px">正在载入历史记录…</li></ul>
+        <p class="ts-meta" id="list-meta"></p>
+      </div>
+      <section id="detail" class="ts-sheet" aria-live="polite"><p class="res-empty">从左侧选择一条查看。</p></section>
+    </div>
+  </main>
+
+  <script src="/trisight.js"></script>
+  <script>
+  (async () => {
+    const user = await TS.guard('history');
+    if (!user) return;
+    const $ = (id) => document.getElementById(id);
+    const list = $('list'), detail = $('detail');
+    const VERDICT_LABEL = {
+      errors_found: '发现错误',
+      no_error: '未发现错误',
+      unverified: '部分未能核实',
+      no_checkable_claims: '无核实断言',
+      not_run: '未纠错',
+    };
+    const jobCache = new Map();
+
+    function select(btn) {
+      list.querySelectorAll('button').forEach((b) => b.setAttribute('aria-current', b === btn ? 'true' : 'false'));
+    }
+
+    function statusChip(r) {
+      if (r.state !== 'completed') return '<span class="hist-pill neutral">未完成</span>';
+      if (r.status !== 'ok') return '<span class="hist-pill neutral">结果无效</span>';
+      const v = r.correct || 'not_run';
+      const cls = v === 'errors_found' ? 'correct' : v === 'no_error' ? 'predict' : v === 'unverified' ? 'warn' : 'neutral';
+      return '<span class="hist-pill ' + cls + '">' + (VERDICT_LABEL[v] || v) + '</span>';
+    }
+
+    async function openJob(id) {
+      try {
+        let job = jobCache.get(id);
+        if (!job) {
+          detail.innerHTML = '<p class="res-empty">正在载入审阅详情…</p>';
+          job = await TS.api('/api/assist/' + id);
+          jobCache.set(id, job);
+        }
+        if (job.state !== 'completed') {
+          detail.innerHTML = '<div class="ts-note">这条审阅没有跑完。<a href="/assist.html?id=' + job.id + '">打开并继续</a></div>';
+          return;
+        }
+        TS.render(detail, { question: job.input.question, answer: job.input.answer, result: job.result, id: job.id, feedback: job.feedback });
+      } catch (e) {
+        TS.alertIn(detail, e.message);
+      }
+    }
+
+    try {
+      const page = await TS.api('/api/assist?limit=30');
+      if (!page.rows.length) {
+        list.innerHTML = '';
+        $('list-meta').innerHTML = '还没有记录。<a href="/assist.html">去审阅第一条回答</a>';
+        return;
+      }
+      list.innerHTML = page.rows.map((r) =>
+        '<li><button type="button" data-id="' + r.id + '">' +
+          '<span class="t">' + TS.esc(r.question) + '</span>' +
+          '<div class="hist-meta-row">' +
+            '<span class="hist-time">' + TS.time(r.created) + '</span>' +
+            '<div class="item-badges">' +
+              statusChip(r) +
+              (r.supplement ? '<span class="mode-pill supplement">补充 ' + r.supplement + '</span>' : '') +
+              (r.predict ? '<span class="mode-pill predict">预测 ' + r.predict + '</span>' : '') +
+            '</div>' +
+          '</div>' +
+        '</button></li>'
+      ).join('');
+      $('list-meta').textContent = '共 ' + page.total + ' 条，显示最近 ' + page.rows.length + ' 条';
+      list.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+        select(b);
+        openJob(b.dataset.id);
+      }));
+      const first = list.querySelector('button');
+      if (first) {
+        select(first);
+        openJob(first.dataset.id);
+      }
+    } catch (e) {
+      list.innerHTML = '';
+      TS.alertIn(detail, e.message);
+    }
+  })();
+  </script>
+</body>
+</html>

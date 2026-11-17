@@ -45,20 +45,8 @@ function renderPlugin(){
  const result=pluginAfter?pluginCase.final:pluginCase.initial;
  const isCleanCase=pluginCase.id==='verified-clean';
  $p('#panel-result').hidden=false;
- $p('#panel-run').textContent='重新执行自动核验';
+ $p('#panel-run').textContent='重新执行审阅';
  const positive=result.verdict==='entailed';
-
- // Role handoff strip
- const roleStrip=$p('#panel-role-strip');
- if(roleStrip){
-  roleStrip.innerHTML=`
-   <span class="role-chip done">01 规划与消歧 ✓</span>
-   <span class="role-chip done">02 盲抽提取 ✓</span>
-   <span class="role-chip ${positive?'done':'warn'}">03 支持核验 ${positive?'✓':'!'}</span>
-   <span class="role-chip ${positive?'done':'warn'}">04 原文绑定 ${positive?'✓':'!'}</span>
-   <span class="role-chip ${pluginAfter?'done':isCleanCase?'idle':'warn'}">05 缺口补搜 ${pluginAfter?'已补证':isCleanCase?'无需触发':'待补证'}</span>
-  `;
- }
 
  $p('#panel-verdict').className='verdict-box'+(positive?' supported':'');
  $p('#panel-verdict').innerHTML=`<strong>${
@@ -141,9 +129,9 @@ function renderPlugin(){
  }else{
   $p('#panel-citation').innerHTML='<article class="citation"><h2>尚无对应教育证据</h2><blockquote>任职地点不能代替就读学校；相关实体出现，不等于这条关系成立。</blockquote></article>';
  }
- $p('#panel-repair').textContent=pluginAfter?'还原至初始缺证状态':'05 自动补入就读证据 E3 并复核';
+ $p('#panel-repair').textContent=pluginAfter?'还原至初始缺证状态':'补入教育证据 E3 并复核';
  $p('#panel-explanation').textContent=pluginCase.explanation;
- $p('#panel-queries').innerHTML=(pluginCase.queries||[]).map(q=>q.query?`<p class="query">Role 05 缺口检索词：<code>${escapePanel(q.query)}</code></p>`:'').join('');
+ $p('#panel-queries').innerHTML=(pluginCase.queries||[]).map(q=>q.query?`<p class="query">缺口检索词：<code>${escapePanel(q.query)}</code></p>`:'').join('');
  notifyPreview();
 }
 
@@ -183,7 +171,7 @@ async function loadPlugin(){
 $p('#panel-case').onchange=e=>choosePluginCase(e.target.value);
 $p('#panel-run').onclick=()=>{if(!pluginData)return loadPlugin();pluginStarted=true;pluginAfter=false;renderPlugin()};
 $p('#panel-repair').onclick=()=>{pluginAfter=!pluginAfter;renderPlugin()};
-$p('#panel-workbench').onclick=()=>window.open(localService+'/#plugin','_blank','noopener');
+$p('#panel-workbench').onclick=()=>window.open(localService+'/assist.html','_blank','noopener');
 window.addEventListener('message',event=>{
  if(event.origin!==location.origin||event.source!==window.parent||!pluginData)return;
  if(event.data?.type==='ev-plugin-case')choosePluginCase(event.data.case_id);

@@ -145,7 +145,22 @@ class Store:
         ids = self.command(['ZREVRANGE', key, str(offset), str(offset + limit - 1)])
         if type(total) is not int or not isinstance(ids, list):
             raise CloudError('index_unavailable', '无法读取持久化审查索引')
-        return {'rows': [self.get(owner, ident) for ident in ids], 'total': total, 'offset': offset, 'limit': limit}
+        if not ids:
+            return {'rows': [], 'total': total, 'offset': offset, 'limit': limit}
+        keys = [self.key('record', owner + ':' + str(ident)) for ident in ids]
+        raws = self.command(['MGET', *keys])
+        if not isinstance(raws, list) or len(raws) != len(ids):
+            rows = [self.get(owner, ident) for ident in ids]
+            return {'rows': rows, 'total': total, 'offset': offset, 'limit': limit}
+        rows = []
+        for ident, raw in zip(ids, raws):
+            if raw is None:
+                continue
+            try:
+                rows.append(json.loads(raw))
+            except (ValueError, TypeError):
+                raise CloudError('record_invalid', '持久化记录无效') from None
+        return {'rows': rows, 'total': total, 'offset': offset, 'limit': limit}
 
     def compare_and_set(self, owner, ident, expected, value):
         # Atomic record transition across cloud instances; stale observers cannot

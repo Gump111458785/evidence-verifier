@@ -69,7 +69,7 @@
     const host = document.getElementById('ts-bar');
     if (!host) return;
     const links = user
-      ? [['assist', '/assist.html', '审阅'], ['library', '/library.html', '案例与历史']]
+      ? [['assist', '/assist.html', '审阅'], ['library', '/library.html', '案例库'], ['history', '/history.html', '问答历史']]
       : [['home', '/', '首页'], ['library', '/library.html', '案例库']];
     host.innerHTML = '<div class="ts-bar">' +
       '<a class="ts-brand" href="/">' + MARK + '<b>Trisight</b><span>三省</span></a>' +

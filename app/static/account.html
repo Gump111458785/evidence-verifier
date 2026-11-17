@@ -11,28 +11,21 @@
   <div class="ts-bar-wrap"><header id="ts-bar"></header></div>
   <main class="ts-page">
     <h1>个人中心</h1>
-    <p class="lead">管理你的个人资料、头像、登录密码与近期 API 调用统计。</p>
+    <p class="lead">管理你的个人资料、头像、登录密码与近期调用统计。</p>
 
     <div class="acct-grid">
       <section class="ts-sheet">
         <h2>个人资料与头像</h2>
         <div class="avatar-editor">
           <div id="avatar-preview" class="avatar-preview-box"></div>
-          <div class="avatar-controls">
-            <div class="avatar-btn-row">
-              <label class="ts-btn quiet small" for="avatar-file" style="cursor:pointer">上传头像图片</label>
-              <input id="avatar-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
-              <button class="ts-link" id="avatar-reset" type="button" style="font-size:13px">恢复默认</button>
-            </div>
-            <div class="avatar-presets" id="avatar-presets" aria-label="预设头像配色"></div>
-            <span class="ts-hint">支持 JPG / PNG / WebP 本地图片（自动裁剪为方形）或选择预设配色。</span>
-          </div>
+          <label class="ts-btn quiet small" for="avatar-file" style="cursor:pointer">上传头像</label>
+          <input id="avatar-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
         </div>
         <dl class="kv" id="profile-kv"></dl>
         <form id="profile" class="ts-stack" style="margin-top:18px">
-          <div><label class="ts-label" for="p-name">显示名称</label><input id="p-name" class="ts-field" maxlength="48"></div>
+          <div><label class="ts-label" for="p-name">名称</label><input id="p-name" class="ts-field" maxlength="48"></div>
           <div><label class="ts-label" for="p-email">邮箱</label><input id="p-email" class="ts-field" type="email"></div>
-          <button class="ts-btn quiet" type="submit">保存资料与头像</button>
+          <button class="ts-btn quiet" type="submit">保存资料</button>
           <p class="ts-meta" id="profile-msg" role="status"></p>
         </form>
       </section>
@@ -50,17 +43,18 @@
       <section class="ts-sheet acct-full">
         <div class="usage-head">
           <div>
-            <h2 style="margin-bottom:4px">近期用量统计（近 14 天）</h2>
-            <p class="ts-meta" style="margin:0" id="usage-sub">按日统计审阅任务触发的模型推理与原文检索调用。</p>
+            <h2 style="margin-bottom:4px">近期用量统计</h2>
+            <p class="ts-meta" style="margin:0">按日统计审阅任务触发的模型与检索调用次数。</p>
           </div>
           <div class="usage-toolbar">
             <div class="usage-legend">
               <span><i class="u-swatch model"></i>模型调用</span>
               <span><i class="u-swatch search"></i>检索调用</span>
             </div>
-            <div class="usage-switch" role="group" aria-label="统计维度">
-              <button type="button" class="fbtn" data-metric="calls" aria-pressed="true">调用次数</button>
-              <button type="button" class="fbtn" data-metric="cost" aria-pressed="false">预留金额 (¥)</button>
+            <div class="usage-switch" role="group" aria-label="统计周期">
+              <button type="button" class="fbtn" data-days="7" aria-pressed="false">近 7 天</button>
+              <button type="button" class="fbtn" data-days="14" aria-pressed="true">近 14 天</button>
+              <button type="button" class="fbtn" data-days="30" aria-pressed="false">近一个月</button>
             </div>
           </div>
         </div>
@@ -68,19 +62,18 @@
         <div class="usage-kpis" id="usage-kpis"></div>
 
         <div class="usage-chart-wrap">
-          <div class="usage-chart" id="usage-chart" aria-label="近期每日用量柱状图"></div>
+          <div class="usage-chart" id="usage-chart" aria-label="近期每日调用次数柱状图"></div>
         </div>
       </section>
     </div>
 
     <section class="ts-sheet" id="admin" style="margin-top:20px" hidden>
       <h2>受邀账号管理</h2>
-      <p class="ts-meta" style="margin:-6px 0 16px">只有管理员可见。网站不开放自助注册，所有账号都在这里开通；管理员账号额度不设上限。</p>
-      <form id="create" class="row" style="margin-bottom:18px">
+      <form id="create" class="admin-create-grid" style="margin-bottom:18px">
         <div><label class="ts-label" for="c-user">用户名</label><input id="c-user" class="ts-field" required></div>
         <div><label class="ts-label" for="c-email">邮箱</label><input id="c-email" class="ts-field" type="email" required></div>
         <div><label class="ts-label" for="c-role">角色</label><select id="c-role" class="ts-field"><option value="member">成员</option><option value="admin">管理员</option></select></div>
-        <div style="flex:0"><button class="ts-btn" type="submit">开通账号</button></div>
+        <div class="admin-submit-cell"><button class="ts-btn" type="submit" style="width:100%">开通账号</button></div>
       </form>
       <div id="admin-msg" role="status"></div>
       <div style="overflow-x:auto"><table class="users"><thead><tr><th>用户名</th><th>邮箱</th><th>角色</th><th>状态</th><th>最近登录</th><th></th></tr></thead><tbody id="users"></tbody></table></div>
@@ -94,21 +87,12 @@
     if (!user) return;
     const $ = (id) => document.getElementById(id);
     const esc = TS.esc;
-    const ROLE = { admin: '管理员（额度不设上限）', member: '成员' };
+    const ROLE = { admin: '管理员', member: '成员' };
     let pendingAvatar = user.avatar || '';
 
-    function renderAvatarEditor() {
+    function renderAvatarPreview() {
       const previewUser = { ...user, display_name: $('p-name').value || user.display_name || user.username, avatar: pendingAvatar };
       $('avatar-preview').innerHTML = TS.avatarHtml(previewUser, 60);
-      const presets = TS.PRESET_AVATARS || {};
-      $('avatar-presets').innerHTML = Object.entries(presets).map(([key, cfg]) =>
-        '<button type="button" class="avatar-swatch' + (pendingAvatar === key || (!pendingAvatar && key === 'preset:ink') ? ' on' : '') +
-        '" data-preset="' + key + '" title="' + esc(cfg.label) + '" style="background:' + cfg.bg + '"></button>'
-      ).join('');
-      $('avatar-presets').querySelectorAll('button').forEach((btn) => btn.addEventListener('click', () => {
-        pendingAvatar = btn.dataset.preset;
-        renderAvatarEditor();
-      }));
     }
 
     function fillProfile(u) {
@@ -117,14 +101,9 @@
       $('profile-kv').innerHTML = '<dt>用户名</dt><dd>' + esc(u.username) + '</dd><dt>角色</dt><dd>' + (ROLE[u.role] || u.role) + '</dd>' +
         '<dt>最近登录</dt><dd>' + (u.last_login_at ? TS.time(u.last_login_at) : '—') + '</dd>';
       $('p-name').value = u.display_name || ''; $('p-email').value = u.email || '';
-      renderAvatarEditor();
+      renderAvatarPreview();
     }
     fillProfile(user);
-
-    $('avatar-reset').addEventListener('click', () => {
-      pendingAvatar = 'preset:ink';
-      renderAvatarEditor();
-    });
 
     $('avatar-file').addEventListener('change', (e) => {
       const file = e.target.files && e.target.files[0];
@@ -142,7 +121,7 @@
           const sy = (img.height - minSide) / 2;
           ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
           pendingAvatar = canvas.toDataURL('image/jpeg', 0.86);
-          renderAvatarEditor();
+          renderAvatarPreview();
         };
         img.src = reader.result;
       };
@@ -157,7 +136,7 @@
           method: 'POST',
           body: { display_name: $('p-name').value, email: $('p-email').value, avatar: pendingAvatar },
         });
-        fillProfile(d.user); TS.bar('account', d.user); $('profile-msg').textContent = '资料与头像已保存。';
+        fillProfile(d.user); TS.bar('account', d.user); $('profile-msg').textContent = '资料已保存。';
       } catch (err) { $('profile-msg').textContent = err.message; }
     });
 
@@ -170,9 +149,8 @@
       } catch (err) { $('password-msg').textContent = err.message; }
     });
 
-    // ---------------- API Platform Usage Bar Chart ----------------
-    let currentMetric = 'calls';
-    let budgetData = null;
+    // ---------------- Usage Bar Chart (Calls Only, 7/14/30d) ----------------
+    let currentDays = 14;
     let assistRows = [];
 
     function dayKey(dateObj) {
@@ -182,11 +160,11 @@
       return `${y}-${m}-${d}`;
     }
 
-    function buildDailySeries(rows) {
+    function buildDailySeries(rows, numDays) {
       const days = [];
       const map = {};
       const now = new Date();
-      for (let i = 13; i >= 0; i--) {
+      for (let i = numDays - 1; i >= 0; i--) {
         const dt = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
         const key = dayKey(dt);
         const label = String(dt.getMonth() + 1).padStart(2, '0') + '/' + String(dt.getDate()).padStart(2, '0');
@@ -197,8 +175,7 @@
       for (const r of rows || []) {
         if (!r.created) continue;
         const dt = new Date(r.created * 1000);
-        const key = dayKey(dt);
-        const bucket = map[key];
+        const bucket = map[dayKey(dt)];
         if (!bucket) continue;
         bucket.assists += 1;
         const mc = typeof r.model_calls === 'number' ? r.model_calls : (r.state === 'completed' ? 2 : 1);
@@ -210,32 +187,30 @@
     }
 
     function renderUsage() {
-      const series = buildDailySeries(assistRows);
+      const series = buildDailySeries(assistRows, currentDays);
+      const totalAssists = series.reduce((a, b) => a + b.assists, 0);
       const totalModel = series.reduce((a, b) => a + b.model_calls, 0);
       const totalSearch = series.reduce((a, b) => a + b.search_calls, 0);
       const totalCalls = totalModel + totalSearch;
-      const isUnlimited = Boolean((budgetData && budgetData.unlimited) || user.role === 'admin');
-      const spentYuan = budgetData ? (budgetData.reserved_millicny / 1000).toFixed(2) : (totalCalls * 0.25).toFixed(2);
-      const limitText = isUnlimited
-        ? '<span class="u-badge-unlimited">不设上限</span> <span class="ts-meta">已累计 ¥' + spentYuan + '</span>'
-        : '¥' + spentYuan + ' <span class="ts-meta">/ ¥' + (budgetData ? (budgetData.limit_millicny / 1000).toFixed(2) : '10.00') + '</span>';
+      const rangeText = currentDays === 7 ? '近 7 天' : currentDays === 30 ? '近一个月' : '近 14 天';
 
       $('usage-kpis').innerHTML =
-        '<div class="u-kpi"><span class="u-kpi-label">近 14 天审阅任务</span><strong class="u-kpi-val">' + assistRows.length + ' <small>次</small></strong></div>' +
-        '<div class="u-kpi"><span class="u-kpi-label">近 14 天 API 调用</span><strong class="u-kpi-val">' + totalCalls + ' <small>次</small></strong><span class="ts-meta">模型 ' + totalModel + ' · 检索 ' + totalSearch + '</span></div>' +
-        '<div class="u-kpi"><span class="u-kpi-label">账号额度状态</span><strong class="u-kpi-val">' + limitText + '</strong></div>';
+        '<div class="u-kpi"><span class="u-kpi-label">' + rangeText + '审阅任务</span><strong class="u-kpi-val">' + totalAssists + ' <small>次</small></strong></div>' +
+        '<div class="u-kpi"><span class="u-kpi-label">' + rangeText + ' API 调用</span><strong class="u-kpi-val">' + totalCalls + ' <small>次</small></strong><span class="ts-meta">模型 ' + totalModel + ' · 检索 ' + totalSearch + '</span></div>';
 
-      const values = series.map((d) => currentMetric === 'cost' ? (d.model_calls + d.search_calls) * 0.25 : (d.model_calls + d.search_calls));
-      const maxVal = Math.max(currentMetric === 'cost' ? 1.5 : 6, ...values);
+      const maxVal = Math.max(6, ...series.map((d) => d.model_calls + d.search_calls));
+      const chart = $('usage-chart');
+      chart.style.gridTemplateColumns = `repeat(${currentDays}, minmax(0, 1fr))`;
 
-      $('usage-chart').innerHTML = series.map((d) => {
-        const mVal = currentMetric === 'cost' ? d.model_calls * 0.25 : d.model_calls;
-        const sVal = currentMetric === 'cost' ? d.search_calls * 0.25 : d.search_calls;
+      chart.innerHTML = series.map((d, idx) => {
+        const mVal = d.model_calls;
+        const sVal = d.search_calls;
         const total = mVal + sVal;
         const mPct = Math.min(100, (mVal / maxVal) * 100);
         const sPct = Math.min(100 - mPct, (sVal / maxVal) * 100);
-        const topLabel = total > 0 ? (currentMetric === 'cost' ? '¥' + total.toFixed(2) : String(total)) : '';
-        const tip = `${d.key}：模型 ${d.model_calls} 次，检索 ${d.search_calls} 次（预留 ¥${((d.model_calls + d.search_calls) * 0.25).toFixed(2)}）`;
+        const topLabel = total > 0 ? String(total) : '';
+        const showAxisLabel = currentDays <= 14 || idx % 3 === 0 || idx === currentDays - 1;
+        const tip = `${d.key}：共 ${total} 次调用（模型 ${d.model_calls} 次，检索 ${d.search_calls} 次）`;
         return '<div class="u-col" title="' + esc(tip) + '">' +
           '<div class="u-bar-track">' +
             (topLabel ? '<span class="u-bar-val" style="bottom:' + Math.min(92, mPct + sPct + 2) + '%">' + esc(topLabel) + '</span>' : '') +
@@ -244,22 +219,21 @@
               (mVal > 0 ? '<div class="u-seg model" style="flex:' + mVal + '"></div>' : '') +
             '</div>' +
           '</div>' +
-          '<span class="u-col-label">' + esc(d.label) + '</span>' +
+          '<span class="u-col-label">' + (showAxisLabel ? esc(d.label) : '') + '</span>' +
         '</div>';
       }).join('');
     }
 
-    document.querySelectorAll('[data-metric]').forEach((btn) => btn.addEventListener('click', () => {
-      currentMetric = btn.dataset.metric;
-      document.querySelectorAll('[data-metric]').forEach((b) => b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'));
+    document.querySelectorAll('[data-days]').forEach((btn) => btn.addEventListener('click', () => {
+      currentDays = Number(btn.dataset.days) || 14;
+      document.querySelectorAll('[data-days]').forEach((b) => b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'));
       renderUsage();
     }));
 
-    Promise.all([TS.api('/api/budget').catch(() => null), TS.api('/api/assist?limit=100').catch(() => null)]).then(([b, h]) => {
-      budgetData = b;
+    TS.api('/api/assist?limit=100').then((h) => {
       assistRows = (h && h.rows) || [];
       renderUsage();
-    });
+    }).catch(() => renderUsage());
 
     if (user.role !== 'admin') return;
     $('admin').hidden = false;

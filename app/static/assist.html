@@ -55,7 +55,6 @@
         <div id="form-error" class="ts-alert" role="alert" hidden></div>
         <div>
           <button class="ts-btn" id="run" type="submit">开始审阅</button>
-          <p class="ts-cost" id="cost">每次审阅调用模型 1 至 3 次、检索最多 2 次。</p>
         </div>
       </form>
 
@@ -97,14 +96,6 @@
     }
     document.querySelectorAll('input[name=how]').forEach((r) => r.addEventListener('change', syncModeUI));
     syncModeUI();
-
-    TS.api('/api/budget').then((b) => {
-      if (b.unlimited) {
-        $('cost').textContent += ' 当前为管理员账号，调用额度不设上限。';
-      } else {
-        $('cost').textContent += ' 试用额度已用 ¥' + (b.reserved_millicny / 1000).toFixed(2) + ' / ¥' + (b.limit_millicny / 1000).toFixed(2) + '（全站共享）。';
-      }
-    }).catch(() => {});
 
     function parseContext(text) {
       const turns = [];
