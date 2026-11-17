@@ -4,17 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>审阅：Trisight 三省</title>
-  <link rel="icon" href="/favicon.svg">
+  <link rel="icon" href="/favicon.svg?v=053" type="image/svg+xml">
   <link rel="stylesheet" href="/trisight.css">
 </head>
 <body>
   <div class="ts-bar-wrap"><header id="ts-bar"></header></div>
-  <div class="ts-danmaku-stage" aria-live="polite">
-    <div id="ts-danmaku" class="ts-danmaku" role="status" hidden>
-      <span class="ts-danmaku-dot" aria-hidden="true"></span>
-      <span id="ts-danmaku-text">正在审阅中，已启动核验流水线…</span>
-    </div>
-  </div>
   <main class="ts-page">
     <h1>审阅一条回答</h1>
     <p class="lead">粘贴你的问题和大模型的回答。系统先判断纠错、补充、预测各自是否需要，只运行需要的部分。</p>
@@ -59,7 +53,7 @@
       </form>
 
       <section aria-live="polite">
-        <div id="resume" class="ts-note" style="margin-bottom:14px" hidden>这次审阅没有跑完。<button class="ts-link" id="resume-btn" type="button">继续运行</button>（会继续产生模型调用）</div>
+        <div id="resume" class="ts-note" style="margin-bottom:14px" hidden>这次审阅没有跑完。<button class="ts-link" id="resume-btn" type="button">继续运行</button></div>
         <div id="result" class="ts-sheet"><p class="res-empty">结果会显示在这里。<br>也可以先去<a href="/library.html">案例库</a>看看示例。</p></div>
       </section>
     </div>
@@ -72,23 +66,6 @@
     if (!user) return;
     const $ = (id) => document.getElementById(id);
     const form = $('form'), result = $('result');
-    let danmakuTimer = null;
-
-    function showDanmaku(text, state = 'running', autoHideMs = 0) {
-      const box = $('ts-danmaku');
-      const label = $('ts-danmaku-text');
-      if (!box || !label) return;
-      if (danmakuTimer) { clearTimeout(danmakuTimer); danmakuTimer = null; }
-      label.textContent = text;
-      box.dataset.state = state;
-      box.hidden = false;
-      box.classList.remove('enter');
-      void box.offsetWidth;
-      box.classList.add('enter');
-      if (autoHideMs > 0) {
-        danmakuTimer = setTimeout(() => { box.hidden = true; }, autoHideMs);
-      }
-    }
 
     function syncModeUI() {
       const manual = document.querySelector('input[name=how]:checked').value === 'manual';
@@ -110,7 +87,58 @@
       return turns;
     }
 
+    const STAGES = [
+      { key: 'review', num: '1', title: '判断与初审', desc: '判定纠错 / 补充 / 预测适用性，并定位待核验断言' },
+      { key: 'search', num: '2', title: '检索原文', desc: '联网查找公开文献与可靠来源全文片段' },
+      { key: 'verify', num: '3', title: '逐条核验', desc: '将断言逐一比对证据原文并回放引文位置' },
+      { key: 'compose', num: '4', title: '修订回答', desc: '汇总纠错与补充建议，整理修订稿与提示词' },
+    ];
+    let tlClock = null;
+    let tlRunStart = 0;
+    const tlDurations = {};
+
+    function stopTimelineClock() {
+      if (tlClock) { clearInterval(tlClock); tlClock = null; }
+    }
+
+    function renderTimeline(activeKey, completedKeys = new Set(), skippedKeys = new Set(), phaseStartedAt = Date.now()) {
+      stopTimelineClock();
+      const activeIdx = STAGES.findIndex((s) => s.key === activeKey);
+      const itemsHtml = STAGES.map((st, idx) => {
+        let status = 'wait';
+        if (skippedKeys.has(st.key)) status = 'skipped';
+        else if (completedKeys.has(st.key) || (activeIdx >= 0 && idx < activeIdx && !skippedKeys.has(st.key))) status = 'done';
+        else if (st.key === activeKey) status = 'active';
+        const icon = status === 'done' ? '✓' : status === 'skipped' ? '—' : st.num;
+        let meta = '等待中';
+        if (status === 'done') meta = tlDurations[st.key] ? `已完成 · ${tlDurations[st.key]}` : '已完成';
+        else if (status === 'skipped') meta = '已跳过';
+        else if (status === 'active') meta = '进行中 · 0.0s';
+        return `<li class="ts-tl-item" data-status="${status}" data-stage="${st.key}">` +
+          `<span class="ts-tl-node">${icon}</span>` +
+          `<div class="ts-tl-body">` +
+            `<div class="ts-tl-row"><span class="ts-tl-title">${TS.esc(st.title)}</span><span class="ts-tl-meta" id="tl-meta-${st.key}">${meta}</span></div>` +
+            `<p class="ts-tl-desc">${TS.esc(st.desc)}</p>` +
+          `</div>` +
+        `</li>`;
+      }).join('');
+
+      result.innerHTML = `<div class="ts-timeline">` +
+        `<div class="ts-tl-head"><strong>审阅阶段进程</strong><span id="tl-total">已耗时 ${((Date.now() - tlRunStart) / 1000).toFixed(1)}s</span></div>` +
+        `<ol class="ts-tl-list">${itemsHtml}</ol>` +
+      `</div>`;
+
+      tlClock = setInterval(() => {
+        const metaEl = document.getElementById('tl-meta-' + activeKey);
+        const totalEl = document.getElementById('tl-total');
+        if (!metaEl && !totalEl) { stopTimelineClock(); return; }
+        if (metaEl) metaEl.textContent = `进行中 · ${((Date.now() - phaseStartedAt) / 1000).toFixed(1)}s`;
+        if (totalEl) totalEl.textContent = `已耗时 ${((Date.now() - tlRunStart) / 1000).toFixed(1)}s`;
+      }, 100);
+    }
+
     function show(job) {
+      stopTimelineClock();
       $('resume').hidden = !(job.state === 'queued' || (job.state === 'failed' && job.advance_path));
       if (job.state === 'completed') {
         TS.render(result, { question: job.input.question, answer: job.input.answer, result: job.result, id: job.id, feedback: job.feedback });
@@ -119,37 +147,48 @@
       }
     }
 
-    const PHASE_LABEL = { review: '判断与初审', search: '检索原文', verify: '逐条核验', compose: '修订回答' };
     let current = null;
     async function drive(job, allowRetry = false) {
       current = job.id;
       $('run').disabled = true;
+      tlRunStart = Date.now();
+      for (const k of Object.keys(tlDurations)) delete tlDurations[k];
+      const completed = new Set();
+      const skipped = new Set();
       try {
         if (allowRetry && job.state === 'failed' && job.advance_path) {
-          showDanmaku('正在审阅中：重试当前步骤……', 'running');
-          result.innerHTML = '<p class="res-empty">正在重试当前审阅步骤……</p>';
+          const phase = (job.progress || {}).phase || 'review';
+          const started = Date.now();
+          renderTimeline(phase, completed, skipped, started);
           job = await TS.api(job.advance_path, { method: 'POST' });
+          tlDurations[phase] = ((Date.now() - started) / 1000).toFixed(1) + 's';
+          if (job.state !== 'failed') completed.add(phase);
         }
         while (job.state === 'queued') {
-          show(job);
-          const phaseText = PHASE_LABEL[(job.progress || {}).phase] || '处理';
-          showDanmaku('正在审阅中 · ' + phaseText + '……', 'running');
-          result.innerHTML = '<p class="res-empty">正在' + phaseText + '……</p>';
+          $('resume').hidden = true;
+          const phase = (job.progress || {}).phase || 'review';
+          const phaseIdx = STAGES.findIndex((s) => s.key === phase);
+          for (let i = 0; i < phaseIdx; i++) {
+            const prevKey = STAGES[i].key;
+            if (!completed.has(prevKey)) skipped.add(prevKey);
+          }
+          const started = Date.now();
+          renderTimeline(phase, completed, skipped, started);
           job = await TS.api(job.advance_path, { method: 'POST' });
+          if (job.state !== 'failed') {
+            tlDurations[phase] = ((Date.now() - started) / 1000).toFixed(1) + 's';
+            completed.add(phase);
+          }
         }
         show(job);
-        if (job.state === 'completed') {
-          showDanmaku('审阅已完成', 'done', 2600);
-        } else {
-          showDanmaku('审阅已中断，可点击继续运行', 'error', 3600);
-        }
         history.replaceState(null, '', '/assist.html?id=' + job.id);
       } catch (e) {
+        stopTimelineClock();
         result.innerHTML = '';
         TS.alertIn(result, e.message);
-        showDanmaku('审阅请求失败：' + e.message, 'error', 4000);
         $('resume').hidden = false;
       } finally {
+        stopTimelineClock();
         $('run').disabled = false;
       }
     }
@@ -168,12 +207,14 @@
         if (!body.modes.length) { $('form-error').textContent = '手动选择时至少勾选一种模式。'; $('form-error').hidden = false; return; }
       } else body.modes = 'auto';
       try {
-        showDanmaku('正在审阅 · 已启动核验流水线……', 'running');
-        result.innerHTML = '<p class="res-empty">正在启动审阅……</p>';
+        TS.danmaku('正在审阅中…', 'running', 2200);
+        tlRunStart = Date.now();
+        renderTimeline('review', new Set(), new Set(), Date.now());
         const job = await TS.api('/api/assist', { method: 'POST', body });
         await drive(job);
       } catch (e) {
-        showDanmaku('启动审阅失败：' + e.message, 'error', 3600);
+        stopTimelineClock();
+        TS.danmaku('启动失败：' + e.message, 'error', 3000);
         $('form-error').textContent = e.message; $('form-error').hidden = false;
       }
     });

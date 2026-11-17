@@ -41,7 +41,32 @@
 
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-  const MARK = '<svg class="ts-mark" viewBox="0 0 20 20" aria-hidden="true"><path d="M2 6h9" stroke="#c03a2b" stroke-width="2.2" stroke-linecap="round"/><path d="M5 15l3-5 3 5" fill="none" stroke="#2353b8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 13h5m-2-2.5 2 2.5-2 2.5" fill="none" stroke="#0d7566" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const MARK = '<svg class="ts-mark" viewBox="0 0 20 20" aria-hidden="true"><path d="M2 6h9" stroke="#c03a2b" stroke-width="2.2" stroke-linecap="round"/><path d="M5 15l3-5 3 5" fill="none" stroke="#2353b8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 13h5m-2-2.5 2 2.5-2 2.5" fill="none" stroke="#1c2230" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  let _danmakuTimer = null;
+  function danmaku(text, state = 'running', autoHideMs = 2200) {
+    let stage = document.querySelector('.ts-danmaku-stage');
+    if (!stage) {
+      stage = document.createElement('div');
+      stage.className = 'ts-danmaku-stage';
+      stage.setAttribute('aria-live', 'polite');
+      stage.innerHTML = '<div id="ts-danmaku" class="ts-danmaku" role="status" hidden><span class="ts-danmaku-dot" aria-hidden="true"></span><span id="ts-danmaku-text"></span></div>';
+      document.body.appendChild(stage);
+    }
+    const box = document.getElementById('ts-danmaku');
+    const label = document.getElementById('ts-danmaku-text');
+    if (!box || !label) return;
+    if (_danmakuTimer) { clearTimeout(_danmakuTimer); _danmakuTimer = null; }
+    label.textContent = text;
+    box.dataset.state = state;
+    box.hidden = false;
+    box.classList.remove('enter');
+    void box.offsetWidth;
+    box.classList.add('enter');
+    if (autoHideMs > 0) {
+      _danmakuTimer = setTimeout(() => { box.hidden = true; }, autoHideMs);
+    }
+  }
 
   const PRESET_AVATARS = {
     'preset:ink': { bg: '#1c2230', fg: '#ffffff', label: '墨黑' },
@@ -151,12 +176,15 @@
     return '<blockquote>“' + esc(q.text) + '”<br><span class="ts-meta">' + where + '</span></blockquote>';
   }
 
+  const THUMB_UP = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>';
+  const THUMB_DOWN = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/></svg>';
+
   function fbButtons(target, feedback, enabled) {
     if (!enabled) return '';
     const cur = (feedback || []).find((f) => f.target === target);
     const on = (v) => (cur && cur.value === v ? 'true' : 'false');
-    return '<span class="fb"><button class="fbtn" data-fb="' + target + '" data-v="up" aria-pressed="' + on('up') + '" title="有用" aria-label="有用">👍</button>' +
-      '<button class="fbtn" data-fb="' + target + '" data-v="down" aria-pressed="' + on('down') + '" title="没用" aria-label="没用">👎</button></span>';
+    return '<span class="fb"><button class="fbtn fbtn-icon" data-fb="' + target + '" data-v="up" aria-pressed="' + on('up') + '" title="有用" aria-label="有用">' + THUMB_UP + '</button>' +
+      '<button class="fbtn fbtn-icon" data-fb="' + target + '" data-v="down" aria-pressed="' + on('down') + '" title="没用" aria-label="没用">' + THUMB_DOWN + '</button></span>';
   }
 
   function promptBlock(label, text) {
@@ -228,7 +256,10 @@
     }
     host.innerHTML = parts.join('');
     host.querySelectorAll('[data-copy]').forEach((b) => b.addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(b.dataset.copy); const t = b.textContent; b.textContent = '已复制'; setTimeout(() => { b.textContent = t; }, 1200); } catch (_) {}
+      try {
+        await navigator.clipboard.writeText(b.dataset.copy);
+        danmaku('已复制到剪贴板', 'done', 2000);
+      } catch (_) {}
     }));
     host.querySelectorAll('[data-fb]').forEach((b) => b.addEventListener('click', async () => {
       try {
@@ -247,5 +278,5 @@
 
   const time = (ts) => { try { return new Date(ts * 1000).toLocaleString('zh-CN', { hour12: false }); } catch (_) { return ''; } };
 
-  window.TS = { api, me, guard, bar, render, esc, time, logout, REPO, alertIn, avatarHtml, PRESET_AVATARS };
+  window.TS = { api, me, guard, bar, render, esc, time, logout, REPO, alertIn, avatarHtml, PRESET_AVATARS, danmaku };
 })();
