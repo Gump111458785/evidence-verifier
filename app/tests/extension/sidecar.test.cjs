@@ -233,3 +233,33 @@ test('history view lists past reviews and opens detail tabs cleanly', async () =
   assert.equal(f.get('work').hidden, false);
   assert.equal(f.get('history').hidden, true);
 });
+
+test('unverified claims display as correct (green supported) and only contradicted items are marked red', async () => {
+  const f = harness();
+  await settle();
+  f.api.state.job = {
+    result: {
+      status: 'ok',
+      modes: {
+        correct: {
+          needed: true,
+          verdict: 'unverified',
+          claims: [
+            { id: 'C1', text: '未能核实断言A', verdict: 'insufficient', explanation: '无证据' },
+            { id: 'C2', text: '有误断言B', verdict: 'contradicted', correction: '正确B', quote: { text: 'q', url: 'https://example.org' } },
+            { id: 'C3', text: '有证据支持的断言C', verdict: 'supported', quote: { text: 'supporting quote', url: 'https://example.org' } },
+          ],
+        },
+        supplement: { needed: false, points: [] },
+        predict: { needed: false, questions: [] },
+      },
+      prompts: {},
+    },
+  };
+  f.api.renderTab('correct');
+  const html = f.get('pane').innerHTML;
+  assert.ok(!html.includes('未能核实"'));
+  assert.ok(html.includes('<div class="item supported">未能核实断言A</div>'));
+  assert.ok(html.includes('<div class="item contradicted"><del>有误断言B</del>'));
+  assert.ok(html.includes('<div class="item supported">有证据支持的断言C'));
+});

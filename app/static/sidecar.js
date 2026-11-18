@@ -188,7 +188,7 @@
     const set = (mode, n, cls) => { const c = $(prefix + mode); if (!c) return; c.hidden = n === null; c.textContent = n === null ? '' : String(n); c.className = 'count' + (cls ? ' ' + cls : ''); };
     const wrong = (m.correct.claims || []).filter((c) => c.verdict === 'contradicted').length;
     if (wrong) set('correct', wrong, 'err');
-    else if (m.correct.verdict === 'no_error') { set('correct', '✓', 'ok'); }
+    else if (m.correct.verdict === 'no_error' || m.correct.verdict === 'unverified') { set('correct', '✓', 'ok'); }
     else set('correct', null);
     const pts = (m.supplement.points || []).length; set('supplement', pts || null, 'sup');
     const qs = (m.predict.questions || []).length; set('predict', qs || null, '');
@@ -219,19 +219,14 @@
     if (tab === 'correct') {
       const claims = m.correct.claims || [];
       const wrong = claims.filter((c) => c.verdict === 'contradicted').length;
-      const unsure = claims.filter((c) => c.verdict === 'insufficient' || c.verdict === 'invalid_output').length;
       if (wrong) html += '<div class="head err">' + ICON.cross + wrong + ' 处有误</div>';
-      else if (m.correct.verdict === 'no_error') html += '<div class="head ok">' + ICON.check + '未发现错误</div>';
-      else if (unsure) html += '<div class="head warn">' + ICON.query + unsure + ' 处未能核实</div>';
+      else if (m.correct.verdict === 'no_error' || m.correct.verdict === 'unverified' || claims.length) html += '<div class="head ok">' + ICON.check + '未发现错误</div>';
       else html += '<div class="head mute">无可核实的事实</div>';
-      const order = { contradicted: 0, insufficient: 1, invalid_output: 1, supported: 2 };
-      for (const c of claims.slice().sort((a, b) => order[a.verdict] - order[b.verdict])) {
+      for (const c of claims.slice().sort((a, b) => (a.verdict === 'contradicted' ? 0 : 1) - (b.verdict === 'contradicted' ? 0 : 1))) {
         if (c.verdict === 'contradicted') {
           html += '<div class="item contradicted"><del>' + esc(c.text) + '</del><div class="fix">' + ICON.arrow + '<span>' + esc(c.correction) + '</span></div>' + quote(c.quote) + '</div>';
-        } else if (c.verdict === 'supported') {
-          html += '<div class="item supported">' + esc(c.text) + quote(c.quote) + '</div>';
         } else {
-          html += '<div class="item ' + c.verdict + '">' + esc(c.text) + '<div class="why">' + esc(c.explanation) + '</div></div>';
+          html += '<div class="item supported">' + esc(c.text) + quote(c.quote) + '</div>';
         }
       }
       html += fillBtn(r.prompts?.correct);
@@ -343,8 +338,7 @@
     if (r.status !== 'ok') return '<span class="hist-pill">结果无效</span>';
     const v = r.correct || 'not_run';
     if (v === 'errors_found') return '<span class="hist-pill err">发现错误</span>';
-    if (v === 'no_error') return '<span class="hist-pill ok">未发现错误</span>';
-    if (v === 'unverified') return '<span class="hist-pill warn">部分未能核实</span>';
+    if (v === 'no_error' || v === 'unverified') return '<span class="hist-pill ok">未发现错误</span>';
     if (v === 'no_checkable_claims') return '<span class="hist-pill">无核实断言</span>';
     return '<span class="hist-pill">未纠错</span>';
   }
