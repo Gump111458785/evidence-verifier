@@ -62,11 +62,12 @@
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          if ([502, 503, 504].includes(res.status) && attempt < maxAttempts - 1) {
-            await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
+          const transient5xx = !data.code && [500, 502, 503, 504].includes(res.status);
+          if (transient5xx && attempt < maxAttempts - 1) {
+            await new Promise((r) => setTimeout(r, 350 * (attempt + 1)));
             continue;
           }
-          const e = new Error(data.error || '请求失败（' + res.status + '）');
+          const e = new Error(data.error || (res.status >= 500 ? '云端服务暂时繁忙（' + res.status + '），请再试一次' : '请求失败（' + res.status + '）'));
           e.status = res.status; e.code = data.code;
           throw e;
         }
@@ -139,7 +140,7 @@
   async function attach() {
     if (!isExtension) {
       $('src').hidden = false; $('src').dataset.state = 'ready'; $('src-name').textContent = '手动';
-      $('drawer').hidden = false; $('src').setAttribute('aria-expanded', 'true');
+      toggleDrawer(true);
       syncButtons();
       return;
     }
@@ -272,9 +273,16 @@
     if (snapUsed && (state.snap.context || []).length) body.context = state.snap.context;
     try {
       let job = await api('/api/assist', { method: 'POST', body });
-      while (job.state === 'queued') {
+      let polls = 0;
+      while (job.state === 'queued' || (job.state === 'running' && polls < 8)) {
         meter((job.progress || {}).phase || 'review');
-        job = await api(job.advance_path, { method: 'POST' });
+        if (job.state === 'running') {
+          polls += 1;
+          await new Promise((r) => setTimeout(r, 1500));
+          job = await api('/api/assist/' + job.id);
+        } else {
+          job = await api(job.advance_path, { method: 'POST' });
+        }
       }
       if (job.state !== 'completed') throw new Error(job.error || '审查未完成');
       state.job = job;
@@ -305,12 +313,19 @@
   function showLogin() { $('work').hidden = true; $('drawer').hidden = true; $('src').hidden = true; $('logout').hidden = true; $('login').hidden = false; }
   async function showWork() { $('login').hidden = true; $('work').hidden = false; $('logout').hidden = false; reset(); await attach(); }
 
+  function toggleDrawer(forceOpen) {
+    const open = typeof forceOpen === 'boolean' ? forceOpen : $('drawer').hidden;
+    $('drawer').hidden = !open;
+    $('src').setAttribute('aria-expanded', open ? 'true' : 'false');
+    if ($('toggle-qa')) {
+      $('toggle-qa').setAttribute('aria-expanded', open ? 'true' : 'false');
+      $('toggle-qa').textContent = open ? '收起 QA' : '查看 QA';
+    }
+  }
+
   function bind() {
-    $('src').addEventListener('click', () => {
-      const open = $('drawer').hidden;
-      $('drawer').hidden = !open;
-      $('src').setAttribute('aria-expanded', open ? 'true' : 'false');
-    });
+    $('src').addEventListener('click', () => toggleDrawer());
+    if ($('toggle-qa')) $('toggle-qa').addEventListener('click', () => toggleDrawer());
     $('question').addEventListener('input', syncButtons);
     $('candidate').addEventListener('input', syncButtons);
     $('run-auto').addEventListener('click', () => { arm(false); run(MODES); });
@@ -320,7 +335,7 @@
     });
     $('pull-ctx').addEventListener('click', async () => {
       if (!isExtension) {
-        $('drawer').hidden = false; $('src').setAttribute('aria-expanded', 'true');
+        toggleDrawer(true);
         $('question').focus();
         return;
       }

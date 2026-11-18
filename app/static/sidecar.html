@@ -50,7 +50,10 @@
     </div>
     <div class="ctx-bar">
       <span id="ctx-status" class="ctx-status">暂无更早上下文</span>
-      <button type="button" id="pull-ctx" class="ctx-pull">获取上下文</button>
+      <div class="ctx-btns">
+        <button type="button" id="toggle-qa" class="ctx-pull" aria-expanded="false" aria-controls="drawer">查看 QA</button>
+        <button type="button" id="pull-ctx" class="ctx-pull">获取上下文</button>
+      </div>
     </div>
     <div id="alert" class="alert" role="alert" hidden></div>
 

@@ -53,7 +53,7 @@ class Search:
                     headers={'Content-Type':'application/json','Authorization':'Bearer '+key})
                 class NoRedirect(urllib.request.HTTPRedirectHandler):
                     def redirect_request(self,*a,**k):raise ValueError('Redirect disabled')
-                with urllib.request.build_opener(NoRedirect()).open(req,timeout=30) as r:raw=r.read(1_500_001)
+                with urllib.request.build_opener(NoRedirect()).open(req,timeout=8) as r:raw=r.read(1_500_001)
                 if len(raw)>1_500_000:raise ValueError('Oversized search response')
                 reply=json.loads(raw)
             rows=reply['results']

@@ -73,10 +73,24 @@ class DeepSeek:
         try:
             if self.transport:
                 reply = self.transport(body)
+                choice = reply['choices'][0]
+                if choice['message'].get('refusal'):
+                    raise ValueError('Model refusal')
+                if choice.get('finish_reason') not in ('stop', 'length'):
+                    raise ValueError('Non-final supplier response')
+                result = _parse_json_object(choice['message']['content'])
             else:
+                def call_and_parse(req_body, timeout_s):
+                    raw_reply = self._http_post(req_body, key, timeout=timeout_s)
+                    ch = raw_reply['choices'][0]
+                    if ch['message'].get('refusal'):
+                        raise ValueError('Model refusal')
+                    if ch.get('finish_reason') not in ('stop', 'length'):
+                        raise ValueError('Non-final supplier response')
+                    return raw_reply, _parse_json_object(ch['message']['content'])
                 try:
-                    reply = self._http_post(body, key, timeout=25)
-                except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, ValueError) as first_err:
+                    reply, result = call_and_parse(body, 12)
+                except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, ValueError, KeyError, IndexError, TypeError) as first_err:
                     http_code = getattr(first_err, 'code', None)
                     detail = f' ({type(first_err).__name__}{" " + str(http_code) if http_code is not None else ""})'
                     if http_code in (401, 402):
@@ -88,13 +102,7 @@ class DeepSeek:
                         'response_format': {'type': 'json_object'},
                         'messages': messages,
                     }
-                    reply = self._http_post(fallback_body, key, timeout=25)
-            choice = reply['choices'][0]
-            if choice['message'].get('refusal'):
-                raise ValueError('Model refusal')
-            if choice.get('finish_reason') not in ('stop', 'length'):
-                raise ValueError('Non-final supplier response')
-            result = _parse_json_object(choice['message']['content'])
+                    reply, result = call_and_parse(fallback_body, 14)
             return {'parsed': result, 'usage': reply.get('usage'),
                     'source': 'remote_api', 'provider_model': reply.get('model', MODEL), 'reservation': reserved}
         except Exception as exc:

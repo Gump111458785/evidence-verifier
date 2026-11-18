@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Trisight 三省",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "minimum_chrome_version": "116",
   "description": "在 AI 对话页旁审阅回答：纠错、补充、预测。只读取页面可见问答，提示词只填入输入框，不自动发送。",
   "permissions": [

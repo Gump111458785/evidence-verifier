@@ -168,3 +168,34 @@ test('api retries transient Failed to fetch network drops before succeeding', as
   assert.equal(f.get('alert').hidden, true);
   assert.ok(f.get('pane').innerHTML.includes('1889年建成'));
 });
+
+test('toggle-qa expands and hides extracted QA drawer cleanly', async () => {
+  const f = harness();
+  f.get('drawer').hidden = true;
+  await settle();
+  assert.equal(f.get('drawer').hidden, true);
+  f.get('toggle-qa').click();
+  assert.equal(f.get('drawer').hidden, false);
+  assert.equal(f.get('toggle-qa').textContent, '收起 QA');
+  f.get('toggle-qa').click();
+  assert.equal(f.get('drawer').hidden, true);
+  assert.equal(f.get('toggle-qa').textContent, '查看 QA');
+});
+
+test('api retries transient non-JSON 500 gateway errors before succeeding', async () => {
+  const f = harness();
+  await settle();
+  let calls = 0;
+  const origFetch = f.context.fetch;
+  f.context.fetch = async (url, o) => {
+    if (url.endsWith('/advance') && calls === 0) {
+      calls += 1;
+      return { ok: false, status: 500, json: async () => { throw new Error('html'); } };
+    }
+    return origFetch(url, o);
+  };
+  f.get('run-auto').click();
+  await new Promise((r) => setTimeout(r, 450));
+  assert.equal(f.get('alert').hidden, true);
+  assert.ok(f.get('pane').innerHTML.includes('1889年建成'));
+});

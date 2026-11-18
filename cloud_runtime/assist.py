@@ -343,7 +343,7 @@ def _wiki_fallback_search(query):
                 f'https://{host}/w/api.php?{params}',
                 headers={'User-Agent': 'TrisightVerifier/0.5 (research)'},
             )
-            with urllib.request.urlopen(req, timeout=8) as r:
+            with urllib.request.urlopen(req, timeout=4) as r:
                 data = json.loads(r.read(500_000))
             hits = (data.get('query') or {}).get('search') or []
             for h in hits[:2]:
@@ -362,7 +362,7 @@ def _wiki_fallback_search(query):
                     f'https://{host}/w/api.php?{ext_params}',
                     headers={'User-Agent': 'TrisightVerifier/0.5 (research)'},
                 )
-                with urllib.request.urlopen(req2, timeout=8) as r2:
+                with urllib.request.urlopen(req2, timeout=4) as r2:
                     pages = ((json.loads(r2.read(500_000)).get('query') or {}).get('pages') or {})
                 for p in pages.values():
                     text = (p.get('extract') or '').strip()
