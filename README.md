@@ -1,337 +1,265 @@
 <div align="center">
 
-# Evidence Verifier
+# Trisight 三省 · Evidence Verifier
 
-**让回答对准问题，让结论有据可查。**
+**大模型回答的外置审阅者（纠错 · 补充 · 预测）与轻量级事实核验内核**
 
-面向 AI 对话与搜索智能体的证据核验与回答完善系统。<br>
-核对原文、找出证据缺口，把补充依据交回原对话；对象澄清、内容覆盖和按需延伸沿同一流程接入。[待完成]
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](app/README.md)
+[![Live Workbench](https://img.shields.io/badge/Online-evidence--verifier.edgeone.dev-111827.svg)](https://evidence-verifier.edgeone.dev/)
+[![Extension v0.6.6](https://img.shields.io/badge/Chrome_Extension-v0.6.6-0f766e.svg)](app/extension/README.md)
 
-[![CI](https://github.com/Gump111458785/evidence-verifier/actions/workflows/release-checks.yml/badge.svg)](https://github.com/Gump111458785/evidence-verifier/actions/workflows/release-checks.yml)
-[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](api_edition/README.md)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![API mode](https://img.shields.io/badge/API_mode-no_local_GPU-227755)](api_edition/README.md)
-
-> **v0.5.0 起，项目改名为 Trisight（三省），定位为大模型回答的外置审阅者：纠错、补充、预测。** 网页版三种模式已在云端实现（DeepSeek 提示词版本），插件三种模式与小模型微调进行中。接口见 [Trisight 审阅接口](docs/trisight-assist.md)，变更见 [CHANGELOG](CHANGELOG.md)。下文仍是 v0.4 的证据核验说明，将在后续版本按新定位重写。[待完成]
-
-[在线工作台](https://evidence-verifier.edgeone.dev/) · [网页版与插件版](#2-网页版与插件版) · [补证案例](#3-补证案例) · [系统架构](#4-系统架构) · [核心机制](#5-核心机制) · [后训练](#6-后训练证据核验模型的任务适配) · [快速开始](#7-快速开始)
+[在线工作台](https://evidence-verifier.edgeone.dev/) · [下载浏览器插件 v0.6.6](https://evidence-verifier.edgeone.dev/downloads/evidence-verifier-extension.zip) · [核心能力](#2-核心能力与展示) · [Chrome 伴随插件](#3-chrome-伴随插件v066) · [快速开始](#7-快速开始) · [架构与文档](#9-工程文档与研发路线)
 
 </div>
 
-## 1. 解决什么问题
+---
 
-AI 的回答可能每句话都像是对的，却没有回答用户真正想问的事：同名人物认错了，复杂概念只解释了一部分，或关键结论附了引用却没有得到证明。
+**Trisight 三省（Evidence Verifier）** 是一个面向 AI 对话与长文输出的外置事实审查与阅读辅助系统：当大语言模型给出回答后，三省不替换你的主模型，而是在旁边同步完成**证据检索、逐句核验、缺口补充与追问预测**，并以 **Chrome 侧边栏伴随插件**、**Web 审阅工作台** 和 **Python/HTTP 验证内核** 三种形态交付。
 
-Evidence Verifier 围绕三件事展开：**对象是否找对、问题是否答全、结论是否有据。** 证据核验逐条检查原文与关系；同名对象澄清、复杂问题覆盖检查及按需延伸纳入后续产品能力。[待完成]
+<p align="center">
+  <a href="https://evidence-verifier.edgeone.dev/">
+    <img src="docs/images/trisight-web-home.png" alt="Trisight 三省在线工作台首页" width="100%">
+  </a>
+</p>
 
-| 用户遇到的问题 | 处理方式 | 用户得到什么 |
-|---|---|---|
-| **回答了另一个同名人物**：姓名相同，职业、机构或年代不同 | 结合上下文核对身份线索；无法确定时列出候选，先请用户确认，不自行猜测 [待完成] | 确认过的查询对象，减少围绕错误人物继续回答 |
-| **大问题只回答了一部分**：解释了概念，却漏掉用户关心的应用条件或限制 | 根据问题与用途列出必要子问题，对照回答找遗漏，再围绕缺口补搜 [待完成] | 有依据的内容覆盖清单与补充回答 |
-| **回答停在表面，缺少进一步解释**：用户需要比较、例子或延伸背景 | 区分必要内容和可选延伸，让用户选择方向、深度与搜索预算 [待完成] | 与需求相关的展开内容，避免为凑篇幅无边界扩写 |
-| **引用相关，却没有证明结论** | 事实抽取与支持性核验分开，逐条核对引用 | 关系结论、原文位置与判断依据 |
-| **两条事实成立，却接到了不同的人** | 全链变量绑定，检查主体、客体、方向与时间 | 完整证据链或明确的断点 |
-| **发现缺证，却不知道接下来搜什么** | 将缺失关系转成查询，在共享预算内补搜 | 新来源、重核验结果与修订提示词 |
+> [!TIP]
+> **直接体验在线版本**：访问 **[https://evidence-verifier.edgeone.dev/](https://evidence-verifier.edgeone.dev/)** 可直接使用三省工作台、预设案例库与历史审查记录；安装 Chrome 伴随插件后，可在 **DeepSeek / ChatGPT / Claude / Gemini** 对话页面右侧实时同步审查。
 
-“答全”以用户问题和确认的用途为准。用户只想要简短定义时，不强制扩展成综述；身份不明时，补搜也不能替用户决定他原本想问谁。
+---
 
-### 1.1 一次审查应该交付什么
+## 1. 为什么做三省（Trisight）？
 
-报告分别呈现三类结果：**查询对象**是否确认、**必要内容**是否覆盖、**关键结论**是否有证据。三者不合并为一个模糊的“可信度分数”：证据充分不能替代对象确认，文字变长也不能替代内容完整。[待完成]
+主流对话模型已经很擅长流畅作答，但在真实工作与检索场景里仍有三个高频痛点：
 
-处理顺序为“确认对象与用途 → 约定需要回答的内容 → 核对现有回答 → 围绕缺口补充 → 用户审阅”。身份线索冲突时先澄清；只需补例子时不重复整篇搜索。系统提出覆盖清单供确认，不声称自动穷尽任何大概念。[待完成]
+1. **细节幻觉难察觉**：整段话读起来很自然，但年份、数据、人物归属或原文引述往往悄悄偏差（例如“埃菲尔铁塔 1889 年建成时高 300 米”）。
+2. **回答只停在第一层**：模型常跳过前提条件、对照视角、边界约束或最新变化，追问方向也需要自己摸索。
+3. **跨平台核对成本高**：每次把问答复制去搜原文再整理要点都很割裂，缺乏一个留在对话旁边的外置审阅层。
 
-## 2. 网页版与插件版
+三省把审查过程做成**零侵入的外置伴随体验**——既能像浏览器侧栏一样跟在 DeepSeek / ChatGPT 旁边自动触发，也能在 Web 工作台里按四阶段可视化回放逐条证据。
 
-| | **网页版 · 答案审查工作台** | **插件版 · 对话中的审查助手** |
-|---|---|---|
-| 使用位置 | 独立浏览器页面 | Chrome 侧栏，与 AI 对话并排 |
-| 输入方式 | 粘贴问题、回答片段及来源原文 | 主动读取当前回答，采集用户打开的引用来源 |
-| 操作重点 | 创建审查、管理取证任务、查看历史报告 | 核对当前回答、补搜缺口、将提示词填回草稿 |
-| 报告内容 | 原文、逐关系结论、引用位置、变量绑定、补搜轨迹 | 当前对话的关系链、证据缺口与修订建议 |
-| 回答完善 | 在报告中加入对象确认、必要内容清单与可选延伸 [待完成] | 先澄清对象或用途，再生成针对遗漏项的修订提示词 [待完成] |
-| 接入方式 | HTTP API、Python SDK | Chrome MV3 扩展，连接本机核验服务 |
+---
 
-### 2.1 网页版：集中查看答案、证据与报告
+## 2. 核心能力与展示
 
-![网页版工作概览：答案、两跳关系链与审查入口](docs/images/product-overview.jpg)
+三省围绕同一套结构化审阅管道提供三类输出，并用统一视觉语义标注在原文与卡片中：
 
-工作台按“工作概览 → 答案审查 → 取证任务 → 审查记录”组织。审查报告分别保留初始核验与补搜结果，支持刷新恢复、原文回放和 JSON 导出。
+| 能力 | 颜色与标识 | 核心作用 |
+| --- | --- | --- |
+| **纠错（Correct）** | 红色删除线 / 纠错卡片 | 拆解断言并联网/结合上下文核对；**仅将经权威依据证实有误的断言标红纠错**，附上修正值、原文摘要与来源链接；核实正确及以模型回答为准的条目明确标绿展示，不制造误报 |
+| **补充（Supplement）** | 蓝色补充要点 / 引用卡片 | 提取原回答遗漏的关键背景、边界条件、对照细节与延伸来源，补足阅读理解所需的事实上下文 |
+| **预测（Predict）** | 黑色追问建议与一键填入 | 预判用户接下来最可能深入的 3 个问题；在支持的 AI 对话页可**一键直接填入输入框**继续追问 |
 
-### 2.2 插件版：沿着当前对话完成核验与补证
+### 2.1 在对话页实时纠错与逐条取证（DeepSeek / ChatGPT）
 
-![插件版：ChatGPT对话与Evidence Verifier侧栏并排，读取当前问题与候选回答](docs/images/plugin-chatgpt-live.png)
+插件自动识别当前对话的最新一轮问答（`自动审查`），抽取关键断言并展示每条结论的核验结果、原文片段与来源；有误条目以红色高亮给出修正建议，其余已证实及以大模型回答为准的断言均给出绿色确认卡片，并支持一键展开 `查看上文` 确认上下文摘要：
 
-左侧为ChatGPT原对话，右侧为Evidence Verifier审查侧栏。截图展示“读取当前回答”后的问题与候选片段预览；用户可继续采集来源原文、确认待核验关系，并生成补充提示词。
+<p align="center">
+  <img src="docs/images/trisight-deepseek-correct.png" alt="DeepSeek 对话页右侧三省 Chrome 插件实时纠错与核验卡片" width="100%">
+</p>
 
-```mermaid
-flowchart LR
-    subgraph AI["AI 对话页"]
-        A["用户问题与候选回答"]
-        B["引用来源页"]
-        C["修订提示词草稿"]
-    end
-    subgraph Extension["Chrome 审查侧栏"]
-        D["读取当前回答"] --> Scope["确认对象、用途和范围 [待完成]"]
-        Scope --> E["确认待核验关系"]
-        F["采集来源原文"] --> G["独立核验与引用回放"]
-        E --> G
-        G --> H["指出缺失关系"]
-        Scope -.-> Missing["找出内容遗漏 [待完成]"]
-        Missing -.-> I
-        H --> I["定向补搜并重核验"]
-        I --> J["生成修订提示词"]
-    end
-    A --> D
-    B --> F
-    J --> C
-    classDef chat fill:#eef3f9,stroke:#7290ae,color:#243b53;
-    classDef panel fill:#edf5ed,stroke:#769c7d,color:#254731;
-    class A,B,C chat;
-    class D,E,F,G,H,I,J panel;
-```
+### 2.2 在对话页直接预测下一问并回填输入框
 
-插件读取页面可见回答与引用，不读取隐藏思维链。用户确认后才提交核验；提示词只填入空白草稿，由用户发送，不覆盖已有内容。
+切换或开启 `预测` 后，三省基于当前问答与检索上下文生成下一步高价值追问，点击即可直接写入页面输入框（例如 `已填入` DeepSeek 输入框），减少手动拼接提示词的摩擦：
 
-| 对话平台 | 交互范围 |
-|---|---|
-| ChatGPT | 单案例覆盖回答读取、来源采集、关系规划、核验、提示词及草稿写入 |
-| Gemini | 对话读取、引用采集与草稿写入的实机兼容 [待完成] |
-| Claude | 对话读取、引用采集与草稿写入的实机兼容 [待完成] |
+<p align="center">
+  <img src="docs/images/trisight-deepseek-predict.png" alt="DeepSeek 对话页三省插件预测下一问并一键填入输入框" width="100%">
+</p>
 
-[插件操作说明](docs/conversation-sidecar.md) · [工作台使用说明](docs/product-workbench.md)
+---
 
-## 3. 补证案例
+## 3. Chrome 伴随插件（v0.6.6）
 
-### 3.1 谁设计了 Analytical Engine？引用没有回答“谁”
+Chrome MV3 侧边栏插件（[`app/extension/`](app/extension/README.md)）将审查能力直接嵌入日常 AI 对话工作流：
 
-用户在 AI 对话中提问：**“Who designed the Analytical Engine?”** AI 给出候选答案 **Charles Babbage**。审查时先输入一句来源原文：
+- **自动 / 手动双模式**：开启 `自动审查` 后，在模型输出完成时自动捕获本轮 Q&A 发起审查；也可随时切换为 `手动审查` 自由勾选 `纠错` / `补充` / `预测` 组合。
+- **QA 与上下文按需透视**：顶部/工作区默认隐藏冗长原文，点击 `查看 QA` 可展开本次自动提取的完整 `问` / `答` 文本便于校验抓取准确度；点击 `获取上下文` / `查看上文` 可抓取并查看当前对话前序历史片段。
+- **内置审查与历史双视图**：顶栏提供 `审查 ｜ 历史` 切换（对齐 Web 端右侧抽屉体验），可随时查阅过往审查条目，按「发现错误 / 未发现错误」标签快速回溯原文核验结论。
+- **多站点适配器架构**：内置 `DeepSeek`（`chat.deepseek.com`）、`ChatGPT`（`chatgpt.com` / `chat.openai.com`）、`Claude`（`claude.ai`）、`Gemini`（`gemini.google.com`）页面提取器与统一规范化模块（注：DeepSeek 与 ChatGPT 已完成实网端到端验证，Claude / Gemini 为结构化适配器实现）。
 
-> The Analytical Engine was never completed.
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/images/trisight-plugin-manual-qa.png" alt="插件审查视图：查看提取的 QA 与手动审查模式" width="100%"><br>
+      <sub><b>审查视图</b>：可随时展开 <code>查看 QA</code> 核对提取内容，并自由切换 <code>自动/手动审查</code> 与三项能力开关</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/images/trisight-plugin-history.png" alt="插件历史视图：查阅过往审查记录与错误状态" width="100%"><br>
+      <sub><b>历史视图</b>：顶栏切换至 <code>历史</code>，集中查看历次审查记录与「发现错误 / 未发现错误」状态标签</sub>
+    </td>
+  </tr>
+</table>
 
-这句话只说明机器没有完成，不能证明设计者。核验器因此指出缺失关系：
+详细安装与使用步骤见 [7.2 使用插件](#72-使用插件) 与 [插件说明文档](app/extension/README.md)。
 
-```text
-Analytical Engine ── designed_by ──> Charles Babbage
-                         ↑
-                  当前原文没有支持
-```
+---
 
-系统围绕设计者关系补搜，执行 **1 次 search、3 次 open**，从返回的网页正文定位到：
+## 4. Web 审阅工作台（Trisight Web）
 
-> Charles Babbage commenced work on the design of the Analytical Engine in 1834.
+对于长篇文本、无插件浏览器或团队演示场景，可通过 Web 工作台（`/assist.html`、`/library.html`、`/history.html`）完成完整审阅闭环：
 
-抽取器在不读取问题、候选答案和目标关系的条件下取得事实；支持性核验器检查引用是否真正支持设计关系，程序再回放字符位置、匹配主体与客体。该轮目标关系由 `missing` 变为 `entailed`，生成包含新证据与核验记录的补充提示词。
-
-```mermaid
-flowchart LR
-    A["回答：Charles Babbage<br>来源只说机器未完成"] --> B["缺口：设计者关系"]
-    B --> C["定向搜索并打开正文<br>共4次工具调用"]
-    C --> D["定位设计者原文<br>独立支持性核验"]
-    D --> E["匹配目标关系<br>missing → entailed"]
-    E --> F["生成修订提示词<br>交回原对话"]
-```
-
-同批事实中，“Babbage 在 Cambridge 学习”获得支持，“Babbage 在 Cambridge 受雇”仍为缺失；错误设计者、主客体互换、学会会员推雇佣三个目标也没有被放行。引用相关，不等于关系成立。
-
-本例使用 DeepSeek Flash 与真实搜索 API，输入为受控缺证材料；它说明一次关系补证的具体过程，不代表问答准确率提升。后续续测出现的空抽取与无效输出连同成功记录一并保留。[原始案例与费用](docs/web-grounding-validation-2026-11-02.md) · [续测记录](docs/product-workbench.md#本轮真实api续测与边界)。
-
-### 3.2 同名人物：答案有依据，但对象不是用户想问的人
-
-例如，用户问“张伟主要研究什么？”，上下文指的是某所大学的研究者，AI却介绍了一位同名从业者。即使回答引用的资料都属实，仍然答错了对象。
-
-处理路径是先核对学校、职业、研究领域和时间等身份线索。线索不足时，给出候选人物，请用户补充机构或确认对象；确认后再检索、核验，并在报告中保留身份依据。无法分辨时，明确保留歧义。[待完成]
-
-这与跨段事实绑定是两个环节：身份澄清决定“用户要问谁”，关系绑定检查“引用里的经历是否属于同一个人”。两者都要检查，不能用姓名相同直接连通证据链。
-
-### 3.3 复杂概念：讲了基本流程，却漏掉影响使用的细节
-
-例如，用户希望了解“企业知识库问答怎么落地”，回答只介绍文档检索和答案生成。若用户的用途是评估实施方案，还需要了解权限如何处理、资料怎样更新、引用怎样回溯，以及效果和成本怎么衡量。
-
-系统先按这个用途整理需要回答的子问题，再标出哪些已回答、哪些缺少解释、哪些缺少证据。补搜只围绕遗漏项进行，新增内容同样经过原文核验；用户确认后形成补充提示词，交回原AI完善回答。[待完成]
-
-如果用户还想比较不同方案或看具体例子，这些作为可选延伸，先确认再展开。内容更长不自动算更好；验收要看必要问题是否答到、补充内容是否相关，以及是否有证据支持。[待完成]
-
-## 4. 系统架构
-
-![Evidence Verifier系统架构：独立核验、补证反馈、模型服务与离线训练评测](docs/images/system-architecture.svg)
-
-问题、候选答案与用户上下文用于对象澄清及规划；抽取器和支持性核验器仍只接收各自核验所需的证据输入。各角色可配置不同模型，纯 API 路径无需本地 GPU。
-
-## 5. 核心机制
-
-| 组件 | 做法 | 实现与说明 |
-|---|---|---|
-| 对象澄清 | 根据上下文核对身份；存在多个合理候选时先确认，不凭姓名猜测 [待完成] | [产品验收计划](docs/roadmap.md#痛点驱动的产品验收) |
-| 内容覆盖与按需延伸 | 先确认必答内容，再检查遗漏；例子、对比和背景作为可选项 [待完成] | [产品验收计划](docs/roadmap.md#痛点驱动的产品验收) |
-| 候选不可见抽取 | 抽取器只看证据和12类关系定义，避免围绕候选答案挑事实 | [engine.py](app/engine.py) |
-| 引用内独立核验 | 逐事实核对引用是否支持关系、角色与时间，实体命中不替代语义判断 | [grounding.py](app/grounding.py) |
-| 跨关系变量绑定 | 必要关系必须连接同一实体；年份加减与日期区间使用白名单计算 | [relations.py](app/relations.py) |
-| 有界引用补齐 | 显式启用同文档前后各2句、额外最多600字符的补齐；保留中间句，最多一次模型定位修正 | [配置说明](api_edition/README.md) |
-| 缺口驱动补搜 | search/open/find 共用工具预算，保存原文、来源、范围及重核验轨迹 | [repair.py](app/repair.py) |
-| 缓存与请求合并 | 按模型版本、证据、提示词与 schema 隔离缓存，合并相同并发请求 | [inference.py](app/inference.py) |
-
-结果区分 `entailed / missing / contradicted / ambiguous`。格式错误、引用定位失败、不支持的关系与运行失败单列，不计作缺证。
-
-身份与内容覆盖在关系核验之前处理：先确认对象与需要回答的子问题，再把可核对的事实交给证据链。开放概念中不属于当前关系类型的内容，单独标记覆盖范围，不因无法结构化就当作已经检查。[待完成]
-
-## 6. 后训练：证据核验模型的任务适配
-
-### 6.1 训练目标与适用范围
-
-后训练围绕**事实抽取与证据支持性判断**开展，重点降低关系误推、角色混淆、同名实体错接和时间限定错误。目标是在减少错误放行的同时保持支持正例召回，并验证改进能否转化为同预算搜索任务的回答质量提升。[待完成]
-
-对象澄清、必要内容覆盖与按需延伸属于规划和交互环节，先使用固定规划模型验证流程；用户意图不进入独立抽取与核验输入。规划模型是否追加训练，依据单独的任务评测决定。[待完成]
-
-### 6.2 模型与任务分工
-
-| 模型 / 训练产物 | 任务与输入边界 |
-|---|---|
-| **Qwen2.5-3B-Instruct / 抽取LoRA** | 仅接收原文和关系定义，输出主体、关系、客体、极性、时间限定及引用ID；覆盖原文中符合关系定义的事实，不围绕候选答案选择证据 [待完成] |
-| **Qwen2.5-3B-Instruct / 核验LoRA** | 接收单条事实及其实际引用，输出支持、缺失、矛盾或歧义及判断依据；不接收原问题、候选答案和目标关系 [待完成] |
-| **Qwen2.5-7B-Instruct** | 承担规划、搜索与回答，首轮保持权重冻结，作为系统端固定对照 |
-| **Qwen2.5-14B-Instruct** | 用于候选标注与直接裁判对照，候选标签经程序检查及人工审核后使用 |
-
-两个3B任务分别从相同底座训练，保存为独立adapter，支持单模块替换和组合评估。跨关系变量绑定、字符位置回放与白名单计算继续由程序执行，模型训练不替代规则校验。[待完成]
-
-### 6.3 训练数据与质量控制
-
-基于 **MuSiQue、HotpotQA** 训练材料及智能体错误轨迹构建约 **5,000条监督记录**，分别统计原文级抽取样本和逐事实核验样本。[待完成]
-
-| 数据组成 | 构建与标注要求 |
-|---|---|
-| 支持事实正例，约40% | 将数据集支持段落转为原子事实，补齐角色、时间及引用；问题级支持段落不直接等同于逐关系标签 [待完成] |
-| 真实错误轨迹，约30% | 收集漏抽、错绑、关系误推和无效输出，经复核形成纠正目标，不将失败输出直接作为训练答案 [待完成] |
-| 合成困难负例，约30% | 构造角色互换、任职/教育替换、区域/省份替换、删证及干扰实体；缺证与明确矛盾分别标注 [待完成] |
-
-先按问题、来源文档和变体家族划分训练与验证集合，再生成扩增样本；2Wiki保留用于分布外评测。14B候选标注通过原文定位与格式检查后，人工抽检10%，争议样本双人复核并报告一致性。抽取样本同时保留合法空输出与充分支持正例，控制过度拒绝倾向。[待完成]
-
-身份选择、必要子问题和延伸偏好单独建立规划评测标签：身份以用户确认结果为准，内容范围由人工按用途复核，不以模型自行生成的清单作为评测标准。[待完成]
-
-### 6.4 微调方法与训练配置
-
-采用 **Transformers + PEFT 的LoRA监督微调（SFT）**，冻结底座参数，仅更新任务adapter。按训练前检查、小规模试训、正式训练与独立验收依次推进；配置选择只使用验证集，最终测试集不参与调参。[待完成]
-
-| 配置项 | 首轮方案 |
-|---|---|
-| 训练精度与LoRA | bf16；作用于`q_proj/v_proj`，`rank=16`、`alpha=32`、`dropout=0`；另设全线性层及`rank=32`对照 [待完成] |
-| 优化与批次 | AdamW，初始学习率`2e-4`，micro-batch=1，梯度累积8；单卡有效batch=8。比较`1e-4/2e-4`学习率与1–3轮训练 [待完成] |
-| 序列与监督 | 初始长度2,048 tokens，仅计算模型输出部分的损失；检查消息模板与监督边界，超长样本按完整证据窗口处理，不静默截断 [待完成] |
-| 显存控制 | 梯度检查点、长度分桶及128-token分块投影/交叉熵；与标准损失对照数值、梯度、峰值显存及耗时 [待完成] |
-| 资源安排 | 使用3×RTX 5090资源池，首轮按单卡顺序训练3B；按空闲资源安排评测，不默认多卡并行或14B与训练同时驻留 [待完成] |
-| 选优与复现 | 验证集选择训练轮数和配置，采用3个固定随机种子，记录模型、数据、代码和配置版本 [待完成] |
-
-[训练入口](app/training.py)与[损失实现](app/torch_training.py)提供基础LoRA训练及分块损失路径。现有配置中的20步用于流程检查；正式轮数、定期checkpoint、恢复和验证集选优纳入实验入口。[待完成]
-
-### 6.5 验证设计与验收标准
-
-验收区分训练执行正确性、模块效果、分布外表现和系统收益。训练损失下降不作为模型发布的充分条件。[待完成]
-
-| 验证层级 | 数据、对照与验收要求 |
-|---|---|
-| 工程正确性 | 检查梯度与loss有限、adapter参数实际更新、底座保持冻结，以及保存重载一致性；分块损失与标准实现做数值和梯度对照 [待完成] |
-| 开发回归 | 沿用80题门槛：联合正确≥72/80、正负各≥36/40、16个变量绑定例全对、无无效输出、关键负例零误放行；旧70题仅用于开发 [待完成] |
-| 独立核验 | 600题人工双标，MuSiQue/HotpotQA/2Wiki各200；结论、引用、角色及绑定全部正确才计联合成功。报告错误放行率、支持召回、四类Macro-F1及关系覆盖率 [待完成] |
-| 模块归因 | 对比原始3B、仅微调抽取、仅微调核验、双模块微调，并加入14B直接裁判；抽取报告事实Precision/Recall/F1，核验在固定事实输入下独立评分 [待完成] |
-| 搜索收益 | 300题、相同6次工具调用预算，对比无核验、自由重搜、14B裁判与3B拆分核验；使用外部证据标准评估正确且证据充分的回答比例 [待完成] |
-| 产品适配 | 独立评测确认后身份正确率、不必要澄清比例、必要内容覆盖和无关延伸比例，不归因于3B核验训练 [待完成] |
-
-主要结果附95%置信区间，搜索任务采用配对检验。相较原始3B，联合正确率提升的区间下界应大于0，错误放行率不升；支持召回差值下界不低于−3个百分点，该值为预设验收容忍范围。无效输出计入失败并单报，不从分母中删除。[待完成]
-
-补充对照覆盖输入屏蔽、困难负例、跨跳绑定与定向补搜，以区分训练、规则和额外检索的贡献。具体统计协议见[技术附录](docs/post-training.md)。[待完成]
-
-### 6.6 预期成果与交付物
-
-| 成果类别 | 主要指标 | 结果记录 |
-|---|---|---|
-| 证据模型效果 | 抽取事实F1、核验Macro-F1、联合正确率、错误放行率、支持召回 | 【原始3B】→【任务adapter】 [待完成] |
-| 泛化与搜索收益 | 2Wiki联合正确率、同预算正确且证据充分的回答比例 | 【固定对照】→【系统结果】 [待完成] |
-| 产品任务效果 | 确认后身份正确率、必要内容覆盖率、无关延伸及不必要澄清比例 | 【原始流程】→【完整流程】 [待完成] |
-| 完整任务成功率 | 在确认范围内同时满足对象正确、必要内容覆盖与关键事实有据 | 【原始流程】→【完整流程】 [待完成] |
-| 工程成本 | 峰值显存、单题GPU秒、P95延迟、工具调用与用户确认次数 | 【同负载基线】→【部署配置】 [待完成] |
-
-交付两个独立adapter、底座与tokenizer版本、数据划分清单、训练配置、日志及评测报告。模型指标与产品指标分别记录，显存或成本收益以同负载测量为准。[待完成]
-
-### 6.7 技术依据与实验记录
-
-历史三模型对照保留552份输出。在80题构造诊断中，14B拆分核验的联合正确数为69题，直接核验为52题；正例识别与变量绑定仍有损失。这些记录用于机制分析，与3B后训练成果分开计量。[历史评测](docs/evaluation.md)
-
-训练参数、数据划分、验收门槛与统计方法见[后训练技术附录](docs/post-training.md)。3B底座使用[Qwen Research License](https://huggingface.co/Qwen/Qwen2.5-3B-Instruct/blob/main/LICENSE)，商用发布按其授权安排。
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/images/trisight-web-timeline.png" alt="Web 工作台四阶段实时审阅进度" width="100%"><br>
+      <sub><b>四阶段透明进度</b>：<code>判断与初审 → 检索原文 → 逐条核验 → 修订回答</code> 实时流式推送，减少长任务等待焦虑</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/images/trisight-web-report.png" alt="Web 工作台批注原文与逐条依据核验报告" width="100%"><br>
+      <sub><b>批注原文与证据报告</b>：左侧查看带行内批注的原文，右侧对照红色纠错、绿色已证实与蓝色补充卡片</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/images/trisight-web-library.png" alt="Web 预设案例库" width="100%"><br>
+      <sub><b>预设案例库（<code>/library.html</code>）</b>：内置多组经典幻觉、历史年份、科学数据与时效变化演示案例，点击即看完整批注结果</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/images/trisight-web-history.png" alt="Web 私有问答历史记录页" width="100%"><br>
+      <sub><b>历史记录（<code>/history.html</code>）</b>：沉淀个人或工作区提交过的全部问答审查与修正结果，支持按条回看明细</sub>
+    </td>
+  </tr>
+</table>
+
+---
+
+## 5. 系统架构与核心组件
+
+项目采用**双层协作架构**：外层是面向交互与在线取证的 **Trisight 三省工作台 / 伴随插件 / EdgeOne 无服务器后端**，底层是独立可复用的 **Evidence Verifier（EV）局部证据核验内核**。
+
+<p align="center">
+  <img src="docs/images/system-architecture.svg" alt="Trisight 与 Evidence Verifier 系统架构图" width="100%">
+</p>
+
+### 仓库目录导航
+
+| 目录 / 模块 | 定位与职责 | 核心文档 / 入口 |
+| --- | --- | --- |
+| `app/` | Trisight 服务端（FastAPI / ASGI）、静态前端（首页 / 工作台 / 案例库 / 历史 / 账号）与 EV 核验、局部定位、关系判定与文本修复引擎 | [`app/README.md`](app/README.md)、[`app/engine.py`](app/engine.py)、[`app/grounding.py`](app/grounding.py)、[`app/relations.py`](app/relations.py)、[`app/repair.py`](app/repair.py) |
+| `app/extension/` | Chrome MV3 侧边栏伴随插件（自动抓包、QA/上下文查看、审查/历史切换、预测一键填入） | [`app/extension/README.md`](app/extension/README.md) |
+| `api_edition/` | 基于 OpenAI-compatible 模型接口与向量检索的线上验证版本与评测基准脚本 | [`api_edition/README.md`](api_edition/README.md) |
+| `sdk/` | 轻量 Python SDK 与公共校验入口 | [`sdk/README.md`](sdk/README.md) |
+| `functions/` & `edgeone.json` | 腾讯云 EdgeOne Pages 无服务器代理与线上部署配置 | [`docs/edgeone-deployment.md`](docs/edgeone-deployment.md) |
+| `scripts/` | 链路检查（`check_doc_links.py`）、隐私与发布门禁（`check_publication.py`）、基准评测与扩展同步脚本 | [`scripts/check_publication.py`](scripts/check_publication.py) |
+| `docs/` | 产品方案、前后端集成、后训练（SFT/DPO）与历史验证报告 | [`docs/trisight-assist.md`](docs/trisight-assist.md) |
+
+---
+
+## 6. 技术细节：严格事实核验原则
+
+为确保插件与工作台输出对用户真正可信，三省在 `v0.6.x` 迭代中确立了以下核验与展示原则：
+
+1. **红标零误报原则（仅证实有误才标红）**：
+   - 核验器仅在权威/高质量证据明确反驳原断言时将其判为 `纠错` 并标红；
+   - 无法找到反证或无法完全核实的细节**不作为纠错项误报**，而是以大模型原回答为准纳入已核实展示，避免无依据的红色告警干扰阅读。
+2. **结构化 QA 与对话上文透视**：
+   - 自动审查时抽取当前轮次 `question` / `answer` 并支持 `history` 上下文片段传递，同时解决跨站点 DOM 换行与 Markdown 格式归一化问题（含 ChatGPT 长对话与自动审查参数一致性校验）。
+3. **局部 Evidence Verifier 离线微核（可独立运行）**：
+   - `app/inference.py`、`app/training.py` 与 `app/torch_training.py` 保留完整的声明拆分、三选一证据关系分类（`supported` / `contradicted` / `insufficient`）、局部片段定位（Grounding）与最小粒度修复（Repair）实现，可用于无外网环境或模型后训练研究（详见 [`docs/post-training.md`](docs/post-training.md)）。
+
+---
 
 ## 7. 快速开始
 
-Python 3.10+，SQLite 支持 FTS5。
+### 7.0 线上体验或启动本地服务
+
+- **方式 A（最快）：直接访问在线版**
+  打开 **[https://evidence-verifier.edgeone.dev/](https://evidence-verifier.edgeone.dev/)**，即可使用工作台、案例库与 API。
+- **方式 B：本地启动完整服务（Python 3.11+）**
 
 ```bash
-git clone https://github.com/Gump111458785/evidence-verifier.git
-cd evidence-verifier
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[dev]"
+uvicorn app.server:app --host 127.0.0.1 --port 8000
 ```
 
-### 7.0 在线工作台
+启动后访问 `http://127.0.0.1:8000` 查看产品首页与工作台；若需启用在线联网核验（`trisight-assist`）能力，请参考 [`docs/edgeone-deployment.md`](docs/edgeone-deployment.md) 或 [`api_edition/README.md`](api_edition/README.md) 配置上游模型 API Key 与检索参数。
 
-访问 [Evidence Verifier](https://evidence-verifier.edgeone.dev/) 浏览界面和产品示例，无需登录。真实核验、网页补搜和私人记录需要单独的**模型调用访问码**；点击右上角“填写访问码”，此处不填写 DeepSeek 密钥。访问码只保存在当前页面内存，刷新后需要重新填写，报告保存在服务端。
+### 7.1 调用 HTTP API（`/api/v1/trisight/assist` 与 `/api/v1/verify`）
 
-平台默认域名在中国大陆有访问条件限制；本次先完成平台域名联调，自定义域名与大陆长期公开访问 [待完成]。不以三小时签名预览链接作为长期地址。
-
-云端使用 EdgeOne Python 云函数与持久化 Redis：任务按短请求推进，原子费用预留跨重启、跨实例生效。DeepSeek `deepseek-flash` 与搜索请求共用本轮 **10 元**上限，每个供应商 HTTP 请求预留 0.25 元，最多 40 次；超限、存储异常或访问码错误均停止新增付费调用。失败和超时不自动重试，也不退还预留。预留不是供应商实际账单。
-
-云端实测已完成“缺证 → 1次网页搜索与1次原文打开 → 重核验支持 → 修订提示词 → 报告导出与刷新恢复”。本轮9次模型返回及1次搜索的保守费用估算约0.045元，预算预留2.50元；不计作模型准确率或微调收益。
-
-[云端部署、配置与验收](docs/edgeone-deployment.md) · [EdgeOne 项目控制台](https://console.tencentcloud.com/edgeone/pages/project/makers-z7l7raqtginj)
-
-### 7.1 启动网页版与核验服务
+三省伴随审查接口（用于纠错 / 补充 / 预测）：
 
 ```bash
-python3 -m venv .venv-api
-source .venv-api/bin/activate
-python -m pip install -r api_edition/requirements.txt
-cp -n api_edition/config.deepseek.example.json api_edition/config.local.json
-export EV_API_VERIFIER_KEY='填写自己的密钥'
-python api_edition/run.py --config api_edition/config.local.json --check
-python api_edition/run.py --config api_edition/config.local.json --port 8790
+curl -X POST https://evidence-verifier.edgeone.dev/api/v1/trisight/assist \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "question": "埃菲尔铁塔什么时候建成的，刚建成时有多高？",
+    "answer": "埃菲尔铁塔于 1889 年建成，刚建成时高 300 米，是当时世界最高建筑。",
+    "modes": ["correct", "supplement", "predict"],
+    "auto_triggered": true
+  }'
 ```
 
-打开 **http://127.0.0.1:8790/#audit**，粘贴问题与回答片段，添加来源原文，确认关系后提交。`--check`只检查配置，不发付费请求；核验、规划及补搜按所配API计费。配置可为各角色指定不同的OpenAI兼容服务，密钥通过环境变量提供，不写入仓库。[API配置](api_edition/README.md)
+本地 EV 证据核验接口（用于单条声明与给定原文片段核对，不依赖外部网络）：
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/verify \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "question": "What does the policy allow for personal laptops?",
+    "answer": "Employees may use personal laptops on the corporate Wi-Fi without VPN.",
+    "evidence_passages": [
+      {"source_id": "doc-1", "text": "Personal laptops are permitted on the corporate guest Wi-Fi only; internal networks require company-managed devices with VPN."}
+    ]
+  }'
+```
 
 ### 7.2 使用插件
 
-从 [Releases](https://github.com/Gump111458785/evidence-verifier/releases) 下载扩展包，或从源码构建：
+1. **下载安装包**
+   - 直接下载最新打包 ZIP：**[`evidence-verifier-extension.zip`](https://evidence-verifier.edgeone.dev/downloads/evidence-verifier-extension.zip)**（仓库同步路径：[`app/static/downloads/evidence-verifier-extension.zip`](app/static/downloads/evidence-verifier-extension.zip)），解压到本地文件夹；或直接使用仓库内的 `app/extension/` 目录。
+2. **加载到 Chrome / Chromium 浏览器**
+   - 打开 `chrome://extensions`，开启右上角 **开发者模式（Developer mode）**。
+   - 点击 **加载已解压的扩展程序（Load unpacked）**，选择解压后的插件目录（或 `app/extension/`）。
+3. **打开任意 AI 对话页并开始伴随审查**
+   - 访问 [DeepSeek](https://chat.deepseek.com/)、[ChatGPT](https://chatgpt.com/)、[Claude](https://claude.ai/) 或 [Gemini](https://gemini.google.com/)，点击浏览器右上角扩展图标打开 Trisight 侧边栏。
+   - 默认指向在线服务 `https://evidence-verifier.edgeone.dev`（如需调试本地服务，可在插件底部设置中修改为 `http://127.0.0.1:8000`）。
+   - 在顶部可切换 **审查**（查看 `查看 QA`、`获取上下文`、`自动/手动审查` 与 `纠错/补充/预测`）或 **历史**（回看历次审查记录）；点击预测结果旁的填入按钮可直接将追问写入聊天输入框。
+
+更多细节见 [`docs/conversation-sidecar.md`](docs/conversation-sidecar.md) 与 [`app/extension/README.md`](app/extension/README.md)。
+
+### 7.3 运行测试与质量检查
 
 ```bash
-python3 app/scripts/build_extension.py --out dist/evidence-verifier-extension.zip
+# 1. Chrome 扩展单测（适配器、历史存储、上下文提取与渲染逻辑）
+node --test app/tests/extension/*.test.cjs
+
+# 2. 服务端核心、API 与脚本测试
+python -m unittest discover -s app/tests -p 'test_*.py'
+python -m unittest discover -s api_edition/tests -p 'test_*.py'
+python -m unittest discover -s scripts/tests -p 'test_*.py'
+
+# 3. 文档链接完整性 & 仓库公开合规门禁
+python scripts/check_doc_links.py
+python scripts/check_publication.py --root .
 ```
 
-1. 解压扩展包，在 Chrome 的 `chrome://extensions` 开启开发者模式，点击“加载已解压的扩展程序”，选择含 `manifest.json` 的目录。
-2. 复制扩展ID，填入 `api_edition/config.local.json` 的 `extension_id`，重启核验服务。
-3. 在 ChatGPT 对话页打开侧栏，点击“读取当前回答”。
-4. 打开引用来源页，主动点击插件图标授权该页，再点“收集当前来源页的原文”。
-5. 生成并确认待核验关系，点击“开始独立核验”；缺证时启动定向补搜。
-6. 生成修订建议，填入原对话空白草稿，审阅后自行发送。
+---
 
-### 7.3 接入其他应用
+## 8. 支持矩阵与验证说明
 
-HTTP API 提供审查提交、任务观察、取消、恢复与导出；Python SDK和LangGraph适配连接已有搜索流程。[HTTP合同](docs/integration.md) · [SDK](sdk) · LangGraph真实框架集成验收 [待完成]
+| 模块 / 能力 | 状态 | 说明与验证依据 |
+| --- | --- | --- |
+| 在线工作台（首页 / 审阅 / 案例库 / 历史） | **已上线** | 已部署至 EdgeOne（`evidence-verifier.edgeone.dev`），支持流式进度与批注视图 |
+| Chrome 扩展核心 + 历史视图 + `查看 QA` + `获取上下文` | **已实现并测试** | `node --test app/tests/extension/*.test.cjs` 覆盖页面抓取、历史归档与纠错筛选 |
+| DeepSeek / ChatGPT 网页端自动抓取与实网审查 | **已实网验证** | 已完成 `chat.deepseek.com` 与 `chatgpt.com` 对话页捕获、核验与回填验证 |
+| Claude / Gemini 网页端适配器 | **代码已接入** | 已实现站点提取器与测试覆盖；跨站真实页面定期回归待持续补充 |
+| EdgeOne Serverless 代理部署 | **已上线** | 见 [`docs/edgeone-deployment.md`](docs/edgeone-deployment.md) |
+| 离线 Python EV 微核（Grounding / Relations / Repair） | **已验证** | `app/tests` 与公开评测文档见 [`docs/evaluation.md`](docs/evaluation.md) |
 
-## 8. 应用接入
+---
 
-| 场景 | 接入方式 |
-|---|---|
-| AI 对话审查 | Chrome侧栏读取可见回答，采集引用，反馈修订提示词 |
-| 搜索智能体 | HTTP核验接口作为回答前检查，缺口驱动补搜 |
-| 企业知识库 | 接入内部检索、权限与审查记录管理 [待完成] |
-| 训练数据质检 | 逐关系审查候选轨迹，人工复核后筛选训练样本 [待完成] |
-| 托管服务 | 多用户认证、租户隔离、网关与运行监控 [待完成] |
+## 9. 工程文档与研发路线
 
-核验结论覆盖所声明关系与提供的来源，不自动证明整题完整性或来源客观真实。默认服务监听本机回环地址。
+- **产品与架构设计**：[`docs/trisight-assist.md`](docs/trisight-assist.md) · [`docs/conversation-sidecar.md`](docs/conversation-sidecar.md) · [`docs/product-workbench.md`](docs/product-workbench.md)
+- **部署与集成指南**：[`docs/edgeone-deployment.md`](docs/edgeone-deployment.md) · [`docs/integration.md`](docs/integration.md) · [`api_edition/README.md`](api_edition/README.md) · [`sdk/README.md`](sdk/README.md)
+- **评测、数据与训练研究**：[`docs/evaluation.md`](docs/evaluation.md) · [`docs/data.md`](docs/data.md) · [`docs/post-training.md`](docs/post-training.md)
+- **版本记录与交付**：[`CHANGELOG.md`](CHANGELOG.md) · [`docs/roadmap.md`](docs/roadmap.md) · [`docs/delivery.md`](docs/delivery.md)
 
-## 9. 文档与开发
+---
 
-| 入口 | 内容 |
-|---|---|
-| [工作台](docs/product-workbench.md) · [插件](docs/conversation-sidecar.md) | 操作路径、报告与隐私范围 |
-| [纯API](api_edition/README.md) · [应用集成](docs/integration.md) | 模型、搜索、扩展ID与接口 |
-| [网页补证](docs/web-grounding-validation-2026-11-02.md) · [浏览器记录](docs/browser-validation-2026-11-02.md) | 输入、来源、运行轨迹与费用 |
-| [评测](docs/evaluation.md) · [数据](docs/data.md) | 模型对照、标签与指标定义 |
-| [路线图](docs/roadmap.md) · [交付](docs/delivery.md) | 实验安排、版本与分发 |
+## 10. 开源许可与第三方致谢
 
-自有代码采用 [MIT License](LICENSE)，IBM Plex 字体采用 [SIL OFL](app/static/fonts/LICENSE.txt)。模型、数据与上游代码遵循各自许可，见 [数据与上游署名](THIRD_PARTY_NOTICES.md)。反馈问题请提交 [Issues](https://github.com/Gump111458785/evidence-verifier/issues)，附上去除密钥及私人对话的日志。
+- 代码遵循 [`LICENSE`](LICENSE)（MIT License）。
+- 随仓库分发的字体与第三方组件许可清单见 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) 与 [`app/static/fonts/LICENSE.txt`](app/static/fonts/LICENSE.txt)。
