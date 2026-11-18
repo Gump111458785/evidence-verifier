@@ -58,3 +58,12 @@ test('DeepSeek web capture filters ds-think-content and code banners while inser
   assert.equal(ta.value,'请核对年份');
  }finally{E.prototype.matches=origMatch;}
 });
+test('display:contents inline elements with direct text nodes (e.g. bold entities) are preserved',()=>{
+ const u=new E('div',{class:'u'},[new E('p',{},[T('谁建造了铁塔？')])]);u.order=1;
+ const bold=new E('strong',{display:'contents'},[T('古斯塔夫·埃菲尔')]);
+ const ans=new E('div',{},[new E('p',{},[bold,T('：主持项目。')])]);ans.order=2;
+ const ctx={Element:E,HTMLTextAreaElement:TA,Node:{DOCUMENT_POSITION_FOLLOWING:4},Event:class{constructor(type){this.type=type;}},URL,Date,Set,clearTimeout,setTimeout,getComputedStyle:n=>({display:n.attrs.display||'block',visibility:'visible'}),location:{hostname:'chatgpt.com',origin:'https://chatgpt.com',pathname:'/c/1'},window:{getSelection:()=>''},document:{querySelectorAll:s=>s.includes('assistant')?[ans]:s.includes('user')?[u]:[],querySelector:()=>null}};
+ vm.createContext(ctx);vm.runInContext(code,ctx);
+ const snap=ctx.evPage.run('capture');
+ assert.equal(snap.candidate,'古斯塔夫·埃菲尔 ：主持项目。');
+});

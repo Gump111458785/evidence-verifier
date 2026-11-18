@@ -141,3 +141,30 @@ test('prompts are offered as fill actions on the result', async () => {
   f.api.renderTab('correct');
   assert.ok(f.get('pane').innerHTML.includes('data-fill="请更正为1889年"'));
 });
+
+test('pull-ctx button actively captures earlier conversation context and updates status', async () => {
+  const f = harness();
+  await settle();
+  assert.equal(f.commands.length, 0);
+  f.get('pull-ctx').click();
+  await settle();
+  assert.equal(f.commands.length, 1);
+  assert.equal(f.commands[0].mode, 'capture');
+  assert.ok(f.get('ctx-status').textContent.includes('1 段'));
+});
+
+test('api retries transient Failed to fetch network drops before succeeding', async () => {
+  const f = harness();
+  await settle();
+  let calls = 0;
+  const origFetch = f.context.fetch;
+  f.context.fetch = async (url, o) => {
+    calls += 1;
+    if (url.endsWith('/api/assist') && calls === 1) throw new TypeError('Failed to fetch');
+    return origFetch(url, o);
+  };
+  f.get('run-auto').click();
+  await new Promise((r) => setTimeout(r, 400));
+  assert.equal(f.get('alert').hidden, true);
+  assert.ok(f.get('pane').innerHTML.includes('1889年建成'));
+});

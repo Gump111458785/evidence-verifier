@@ -26,7 +26,7 @@
   <form id="login" class="login" novalidate hidden>
     <input id="login-id" class="field" type="text" autocomplete="username" placeholder="用户名或邮箱" aria-label="用户名或邮箱">
     <input id="login-pw" class="field" type="password" autocomplete="current-password" placeholder="密码" aria-label="密码">
-    <div id="login-err" class="alert" role="alert" style="margin:0" hidden></div>
+    <div id="login-err" class="alert" role="alert" hidden></div>
     <button type="submit" id="login-btn" class="act primary">登录</button>
   </form>
 
@@ -47,6 +47,10 @@
       <button type="button" class="chip" data-mode="correct" aria-pressed="true"><i class="dot correct"></i>纠错</button>
       <button type="button" class="chip" data-mode="supplement" aria-pressed="true"><i class="dot supplement"></i>补充</button>
       <button type="button" class="chip" data-mode="predict" aria-pressed="true"><i class="dot predict"></i>预测</button>
+    </div>
+    <div class="ctx-bar">
+      <span id="ctx-status" class="ctx-status">暂无更早上下文</span>
+      <button type="button" id="pull-ctx" class="ctx-pull">获取上下文</button>
     </div>
     <div id="alert" class="alert" role="alert" hidden></div>
 

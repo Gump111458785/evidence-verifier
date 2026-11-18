@@ -49,15 +49,42 @@
     const headers = {};
     if (tok) headers.Authorization = 'Bearer ' + tok;
     if (options.body) headers['Content-Type'] = 'application/json';
-    const res = await fetch(API_BASE + path, {
-      method: options.method || 'GET', headers,
-      credentials: isExtension ? 'omit' : 'same-origin',
-      body: options.body ? JSON.stringify(options.body) : undefined,
-      signal: AbortSignal.timeout(options.timeoutMs || 60000),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) { const e = new Error(data.error || '请求失败（' + res.status + '）'); e.status = res.status; e.code = data.code; throw e; }
-    return data;
+    const method = (options.method || 'GET').toUpperCase();
+    const maxAttempts = 3;
+    let lastErr = null;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const res = await fetch(API_BASE + path, {
+          method, headers,
+          credentials: isExtension ? 'omit' : 'same-origin',
+          body: options.body ? JSON.stringify(options.body) : undefined,
+          signal: AbortSignal.timeout(options.timeoutMs || 60000),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          if ([502, 503, 504].includes(res.status) && attempt < maxAttempts - 1) {
+            await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
+            continue;
+          }
+          const e = new Error(data.error || '请求失败（' + res.status + '）');
+          e.status = res.status; e.code = data.code;
+          throw e;
+        }
+        return data;
+      } catch (err) {
+        if (err && typeof err.status === 'number') throw err;
+        lastErr = err;
+        if (attempt < maxAttempts - 1) {
+          await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
+          continue;
+        }
+      }
+    }
+    const raw = String((lastErr && lastErr.message) || '');
+    const msg = /failed to fetch|network|load failed|abort/i.test(raw)
+      ? '网络连接暂时中断，请重试'
+      : (raw || '网络请求失败');
+    throw new Error(msg);
   }
   async function pageCmd(mode, prompt) {
     const r = await chrome.runtime.sendMessage({ type: 'ev-page-command', mode, prompt });
@@ -101,7 +128,9 @@
       $('question').value = snap.question;
       $('candidate').value = snap.candidate;
       const n = (snap.context || []).length;
-      $('ctx').textContent = n ? '+ 上文 ' + n + ' 段' + (snap.context_dropped ? '（另有 ' + snap.context_dropped + ' 段超出长度未带）' : '') : '';
+      const ctxLabel = n ? '已带入上文 ' + n + ' 段' + (snap.context_dropped ? '（另有 ' + snap.context_dropped + ' 段超出长度未带）' : '') : '';
+      $('ctx').textContent = n ? '+ ' + ctxLabel : '';
+      if ($('ctx-status')) $('ctx-status').textContent = ctxLabel || '当前暂无更早上下文';
       if (state.job) reset();
     }
     syncButtons();
@@ -288,6 +317,25 @@
     $('run-manual').addEventListener('click', () => {
       if (!state.armed) { arm(true); return; }
       run(MODES.filter((m) => state.picked.has(m)));
+    });
+    $('pull-ctx').addEventListener('click', async () => {
+      if (!isExtension) {
+        $('drawer').hidden = false; $('src').setAttribute('aria-expanded', 'true');
+        $('question').focus();
+        return;
+      }
+      const btn = $('pull-ctx');
+      btn.disabled = true; alertMsg('');
+      try {
+        const snap = await pageCmd('capture');
+        apply(snap);
+        const n = (snap.context || []).length;
+        toast(n ? '已获取上文 ' + n + ' 段' : '当前为首轮，暂无更早上下文');
+      } catch (err) {
+        alertMsg(err.message);
+      } finally {
+        btn.disabled = false;
+      }
     });
     document.querySelectorAll('.chip').forEach((c) => c.addEventListener('click', () => {
       const m = c.dataset.mode;
