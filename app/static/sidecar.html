@@ -12,8 +12,12 @@
   <header class="bar">
     <div class="brand">
       <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 6h9" stroke="#c03a2b" stroke-width="2.2" stroke-linecap="round"/><path d="M5 15l3-5 3 5" fill="none" stroke="#2353b8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 13h5m-2-2.5 2 2.5-2 2.5" fill="none" stroke="#1c2230" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Trisight
+      <span class="brand-name">Trisight</span>
     </div>
+    <nav id="views" class="nav" role="tablist" aria-label="功能切换" hidden>
+      <button type="button" id="nav-review" class="nav-btn" data-view="review" role="tab" aria-selected="true">审查</button>
+      <button type="button" id="nav-history" class="nav-btn" data-view="history" role="tab" aria-selected="false">历史</button>
+    </nav>
     <button type="button" id="src" class="src" data-state="idle" aria-expanded="false" aria-controls="drawer" title="查看读取到的问答" hidden>
       <i class="pulse" aria-hidden="true"></i><span id="src-name">—</span>
       <svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
@@ -36,6 +40,10 @@
     <div id="ctx" class="ctx"></div>
   </section>
 
+  <section id="ctx-drawer" class="drawer ctx-drawer" hidden>
+    <div id="ctx-list" class="ctx-list"></div>
+  </section>
+
   <div id="work" class="work" hidden>
     <div class="actions">
       <button type="button" id="run-auto" class="act primary" disabled>自动审查</button>
@@ -49,7 +57,10 @@
       <button type="button" class="chip" data-mode="predict" aria-pressed="true"><i class="dot predict"></i>预测</button>
     </div>
     <div class="ctx-bar">
-      <span id="ctx-status" class="ctx-status">暂无更早上下文</span>
+      <button type="button" id="toggle-ctx" class="ctx-toggle" aria-expanded="false" aria-controls="ctx-drawer" disabled>
+        <span id="ctx-status" class="ctx-status">暂无更早上下文</span>
+        <svg class="chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
       <div class="ctx-btns">
         <button type="button" id="toggle-qa" class="ctx-pull" aria-expanded="false" aria-controls="drawer">查看 QA</button>
         <button type="button" id="pull-ctx" class="ctx-pull">获取上下文</button>
@@ -64,6 +75,34 @@
     </nav>
     <div id="meter" class="meter" aria-hidden="true" hidden><i></i><i></i><i></i></div>
     <main id="pane" class="pane empty" role="tabpanel" aria-live="polite"></main>
+  </div>
+
+  <div id="history" class="work history" hidden>
+    <div id="hist-list-wrap" class="hist-wrap">
+      <div class="hist-bar">
+        <span id="hist-meta" class="ctx-status">我的审查历史</span>
+        <button type="button" id="hist-refresh" class="ctx-pull">刷新</button>
+      </div>
+      <div id="hist-list" class="pane hist-list" aria-live="polite"></div>
+    </div>
+
+    <div id="hist-detail-wrap" class="hist-wrap" hidden>
+      <div class="hist-bar">
+        <button type="button" id="hist-back" class="ctx-pull">← 返回</button>
+        <span id="hist-time" class="ctx-status"></span>
+        <button type="button" id="hist-load" class="ctx-pull">带入审查</button>
+      </div>
+      <details class="hist-qa">
+        <summary id="hist-q-sum">查看原问答</summary>
+        <div id="hist-qa-body" class="hist-qa-body"></div>
+      </details>
+      <nav class="tabs" role="tablist">
+        <button type="button" class="htab" role="tab" data-tab="correct" aria-selected="true" disabled><i class="dot correct"></i>纠错<span class="count" id="hn-correct" hidden></span></button>
+        <button type="button" class="htab" role="tab" data-tab="supplement" aria-selected="false" disabled><i class="dot supplement"></i>补充<span class="count" id="hn-supplement" hidden></span></button>
+        <button type="button" class="htab" role="tab" data-tab="predict" aria-selected="false" disabled><i class="dot predict"></i>预测<span class="count" id="hn-predict" hidden></span></button>
+      </nav>
+      <main id="hpane" class="pane" role="tabpanel" aria-live="polite"></main>
+    </div>
   </div>
 </div>
 <div id="toast" class="toast" role="status" hidden></div>

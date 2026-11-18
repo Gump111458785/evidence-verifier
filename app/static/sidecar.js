@@ -20,7 +20,11 @@
     fill: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 10 4 15l5 5"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></svg>',
   };
 
-  const state = { snap: null, snapKey: '', job: null, tab: 'correct', armed: false, picked: new Set(MODES), busy: false, ran: [] };
+  const state = {
+    snap: null, snapKey: '', job: null, tab: 'correct', armed: false, picked: new Set(MODES), busy: false, ran: [],
+    view: 'review', histRows: null, histJob: null, histRan: [], histTab: 'correct',
+  };
+  const histCache = new Map();
   let memToken = '';
   let toastTimer = null;
 
@@ -128,10 +132,18 @@
       state.snap = snap;
       $('question').value = snap.question;
       $('candidate').value = snap.candidate;
-      const n = (snap.context || []).length;
-      const ctxLabel = n ? '已带入上文 ' + n + ' 段' + (snap.context_dropped ? '（另有 ' + snap.context_dropped + ' 段超出长度未带）' : '') : '';
+      const turns = snap.context || [];
+      const n = turns.length;
+      const ctxLabel = n ? '查看上文 ' + n + ' 段' + (snap.context_dropped ? '（另有 ' + snap.context_dropped + ' 段超出未带）' : '') : '';
       $('ctx').textContent = n ? '+ ' + ctxLabel : '';
-      if ($('ctx-status')) $('ctx-status').textContent = ctxLabel || '当前暂无更早上下文';
+      if ($('ctx-status')) $('ctx-status').textContent = ctxLabel || '暂无更早上下文';
+      if ($('toggle-ctx')) $('toggle-ctx').disabled = n === 0;
+      if ($('ctx-list')) {
+        $('ctx-list').innerHTML = n
+          ? turns.map((t) => '<div class="ctx-turn"><b>' + (t.role === 'user' ? '问' : '答') + '</b><span>' + esc(t.text) + '</span></div>').join('')
+          : '<div class="ctx">暂无更早上下文</div>';
+      }
+      if (n === 0) toggleCtxDrawer(false);
       if (state.job) reset();
     }
     syncButtons();
@@ -171,9 +183,9 @@
     $('meter').querySelectorAll('i').forEach((seg, i) => { seg.dataset.s = done || i < at ? 'done' : i === at ? 'on' : ''; });
   }
 
-  function counts(r) {
+  function counts(r, prefix = 'n-') {
     const m = r.modes;
-    const set = (mode, n, cls) => { const c = $('n-' + mode); c.hidden = n === null; c.textContent = n === null ? '' : String(n); c.className = 'count' + (cls ? ' ' + cls : ''); };
+    const set = (mode, n, cls) => { const c = $(prefix + mode); if (!c) return; c.hidden = n === null; c.textContent = n === null ? '' : String(n); c.className = 'count' + (cls ? ' ' + cls : ''); };
     const wrong = (m.correct.claims || []).filter((c) => c.verdict === 'contradicted').length;
     if (wrong) set('correct', wrong, 'err');
     else if (m.correct.verdict === 'no_error') { set('correct', '✓', 'ok'); }
@@ -182,12 +194,12 @@
     const qs = (m.predict.questions || []).length; set('predict', qs || null, '');
   }
 
-  function firstTab(r) {
+  function firstTab(r, ran = state.ran) {
     const m = r.modes;
-    if (state.ran.includes('correct') && (m.correct.claims || []).length) return 'correct';
-    if (state.ran.includes('supplement') && (m.supplement.points || []).length) return 'supplement';
-    if (state.ran.includes('predict') && (m.predict.questions || []).length) return 'predict';
-    return state.ran[0] || 'correct';
+    if (ran.includes('correct') && (m.correct.claims || []).length) return 'correct';
+    if (ran.includes('supplement') && (m.supplement.points || []).length) return 'supplement';
+    if (ran.includes('predict') && (m.predict.questions || []).length) return 'predict';
+    return ran[0] || 'correct';
   }
 
   function quote(q) {
@@ -198,11 +210,7 @@
 
   const fillBtn = (text) => (text ? '<button type="button" class="fill" data-fill="' + esc(text) + '">' + ICON.fill + (isExtension ? '填入对话' : '复制提示词') + '</button>' : '');
 
-  function renderTab(tab) {
-    state.tab = tab;
-    document.querySelectorAll('.tab').forEach((b) => b.setAttribute('aria-selected', b.dataset.tab === tab ? 'true' : 'false'));
-    const pane = $('pane');
-    const r = state.job?.result;
+  function renderPaneInto(pane, r, tab) {
     if (!r) { pane.className = 'pane empty'; pane.innerHTML = ICON.mark; return; }
     pane.className = 'pane';
     if (r.status !== 'ok') { pane.innerHTML = '<div class="head err">' + ICON.cross + esc(r.error || '本次结果无效') + '</div>'; return; }
@@ -247,6 +255,18 @@
     pane.querySelectorAll('[data-fill]').forEach((b) => b.addEventListener('click', () => fill(b.dataset.fill)));
   }
 
+  function renderTab(tab) {
+    state.tab = tab;
+    document.querySelectorAll('.tab').forEach((b) => b.setAttribute('aria-selected', b.dataset.tab === tab ? 'true' : 'false'));
+    renderPaneInto($('pane'), state.job?.result, tab);
+  }
+
+  function renderHistTab(tab) {
+    state.histTab = tab;
+    document.querySelectorAll('.htab').forEach((b) => b.setAttribute('aria-selected', b.dataset.tab === tab ? 'true' : 'false'));
+    renderPaneInto($('hpane'), state.histJob?.result, tab);
+  }
+
   async function fill(text) {
     if (isExtension) {
       try { await pageCmd('insert', text); toast('已填入'); return; }
@@ -286,6 +306,7 @@
       }
       if (job.state !== 'completed') throw new Error(job.error || '审查未完成');
       state.job = job;
+      state.histRows = null;
       $('meter').hidden = true;
       document.querySelectorAll('.tab').forEach((b) => { b.disabled = !state.ran.includes(b.dataset.tab); });
       if (job.result.status === 'ok') counts(job.result);
@@ -309,12 +330,126 @@
     syncButtons();
   }
 
+  // ------------------------------------------------------------ history
+  function fmtTime(sec) {
+    if (!sec) return '';
+    const d = new Date(sec * 1000);
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function histPill(r) {
+    if (r.state !== 'completed') return '<span class="hist-pill">未完成</span>';
+    if (r.status !== 'ok') return '<span class="hist-pill">结果无效</span>';
+    const v = r.correct || 'not_run';
+    if (v === 'errors_found') return '<span class="hist-pill err">发现错误</span>';
+    if (v === 'no_error') return '<span class="hist-pill ok">未发现错误</span>';
+    if (v === 'unverified') return '<span class="hist-pill warn">部分未能核实</span>';
+    if (v === 'no_checkable_claims') return '<span class="hist-pill">无核实断言</span>';
+    return '<span class="hist-pill">未纠错</span>';
+  }
+
+  function renderHistList(rows) {
+    const list = $('hist-list');
+    if (!rows.length) {
+      list.className = 'pane empty';
+      list.innerHTML = '<div class="head mute">暂无审查历史记录</div>';
+      return;
+    }
+    list.className = 'pane hist-list';
+    list.innerHTML = rows.map((r) => {
+      const extra = [];
+      if (r.supplement) extra.push('补充 ' + r.supplement);
+      if (r.predict) extra.push('预测 ' + r.predict);
+      return '<button type="button" class="hist-card" data-id="' + esc(r.id) + '">' +
+        '<div class="hist-q">' + esc(r.question || '未命名问答') + '</div>' +
+        '<div class="hist-meta-row">' + histPill(r) +
+          (extra.length ? '<span>' + esc(extra.join(' · ')) + '</span>' : '') +
+          '<span class="hist-time">' + esc(fmtTime(r.created)) + '</span>' +
+        '</div>' +
+      '</button>';
+    }).join('');
+    list.querySelectorAll('.hist-card').forEach((b) => b.addEventListener('click', () => openHistory(b.dataset.id)));
+  }
+
+  async function loadHistory(force = false) {
+    $('hist-list-wrap').hidden = false;
+    $('hist-detail-wrap').hidden = true;
+    if (!force && Array.isArray(state.histRows)) {
+      renderHistList(state.histRows);
+      return;
+    }
+    const list = $('hist-list');
+    list.className = 'pane empty';
+    list.innerHTML = '<div class="head mute">正在载入历史记录…</div>';
+    try {
+      const d = await api('/api/assist?limit=30');
+      state.histRows = d.rows || [];
+      if ($('hist-meta')) $('hist-meta').textContent = '共 ' + (d.total ?? state.histRows.length) + ' 条审查记录';
+      renderHistList(state.histRows);
+    } catch (e) {
+      if (e.status === 401) { await saveToken(''); showLogin(); return; }
+      list.className = 'pane';
+      list.innerHTML = '<div class="head err">' + ICON.cross + esc(e.message) + '</div>';
+    }
+  }
+
+  async function openHistory(id) {
+    $('hist-list-wrap').hidden = true;
+    $('hist-detail-wrap').hidden = false;
+    const hpane = $('hpane');
+    hpane.className = 'pane empty';
+    hpane.innerHTML = '<div class="head mute">正在载入详情…</div>';
+    MODES.forEach((m) => { const el = $('hn-' + m); if (el) el.hidden = true; });
+    try {
+      let job = histCache.get(id);
+      if (!job) {
+        job = await api('/api/assist/' + id);
+        histCache.set(id, job);
+      }
+      state.histJob = job;
+      if ($('hist-time')) $('hist-time').textContent = fmtTime(job.created);
+      if ($('hist-qa-body')) {
+        $('hist-qa-body').innerHTML = '<div><b>问：</b>' + esc(job.input?.question || '') + '</div><div><b>答：</b>' + esc(job.input?.answer || '') + '</div>';
+      }
+      if (job.state !== 'completed' || !job.result) {
+        document.querySelectorAll('.htab').forEach((b) => { b.disabled = true; });
+        hpane.className = 'pane';
+        hpane.innerHTML = '<div class="head warn">' + ICON.query + esc(job.error || '该次审查未完成') + '</div>';
+        return;
+      }
+      const reqModes = job.input?.modes === 'auto' || !Array.isArray(job.input?.modes) ? MODES : job.input.modes;
+      state.histRan = reqModes;
+      document.querySelectorAll('.htab').forEach((b) => { b.disabled = !reqModes.includes(b.dataset.tab); });
+      if (job.result.status === 'ok') counts(job.result, 'hn-');
+      renderHistTab(firstTab(job.result, reqModes));
+    } catch (e) {
+      if (e.status === 401) { await saveToken(''); showLogin(); return; }
+      hpane.className = 'pane';
+      hpane.innerHTML = '<div class="head err">' + ICON.cross + esc(e.message) + '</div>';
+    }
+  }
+
   // ------------------------------------------------------------ views
-  function showLogin() { $('work').hidden = true; $('drawer').hidden = true; $('src').hidden = true; $('logout').hidden = true; $('login').hidden = false; }
-  async function showWork() { $('login').hidden = true; $('work').hidden = false; $('logout').hidden = false; reset(); await attach(); }
+  function switchView(view) {
+    state.view = view;
+    if ($('nav-review')) $('nav-review').setAttribute('aria-selected', view === 'review' ? 'true' : 'false');
+    if ($('nav-history')) $('nav-history').setAttribute('aria-selected', view === 'history' ? 'true' : 'false');
+    $('work').hidden = view !== 'review';
+    $('history').hidden = view !== 'history';
+    if (view === 'history') {
+      toggleDrawer(false);
+      toggleCtxDrawer(false);
+      loadHistory();
+    }
+  }
+
+  function showLogin() { $('views').hidden = true; $('work').hidden = true; $('history').hidden = true; $('drawer').hidden = true; if ($('ctx-drawer')) $('ctx-drawer').hidden = true; $('src').hidden = true; $('logout').hidden = true; $('login').hidden = false; }
+  async function showWork() { $('login').hidden = true; $('views').hidden = false; $('logout').hidden = false; switchView('review'); reset(); await attach(); }
 
   function toggleDrawer(forceOpen) {
     const open = typeof forceOpen === 'boolean' ? forceOpen : $('drawer').hidden;
+    if (open) toggleCtxDrawer(false);
     $('drawer').hidden = !open;
     $('src').setAttribute('aria-expanded', open ? 'true' : 'false');
     if ($('toggle-qa')) {
@@ -323,9 +458,19 @@
     }
   }
 
+  function toggleCtxDrawer(forceOpen) {
+    const box = $('ctx-drawer');
+    if (!box) return;
+    const open = typeof forceOpen === 'boolean' ? forceOpen : box.hidden;
+    if (open) toggleDrawer(false);
+    box.hidden = !open;
+    if ($('toggle-ctx')) $('toggle-ctx').setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
   function bind() {
     $('src').addEventListener('click', () => toggleDrawer());
     if ($('toggle-qa')) $('toggle-qa').addEventListener('click', () => toggleDrawer());
+    if ($('toggle-ctx')) $('toggle-ctx').addEventListener('click', () => toggleCtxDrawer());
     $('question').addEventListener('input', syncButtons);
     $('candidate').addEventListener('input', syncButtons);
     $('run-auto').addEventListener('click', () => { arm(false); run(MODES); });
@@ -345,6 +490,7 @@
         const snap = await pageCmd('capture');
         apply(snap);
         const n = (snap.context || []).length;
+        if (n > 0) toggleCtxDrawer(true);
         toast(n ? '已获取上文 ' + n + ' 段' : '当前为首轮，暂无更早上下文');
       } catch (err) {
         alertMsg(err.message);
@@ -359,6 +505,22 @@
       syncButtons();
     }));
     document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => { if (!b.disabled) renderTab(b.dataset.tab); }));
+    document.querySelectorAll('.htab').forEach((b) => b.addEventListener('click', () => { if (!b.disabled) renderHistTab(b.dataset.tab); }));
+    document.querySelectorAll('.nav-btn').forEach((b) => b.addEventListener('click', () => switchView(b.dataset.view)));
+    if ($('hist-refresh')) $('hist-refresh').addEventListener('click', () => loadHistory(true));
+    if ($('hist-back')) $('hist-back').addEventListener('click', () => { $('hist-detail-wrap').hidden = true; $('hist-list-wrap').hidden = false; });
+    if ($('hist-load')) $('hist-load').addEventListener('click', () => {
+      const j = state.histJob;
+      if (!j || !j.input) return;
+      $('question').value = j.input.question || '';
+      $('candidate').value = j.input.answer || '';
+      state.snapKey = JSON.stringify([$('question').value, $('candidate').value]);
+      state.snap = { platform: state.snap?.platform || '历史记录', question: $('question').value, candidate: $('candidate').value, context: j.input.context || [] };
+      reset();
+      switchView('review');
+      toggleDrawer(true);
+      syncButtons();
+    });
     $('login').addEventListener('submit', async (e) => {
       e.preventDefault();
       $('login-err').hidden = true; $('login-btn').disabled = true;
@@ -382,6 +544,6 @@
     catch (_) { showLogin(); }
   }
 
-  if (typeof module !== 'undefined' && module.exports) module.exports = { run, apply, renderTab, init, state, arm };
+  if (typeof module !== 'undefined' && module.exports) module.exports = { run, apply, renderTab, renderHistTab, switchView, loadHistory, openHistory, init, state, arm };
   init();
 })();

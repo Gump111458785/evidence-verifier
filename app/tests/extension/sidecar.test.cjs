@@ -35,6 +35,8 @@ function harness(opts = {}) {
   const nodes = new Map();
   const get = (id) => { if (!nodes.has(id)) nodes.set(id, node()); return nodes.get(id); };
   const tabs = ['correct', 'supplement', 'predict'].map((t) => node({ dataset: { tab: t }, disabled: true }));
+  const htabs = ['correct', 'supplement', 'predict'].map((t) => node({ dataset: { tab: t }, disabled: true }));
+  const navs = ['review', 'history'].map((v) => node({ dataset: { view: v } }));
   const chips = ['correct', 'supplement', 'predict'].map((m) => node({ dataset: { mode: m }, attrs: { 'aria-pressed': 'true' } }));
   get('meter').querySelectorAll = () => [node(), node(), node()];
   get('run-manual').parentElement = node();
@@ -49,7 +51,7 @@ function harness(opts = {}) {
     module: { exports: {} },
     document: {
       getElementById: get,
-      querySelectorAll: (s) => (s === '.tab' ? tabs : s === '.chip' ? chips : []),
+      querySelectorAll: (s) => (s === '.tab' ? tabs : s === '.htab' ? htabs : s === '.nav-btn' ? navs : s === '.chip' ? chips : []),
     },
     chrome: {
       storage: {
@@ -62,6 +64,8 @@ function harness(opts = {}) {
     fetch: async (url, o = {}) => {
       requests.push({ url, method: o.method || 'GET', body: o.body ? JSON.parse(o.body) : null });
       if (url.endsWith('/api/auth/me')) return { ok: true, status: 200, json: async () => ({ authenticated: true }) };
+      if (url.includes('/api/assist?limit=')) return { ok: true, status: 200, json: async () => ({ total: 1, rows: [{ id: 'j1', state: 'completed', status: 'ok', created: 1794986000, question: '铁塔哪年建成？', correct: 'errors_found', supplement: 1, predict: 1 }] }) };
+      if (url.endsWith('/api/assist/j1')) return { ok: true, status: 200, json: async () => ({ id: 'j1', state: 'completed', created: 1794986000, input: { question: '铁塔哪年建成？', answer: '1899年建成。', modes: 'auto' }, result: RESULT }) };
       if (url.endsWith('/api/assist')) return { ok: true, status: 200, json: async () => ({ id: 'j1', state: 'queued', advance_path: '/api/assist/j1/advance', progress: { phase: 'review' } }) };
       if (url.endsWith('/advance')) return { ok: true, status: 200, json: async () => ({ id: 'j1', state: 'completed', result: RESULT }) };
       throw new Error('unexpected ' + url);
@@ -69,7 +73,7 @@ function harness(opts = {}) {
   };
   vm.createContext(context);
   vm.runInContext(code, context);
-  return { context, get, tabs, chips, requests, commands, api: context.module.exports };
+  return { context, get, tabs, htabs, navs, chips, requests, commands, api: context.module.exports };
 }
 const settle = () => new Promise((r) => setTimeout(r, 20));
 
@@ -198,4 +202,34 @@ test('api retries transient non-JSON 500 gateway errors before succeeding', asyn
   await new Promise((r) => setTimeout(r, 450));
   assert.equal(f.get('alert').hidden, true);
   assert.ok(f.get('pane').innerHTML.includes('1889年建成'));
+});
+
+test('pull-ctx reveals ctx-drawer with rendered turns and toggles cleanly', async () => {
+  const f = harness();
+  f.get('ctx-drawer').hidden = true;
+  await settle();
+  f.get('pull-ctx').click();
+  await settle();
+  assert.equal(f.get('ctx-drawer').hidden, false);
+  assert.ok(f.get('ctx-list').innerHTML.includes('介绍巴黎'));
+  f.get('toggle-ctx').click();
+  assert.equal(f.get('ctx-drawer').hidden, true);
+});
+
+test('history view lists past reviews and opens detail tabs cleanly', async () => {
+  const f = harness();
+  await settle();
+  f.api.switchView('history');
+  await settle();
+  assert.equal(f.get('work').hidden, true);
+  assert.equal(f.get('history').hidden, false);
+  assert.ok(f.get('hist-list').innerHTML.includes('铁塔哪年建成？'));
+  await f.api.openHistory('j1');
+  assert.equal(f.get('hist-detail-wrap').hidden, false);
+  assert.ok(f.get('hpane').innerHTML.includes('1889年建成'));
+  f.api.renderHistTab('predict');
+  assert.ok(f.get('hpane').innerHTML.includes('铁塔为何差点被拆除？'));
+  f.api.switchView('review');
+  assert.equal(f.get('work').hidden, false);
+  assert.equal(f.get('history').hidden, true);
 });
