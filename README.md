@@ -137,7 +137,7 @@ Chrome MV3 侧边栏插件（[`app/extension/`](app/extension/README.md)）将�
 
 ## 5. 系统架构与 Evidence Verifier 2.0
 
-Evidence Verifier 2.0 采用**「1 个监督规划 Agent + 5 个核心专业 Agent + 3 个确定性基础设施」**的分层受控闭环架构：Supervisor 只提出动作，由确定性 Runtime 校验合法性、管理不可变版本与状态，最终由不调用 LLM 的 Quality Gate 判定能否发布。
+Evidence Verifier 2.0 采用 **「1 个监督规划 Agent + 5 个核心专业 Agent + 3 个确定性基础设施」**的分层受控闭环架构：Supervisor 只提出动作，由确定性 Runtime 校验合法性、管理不可变版本与状态，最终由不调用 LLM 的 Quality Gate 判定能否发布。
 
 <p align="center">
   <img src="docs/images/system-architecture.svg" alt="Evidence Verifier 2.0（Trisight 三省）多 Agent 总体架构图" width="100%">
