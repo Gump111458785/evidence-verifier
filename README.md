@@ -8,15 +8,13 @@
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](app/README.md)
 [![Live Workbench](https://img.shields.io/badge/Online-evidence--verifier.edgeone.dev-111827.svg)](https://evidence-verifier.edgeone.dev/)
 [![Extension v0.6.6](https://img.shields.io/badge/Chrome_Extension-v0.6.6-0f766e.svg)](app/extension/README.md)
-[![Architecture P0–P7](https://img.shields.io/badge/Architecture-EV_2.0_P0--P7-145e4c.svg)](docs/ev2-architecture.md)
-
-[在线工作台](https://evidence-verifier.edgeone.dev/) · [下载浏览器插件 v0.6.6](https://evidence-verifier.edgeone.dev/downloads/evidence-verifier-extension.zip) · [核心能力](#2-核心能力与展示) · [Chrome 伴随插件](#3-chrome-伴随插件v066) · [EV 2.0 多 Agent 架构](docs/ev2-architecture.md) · [快速开始](#6-快速开始)
+[![Architecture](https://img.shields.io/badge/Architecture-Multi--Agent-145e4c.svg)](docs/system-architecture.md)
 
 </div>
 
 ---
 
-**Trisight 三省（Evidence Verifier）** 是一个面向 AI 对话与长文输出的外置事实审查与阅读辅助系统：当大语言模型给出回答后，三省不替换主模型，而是在旁侧同步完成**原子事实拆解、独立证据取证、冲突核验、最小粒度修订、完整性补充与下一问预测**，并以 **Chrome 侧边栏伴随插件**、**Web 审阅工作台** 和 **Python/HTTP 验证内核** 三种形态交付。
+**Trisight 三省（Evidence Verifier）** 是一个外置的事实审查工具。大模型给出回答后，它在旁边完成事实拆解、证据检索、冲突核验、最小修订、补充遗漏内容和预测下一问，不替换原来的模型。目前有 Chrome 侧边栏插件、Web 审阅工作台和 Python/HTTP 核验内核三种使用方式。
 
 <p align="center">
   <a href="https://evidence-verifier.edgeone.dev/">
@@ -26,9 +24,6 @@
 
 > [!TIP]
 > **直接体验在线版本**：访问 **[https://evidence-verifier.edgeone.dev/](https://evidence-verifier.edgeone.dev/)** 可直接使用三省工作台、预设案例库与历史审查记录；安装 Chrome 伴随插件后，可在 **DeepSeek / ChatGPT / Claude / Gemini** 对话页面右侧实时同步审查。
-
-> [!NOTE]
-> **开源仓库范围说明**：本仓库公开 Web 工作台、Chrome MV3 伴随插件（`v0.6.6`）、EdgeOne 部署与基础版 Python EV 核验内核。**Evidence Verifier 2.0 的多 Agent 运行时、评测管线与策略训练已实现，因涉及保密暂不开源，实验结果将随论文发布**；架构与机制见 [Evidence Verifier 2.0 架构说明](docs/ev2-architecture.md)。
 
 ---
 
@@ -135,15 +130,23 @@ Chrome MV3 侧边栏插件（[`app/extension/`](app/extension/README.md)）将�
 
 ---
 
-## 5. 系统架构与 Evidence Verifier 2.0
+## 5. 系统架构
 
-Evidence Verifier 2.0 采用 **「1 个监督规划 Agent + 5 个核心专业 Agent + 3 个确定性基础设施」** 的分层受控闭环架构：Supervisor 只提出动作，由确定性 Runtime 校验合法性、管理不可变版本与状态，最终由不调用 LLM 的 Quality Gate 判定能否发布。
+Trisight 采用「1 个监督规划 Agent + 5 个核心专业 Agent + 3 个确定性基础设施」的分层受控闭环架构：Supervisor 只提出动作，由确定性 Runtime 校验合法性、管理不可变版本与状态，最终由不调用 LLM 的 Quality Gate 判定能否发布。
 
 <p align="center">
-  <img src="docs/images/system-architecture.svg" alt="Evidence Verifier 2.0（Trisight 三省）多 Agent 总体架构图" width="100%">
+  <img src="docs/images/system-architecture.svg" alt="Trisight 三省多 Agent 总体架构图" width="100%">
 </p>
 
-五项核心机制：Draft → Record → ReleaseCandidate 的所有权隔离与不可变版本；Verification 内部的双阶段盲抽与证据位置诊断；按证据位置的动态恢复与修订后重新核验；必经的完整性分析与新增事实复核；Supervisor 的 SFT → GRPO 序列决策优化。2.0 运行时、评测管线与策略训练已实现但暂不开源，实验结果将随论文发布。角色边界与机制细节见 **[Evidence Verifier 2.0 架构说明](docs/ev2-architecture.md)**。
+核心机制：
+
+1. **所有权隔离与不可变版本**：Agent 输出先作为 Draft，经 Runtime 校验后才成为不可变 Record，再进入 ReleaseCandidate。
+2. **双阶段盲抽核验**：证据抽取阶段看不到待核验断言，抽取完成后再做匹配与多跳实体一致性检查，并记录证据缺失发生在哪一环。
+3. **按证据位置恢复与修订后复核**：失败后按位置和剩余预算选择恢复动作；修订若只改数值、实体或关系，回到核验，若新增、删除或改变断言，重新走断言分析、检索和核验。
+4. **必经的完整性分析**：每个任务都做一次完整性分析，允许返回「无需补充」；任何新增事实都要完整复核后才能发布。
+5. **Supervisor 序列决策优化**：SFT 之后用多步 GRPO 优化调度策略，Runtime 与 Quality Gate 的安全边界不放松。
+
+角色边界与机制细节见 **[架构说明](docs/system-architecture.md)**。
 
 ### 5.1 仓库目录导航（当前公开代码模块）
 
@@ -238,13 +241,13 @@ python scripts/check_publication.py
 | Claude / Gemini 网页端适配器 | **代码已接入** | 已实现站点提取器与测试覆盖；跨站真实页面定期回归待持续补充 |
 | EdgeOne Serverless 代理部署 | **已上线** | 见 [`docs/edgeone-deployment.md`](docs/edgeone-deployment.md) |
 | 离线 Python EV 微核（Grounding / Relations / Repair） | **已验证** | `app/tests` 与公开评测文档见 [`docs/evaluation.md`](docs/evaluation.md) |
-| EV 2.0 多 Agent 运行时、评测管线与策略训练（P0–P7） | **已实现，暂不开源** | 架构与机制见 [EV 2.0 架构说明](docs/ev2-architecture.md)；实验结果将随论文发布 |
+| 多 Agent 运行时、评测管线与策略训练 | **已实现，暂不开源** | 架构与机制见 [架构说明](docs/system-architecture.md) |
 
 ---
 
 ## 8. 工程文档与研发路线
 
-- **产品与架构设计**：[`docs/ev2-architecture.md`](docs/ev2-architecture.md) · [`docs/trisight-assist.md`](docs/trisight-assist.md) · [`docs/conversation-sidecar.md`](docs/conversation-sidecar.md) · [`docs/product-workbench.md`](docs/product-workbench.md)
+- **产品与架构设计**：[`docs/system-architecture.md`](docs/system-architecture.md) · [`docs/trisight-assist.md`](docs/trisight-assist.md) · [`docs/conversation-sidecar.md`](docs/conversation-sidecar.md) · [`docs/product-workbench.md`](docs/product-workbench.md)
 - **部署与集成指南**：[`docs/edgeone-deployment.md`](docs/edgeone-deployment.md) · [`docs/integration.md`](docs/integration.md) · [`api_edition/README.md`](api_edition/README.md) · [`sdk/README.md`](sdk/README.md)
 - **评测、数据与训练研究**：[`docs/evaluation.md`](docs/evaluation.md) · [`docs/data.md`](docs/data.md) · [`docs/post-training.md`](docs/post-training.md)
 - **版本记录与交付**：[`CHANGELOG.md`](CHANGELOG.md) · [`docs/roadmap.md`](docs/roadmap.md) · [`docs/delivery.md`](docs/delivery.md)
