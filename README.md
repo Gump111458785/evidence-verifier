@@ -23,7 +23,7 @@
 </p>
 
 > [!TIP]
-> **直接体验在线版本**：访问 **[https://evidence-verifier.edgeone.dev/](https://evidence-verifier.edgeone.dev/)** 可直接使用三省工作台、预设案例库与历史审查记录；安装 Chrome 伴随插件后，可在 **DeepSeek / ChatGPT / Claude / Gemini** 对话页面右侧实时同步审查。
+> **直接体验在线版本**：访问 **[https://evidence-verifier.edgeone.dev/](https://evidence-verifier.edgeone.dev/)** 可浏览预设案例库；审阅工作台、历史记录和插件需要受邀账号（申请方式见 [6. 快速开始](#6-快速开始)）；安装 Chrome 伴随插件后，可在 **DeepSeek / ChatGPT / Claude / Gemini** 对话页面右侧实时同步审查。
 
 ---
 
@@ -31,7 +31,7 @@
 
 主流对话模型已经很擅长流畅作答，但在严肃检索、决策辅助与专业知识场景中仍有三个痛点：
 
-1. **细节幻觉难察觉**：回答看似通顺，但年份、数据、人物归属或因果限定往往悄悄偏移（例如“埃菲尔铁塔 1889 年建成时高 300 米”）。
+1. **细节幻觉难察觉**：回答看似通顺，但年份、数据、人物归属或因果限定往往悄悄偏移（例如把埃菲尔铁塔的建成年份 1889 年写成 1899 年）。
 2. **局部错误与完整覆盖割裂**：常规纠错模型容易“顺手重写整段话”从而引入新幻觉，或者只挑错字却漏掉用户真正关心的前提与关键视角。
 3. **跨平台核对与审计缺失**：缺乏留在对话旁侧的外置审阅层，也缺乏可追溯到原文位置、版本修订与证据缺口的严格确定性门禁。
 
@@ -47,11 +47,11 @@
 | --- | --- | --- |
 | **纠错（Correct）** | 红色删除线 / 纠错卡片 | 拆解关键事实断言并联网检索核对；**只有被检索到的原文明确反驳的断言才标红**，附更正、原文引文与来源链接；其余断言显示为绿色卡片，其中有证据支持的附原文引文，未能核实的不附引文 |
 | **补充（Supplement）** | 蓝色补充要点 / 引用卡片 | 基于覆盖缺口分析提取原回答遗漏的必要背景、边界条件与延伸来源；允许在回答已完整时返回「无需补充」，严禁为凑篇幅强行扩写 |
-| **预测（Predict）** | 黑色追问建议与一键填入 | 基于已核验可信事实生成下一步高价值、无虚假事实前提的追问；在支持的 AI 对话页可**一键填入输入框**继续追问 |
+| **预测（Predict）** | 黑色追问建议与一键填入 | 根据问题、回答与前几轮上下文，预测用户最可能的下一个问题（只生成问题，不生成答案）；在支持的 AI 对话页可**一键填入输入框**继续追问 |
 
 ### 2.1 纠错：在对话页实时逐条取证与修正（DeepSeek / ChatGPT）
 
-插件自动识别当前对话的最新一轮问答（`自动审查`），抽取关键断言并展示每条结论的核验结果、原文片段与来源；有误条目以红色高亮给出修正建议，其余断言显示为绿色卡片（有证据支持的附原文引文，未能核实的不附引文），并支持一键展开 `查看上文` 确认上下文摘要：
+插件自动读取当前对话的最新一轮问答，点击 `自动审查` 后抽取关键断言并展示每条结论的核验结果、原文片段与来源；有误条目以红色高亮给出修正建议，其余断言显示为绿色卡片（有证据支持的附原文引文，未能核实的不附引文），并支持一键展开 `查看上文` 确认上下文摘要：
 
 <p align="center">
   <img src="docs/images/trisight-deepseek-correct.png" alt="DeepSeek 对话页右侧三省 Chrome 插件实时纠错与核验卡片" width="100%">
@@ -67,7 +67,7 @@
 
 ### 2.3 预测：直接预测下一问并一键回填输入框
 
-切换至 `预测` 后，三省基于已核验事实与检索上下文生成下一步高价值追问，点击即可直接写入页面输入框（例如 `已填入` DeepSeek 输入框），减少手动拼接提示词的摩擦：
+切换至 `预测` 后，三省根据问题、回答与前几轮上下文预测下一步最可能的追问，点击即可直接写入页面输入框（例如 `已填入` DeepSeek 输入框），减少手动拼接提示词的摩擦：
 
 <p align="center">
   <img src="docs/images/trisight-deepseek-predict.png" alt="DeepSeek 对话页三省插件预测下一问并一键填入输入框" width="100%">
@@ -79,7 +79,8 @@
 
 Chrome MV3 侧边栏插件（[`app/extension/`](app/extension/README.md)）将审查能力直接嵌入日常 AI 对话工作流：
 
-- **自动 / 手动双模式**：开启 `自动审查` 后，在模型输出完成时自动捕获本轮 Q&A 发起审查；也可随时切换为 `手动审查` 自由勾选 `纠错` / `补充` / `预测` 组合。
+- **自动读取，一键审查**：打开对话页即自动读取最新一轮问答与前几轮上文，点击时无需再等待页面提取；点击 `自动审查` 运行纠错、补充、预测三种模式，或用 `手动审查` 勾选其中几种再运行。
+- **隐私边界**：只读取页面可见问答，不读取隐藏思维链；只有点击审查时才把问答发送到 `evidence-verifier.edgeone.dev`；提示词只填入输入框，不自动发送。
 - **QA 与上下文按需透视**：工作区默认隐藏冗长原文，点击 `查看 QA` 可展开本次自动提取的完整 `问` / `答` 文本便于校验抓取准确度；点击 `获取上下文` / `查看上文` 可抓取并查看当前对话前序历史片段。
 - **内置审查与历史双视图**：顶栏提供 `审查 ｜ 历史` 切换（对齐 Web 端右侧抽屉体验），可随时查阅过往审查条目，按「发现错误 / 未发现错误」标签快速回溯原文核验结论。
 - **多站点适配器架构**：内置 `DeepSeek`（`chat.deepseek.com`）、`ChatGPT`（`chatgpt.com`）、`Claude`（`claude.ai`）、`Gemini`（`gemini.google.com`）页面提取器与统一规范化模块（注：DeepSeek 与 ChatGPT 已完成实网端到端验证，Claude / Gemini 为结构化适配器实现）。
@@ -132,6 +133,9 @@ Chrome MV3 侧边栏插件（[`app/extension/`](app/extension/README.md)）将�
 
 ## 5. 系统架构
 
+> [!NOTE]
+> 本节介绍的多 Agent 运行时、评测管线与策略训练已实现，但暂不开源；公开仓库中可运行的审阅流程见 [6.1 调用审阅接口](#61-调用审阅接口apiassist) 与 [`docs/trisight-assist.md`](docs/trisight-assist.md)。
+
 Trisight 采用「1 个监督规划 Agent + 5 个核心专业 Agent + 3 个确定性基础设施」的分层受控闭环架构：Supervisor 只提出动作，由确定性 Runtime 校验合法性、管理不可变版本与状态，最终由不调用 LLM 的 Quality Gate 判定能否发布。
 
 <p align="center">
@@ -153,12 +157,12 @@ Trisight 采用「1 个监督规划 Agent + 5 个核心专业 Agent + 3 个确�
 | 目录 / 模块 | 定位与职责 | 核心文档 / 入口 |
 | --- | --- | --- |
 | `app/` | 本地研究版服务（Python 标准库 HTTP 服务）、静态前端（首页 / 审阅 / 案例库 / 历史 / 账号）与基础 EV 核验、原文定位、关系判定与补搜修复引擎 | [`app/README.md`](app/README.md)、[`app/engine.py`](app/engine.py)、[`app/grounding.py`](app/grounding.py)、[`app/relations.py`](app/relations.py)、[`app/repair.py`](app/repair.py) |
-| `app/extension/` | Chrome MV3 侧边栏伴随插件（自动抓包、QA/上下文查看、审查/历史切换、预测一键填入） | [`app/extension/README.md`](app/extension/README.md) |
+| `app/extension/` | Chrome MV3 侧边栏伴随插件（自动读取页面问答、QA/上下文查看、审查/历史切换、预测一键填入） | [`app/extension/README.md`](app/extension/README.md) |
 | `api_edition/` | 基于 OpenAI-compatible 模型接口与向量检索的线上验证版本与评测脚本 | [`api_edition/README.md`](api_edition/README.md) |
 | `sdk/` | 轻量 Python SDK 与公共校验入口 | [`sdk/README.md`](sdk/README.md) |
 | `cloud_runtime/` & `deploy/edgeone/` | 线上审阅接口（纠错 / 补充 / 预测分步任务、账号、预算）与 EdgeOne Pages 部署配置 | [`docs/edgeone-deployment.md`](docs/edgeone-deployment.md) |
 | `scripts/` | 链路检查（`check_doc_links.py`）、隐私与发布门禁（`check_publication.py`）、诊断复现与 EdgeOne 打包脚本 | [`scripts/check_publication.py`](scripts/check_publication.py) |
-| `docs/` | 产品方案、前后端集成、后训练（SFT/DPO）与历史验证报告 | [`docs/trisight-assist.md`](docs/trisight-assist.md) |
+| `docs/` | 产品方案、前后端集成、后训练方案与历史验证报告 | [`docs/trisight-assist.md`](docs/trisight-assist.md) |
 
 ---
 
@@ -167,7 +171,7 @@ Trisight 采用「1 个监督规划 Agent + 5 个核心专业 Agent + 3 个确�
 ### 6.0 线上体验或启动本地服务
 
 - **方式 A（最快）：直接访问在线版**
-  打开 **[https://evidence-verifier.edgeone.dev/](https://evidence-verifier.edgeone.dev/)**，即可使用工作台、案例库与 API。
+  打开 **[https://evidence-verifier.edgeone.dev/](https://evidence-verifier.edgeone.dev/)**。案例库无需登录；审阅工作台、历史记录、插件与 API 需要受邀账号，申请试用请在 [GitHub Issues](https://github.com/Gump111458785/evidence-verifier/issues) 留言。
 - **方式 B：本地启动研究版（只需 Python 3.11+ 标准库）**
 
 ```bash
@@ -189,7 +193,7 @@ curl -s -X POST $BASE/api/assist \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{
     "question": "埃菲尔铁塔什么时候建成的，刚建成时有多高？",
-    "answer": "埃菲尔铁塔于 1889 年建成，刚建成时高 300 米，是当时世界最高建筑。",
+    "answer": "埃菲尔铁塔于 1899 年建成，刚建成时高 300 米，是当时世界最高建筑。",
     "modes": ["correct", "supplement", "predict"],
     "compose": false
   }'
@@ -208,7 +212,7 @@ curl -s -X POST $BASE/api/assist/<id>/advance -H "Authorization: Bearer $TOKEN"
    - 点击 **加载已解压的扩展程序（Load unpacked）**，选择解压后的插件目录。
 3. **打开任意 AI 对话页并开始伴随审查**
    - 访问 [DeepSeek](https://chat.deepseek.com/)、[ChatGPT](https://chatgpt.com/)、[Claude](https://claude.ai/) 或 [Gemini](https://gemini.google.com/)，点击浏览器右上角扩展图标打开 Trisight 侧边栏。
-   - 插件只连接在线服务 `https://evidence-verifier.edgeone.dev`，首次使用需用受邀账号登录。
+   - 插件只连接在线服务 `https://evidence-verifier.edgeone.dev`，首次使用需用受邀账号登录（申请方式见 [6.0](#60-线上体验或启动本地服务)）。
    - 在顶部可切换 **审查**（查看 `查看 QA`、`获取上下文`、`自动/手动审查` 与 `纠错/补充/预测`）或 **历史**（回看历次审查记录）；点击预测结果旁的填入按钮可直接将追问写入聊天输入框。
 
 更多细节见 [`docs/conversation-sidecar.md`](docs/conversation-sidecar.md) 与 [`app/extension/README.md`](app/extension/README.md)。
@@ -220,13 +224,13 @@ curl -s -X POST $BASE/api/assist/<id>/advance -H "Authorization: Bearer $TOKEN"
 node --test app/tests/extension/*.test.cjs
 
 # 2. 服务端核心、API 与脚本测试
-python -m unittest discover -s app/tests -p 'test_*.py'
-python -m unittest discover -s api_edition/tests -p 'test_*.py'
-python -m unittest discover -s scripts/tests -p 'test_*.py'
+python3 -m unittest discover -s app/tests -p 'test_*.py'
+python3 -m unittest discover -s api_edition/tests -p 'test_*.py'
+python3 -m unittest discover -s scripts/tests -p 'test_*.py'
 
 # 3. 文档链接完整性 & 仓库公开合规门禁
-python scripts/check_doc_links.py
-python scripts/check_publication.py
+python3 scripts/check_doc_links.py
+python3 scripts/check_publication.py
 ```
 
 ---
