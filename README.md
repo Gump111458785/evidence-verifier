@@ -2,20 +2,21 @@
 
 # Trisight 三省 · Evidence Verifier
 
-**大模型回答的外置审阅者（纠错 · 补充 · 预测）与轻量级事实核验内核**
+**大模型回答的外置审阅者（纠错 · 补充 · 预测）与可信多 Agent 事实核验架构**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](app/README.md)
 [![Live Workbench](https://img.shields.io/badge/Online-evidence--verifier.edgeone.dev-111827.svg)](https://evidence-verifier.edgeone.dev/)
 [![Extension v0.6.6](https://img.shields.io/badge/Chrome_Extension-v0.6.6-0f766e.svg)](app/extension/README.md)
+[![Architecture P0–P7](https://img.shields.io/badge/Architecture-EV_2.0_P0--P7-145e4c.svg)](#5-系统架构与-evidence-verifier-20-演进)
 
-[在线工作台](https://evidence-verifier.edgeone.dev/) · [下载浏览器插件 v0.6.6](https://evidence-verifier.edgeone.dev/downloads/evidence-verifier-extension.zip) · [核心能力](#2-核心能力与展示) · [Chrome 伴随插件](#3-chrome-伴随插件v066) · [快速开始](#7-快速开始) · [架构与文档](#9-工程文档与研发路线)
+[在线工作台](https://evidence-verifier.edgeone.dev/) · [下载浏览器插件 v0.6.6](https://evidence-verifier.edgeone.dev/downloads/evidence-verifier-extension.zip) · [核心能力](#2-核心能力与展示) · [Chrome 伴随插件](#3-chrome-伴随插件v066) · [EV 2.0 多 Agent 架构](#5-系统架构与-evidence-verifier-20-演进) · [快速开始](#7-快速开始)
 
 </div>
 
 ---
 
-**Trisight 三省（Evidence Verifier）** 是一个面向 AI 对话与长文输出的外置事实审查与阅读辅助系统：当大语言模型给出回答后，三省不替换你的主模型，而是在旁边同步完成**证据检索、逐句核验、缺口补充与追问预测**，并以 **Chrome 侧边栏伴随插件**、**Web 审阅工作台** 和 **Python/HTTP 验证内核** 三种形态交付。
+**Trisight 三省（Evidence Verifier）** 是一个面向 AI 对话与长文输出的外置事实审查与阅读辅助系统：当大语言模型给出回答后，三省不替换主模型，而是在旁侧同步完成**原子事实拆解、独立证据取证、冲突核验、最小粒度修订、完整性补充与下一问预测**，并以 **Chrome 侧边栏伴随插件**、**Web 审阅工作台** 和 **Python/HTTP 验证内核** 三种形态交付。
 
 <p align="center">
   <a href="https://evidence-verifier.edgeone.dev/">
@@ -26,29 +27,32 @@
 > [!TIP]
 > **直接体验在线版本**：访问 **[https://evidence-verifier.edgeone.dev/](https://evidence-verifier.edgeone.dev/)** 可直接使用三省工作台、预设案例库与历史审查记录；安装 Chrome 伴随插件后，可在 **DeepSeek / ChatGPT / Claude / Gemini** 对话页面右侧实时同步审查。
 
+> [!NOTE]
+> **开源仓库范围说明**：本仓库公开发布 Web 工作台、Chrome MV3 伴随插件（`v0.6.6`）、EdgeOne 代理部署与基础版 Python EV 核验内核；**Evidence Verifier 2.0 完整多 Agent 运行时、闭环评测管线及策略训练实现因商业保密暂不随本公开仓库释放源码**，本页面中的 2.0 架构图与机制说明用于展示当前系统演进全貌与工程规范。
+
 ---
 
 ## 1. 为什么做三省（Trisight）？
 
-主流对话模型已经很擅长流畅作答，但在真实工作与检索场景里仍有三个高频痛点：
+主流对话模型已经很擅长流畅作答，但在严肃检索、决策辅助与专业知识场景中仍有三个痛点：
 
-1. **细节幻觉难察觉**：整段话读起来很自然，但年份、数据、人物归属或原文引述往往悄悄偏差（例如“埃菲尔铁塔 1889 年建成时高 300 米”）。
-2. **回答只停在第一层**：模型常跳过前提条件、对照视角、边界约束或最新变化，追问方向也需要自己摸索。
-3. **跨平台核对成本高**：每次把问答复制去搜原文再整理要点都很割裂，缺乏一个留在对话旁边的外置审阅层。
+1. **细节幻觉难察觉**：回答看似通顺，但年份、数据、人物归属或因果限定往往悄悄偏移（例如“埃菲尔铁塔 1889 年建成时高 300 米”）。
+2. **局部错误与完整覆盖割裂**：常规纠错模型容易“顺手重写整段话”从而引入新幻觉，或者只挑错字却漏掉用户真正关心的前提与关键视角。
+3. **跨平台核对与审计缺失**：缺乏留在对话旁侧的外置审阅层，也缺乏可追溯到原文位置、版本修订与证据缺口的严格确定性门禁。
 
-三省把审查过程做成**零侵入的外置伴随体验**——既能像浏览器侧栏一样跟在 DeepSeek / ChatGPT 旁边自动触发，也能在 Web 工作台里按四阶段可视化回放逐条证据。
+三省把审查过程做成**零侵入的外置伴随体验**与**严格证据约束的可信闭环**——前端像侧栏助手一样紧贴对话流即时反馈，底层通过协议隔离、盲抽取证与确定性状态控制防止模型“自审自批”。
 
 ---
 
 ## 2. 核心能力与展示
 
-三省围绕同一套结构化审阅管道提供三类输出，并用统一视觉语义标注在原文与卡片中：
+三省围绕结构化审阅管道提供三类输出，并用统一视觉语义标注在原文与卡片中：
 
 | 能力 | 颜色与标识 | 核心作用 |
 | --- | --- | --- |
-| **纠错（Correct）** | 红色删除线 / 纠错卡片 | 拆解断言并联网/结合上下文核对；**仅将经权威依据证实有误的断言标红纠错**，附上修正值、原文摘要与来源链接；核实正确及以模型回答为准的条目明确标绿展示，不制造误报 |
-| **补充（Supplement）** | 蓝色补充要点 / 引用卡片 | 提取原回答遗漏的关键背景、边界条件、对照细节与延伸来源，补足阅读理解所需的事实上下文 |
-| **预测（Predict）** | 黑色追问建议与一键填入 | 预判用户接下来最可能深入的 3 个问题；在支持的 AI 对话页可**一键直接填入输入框**继续追问 |
+| **纠错（Correct）** | 红色删除线 / 纠错卡片 | 拆解原子事实并联网/结合上下文核对；**仅将经权威依据证实反驳的断言标红纠错**，附上最小粒度修订、原文摘要与来源链接；已证实及以模型回答为准的条目明确标绿展示，严控误报 |
+| **补充（Supplement）** | 蓝色补充要点 / 引用卡片 | 基于覆盖缺口分析提取原回答遗漏的必要背景、边界条件与延伸来源；允许在回答已完整时返回「无需补充」，严禁为凑篇幅强行扩写 |
+| **预测（Predict）** | 黑色追问建议与一键填入 | 基于已核验可信事实生成下一步高价值、无虚假事实前提的追问；在支持的 AI 对话页可**一键填入输入框**继续追问 |
 
 ### 2.1 在对话页实时纠错与逐条取证（DeepSeek / ChatGPT）
 
@@ -73,7 +77,7 @@
 Chrome MV3 侧边栏插件（[`app/extension/`](app/extension/README.md)）将审查能力直接嵌入日常 AI 对话工作流：
 
 - **自动 / 手动双模式**：开启 `自动审查` 后，在模型输出完成时自动捕获本轮 Q&A 发起审查；也可随时切换为 `手动审查` 自由勾选 `纠错` / `补充` / `预测` 组合。
-- **QA 与上下文按需透视**：顶部/工作区默认隐藏冗长原文，点击 `查看 QA` 可展开本次自动提取的完整 `问` / `答` 文本便于校验抓取准确度；点击 `获取上下文` / `查看上文` 可抓取并查看当前对话前序历史片段。
+- **QA 与上下文按需透视**：工作区默认隐藏冗长原文，点击 `查看 QA` 可展开本次自动提取的完整 `问` / `答` 文本便于校验抓取准确度；点击 `获取上下文` / `查看上文` 可抓取并查看当前对话前序历史片段。
 - **内置审查与历史双视图**：顶栏提供 `审查 ｜ 历史` 切换（对齐 Web 端右侧抽屉体验），可随时查阅过往审查条目，按「发现错误 / 未发现错误」标签快速回溯原文核验结论。
 - **多站点适配器架构**：内置 `DeepSeek`（`chat.deepseek.com`）、`ChatGPT`（`chatgpt.com` / `chat.openai.com`）、`Claude`（`claude.ai`）、`Gemini`（`gemini.google.com`）页面提取器与统一规范化模块（注：DeepSeek 与 ChatGPT 已完成实网端到端验证，Claude / Gemini 为结构化适配器实现）。
 
@@ -123,21 +127,35 @@ Chrome MV3 侧边栏插件（[`app/extension/`](app/extension/README.md)）将�
 
 ---
 
-## 5. 系统架构与核心组件
+## 5. 系统架构与 Evidence Verifier 2.0 演进
 
-项目采用**双层协作架构**：外层是面向交互与在线取证的 **Trisight 三省工作台 / 伴随插件 / EdgeOne 无服务器后端**，底层是独立可复用的 **Evidence Verifier（EV）局部证据核验内核**。
+Evidence Verifier 2.0 采用**「1 个监督规划 Agent + 5 个核心专业 Agent + 3 个确定性基础设施」**的分层受控闭环架构，将 LLM 的规划/语义能力与 Python Runtime 的确定性规则校验、状态版本控制彻底解耦。
 
 <p align="center">
-  <img src="docs/images/system-architecture.svg" alt="Trisight 与 Evidence Verifier 系统架构图" width="100%">
+  <img src="docs/images/system-architecture.svg" alt="Evidence Verifier 2.0（Trisight 三省）多 Agent 总体架构图" width="100%">
 </p>
 
-### 仓库目录导航
+### 5.1 角色职责与控制边界（P0–P1）
+
+| 角色 / 基础设施 | 类别 | 核心职责 | 严格边界（禁止越权行为） |
+| --- | --- | --- | --- |
+| **Supervisor Agent · LLM** | 智能调度 Agent | 全局状态理解、动态任务规划、动作提议（`ActionProposal`）、失败诊断感知重规划 | 唯一智能调度中心；不得直接宣告 `PASS`，不得绕过 Runtime 写状态或越过 Quality Gate |
+| **Claim Analysis Agent** | 核心专业 Agent | 原子事实拆解（保留时间/数值/否定限定）、用户 `Requirement` 提取、全文事实覆盖审计 | 不得凭模型参数知识判断事实真伪 |
+| **Retrieval Agent** | 核心专业 Agent | 证据需求拆解、查询规划与多跳路径检索、权威原文定位与缺口识别 | 不得将相似检索片段自动判定为支持证据，不得编造 URL/引文 |
+| **Verification Agent** | 核心专业 Agent | 双阶段盲抽（Blind Evidence Extraction）+ 事实匹配、多跳实体变量绑定、冲突与充分性判定 | 不得修改原答案；`INSUFFICIENT`（缺证）严禁伪报为正确 |
+| **Repair Agent** | 核心专业 Agent | 有证据约束的最小粒度修改（`Replace` / `Remove` / `Qualify` / `Abstain`）与文本差异记录 | 不得依赖内部知识补全事实或重写真文，不得自行认定修订成功 |
+| **Enhancement Agent** | 核心专业 Agent（必经） | 必要内容完整性评估、证据约束补充规划、无错误前提的下一问预测（允许合法输出「无需补充」） | 不得未经复核直接发布新增事实，严禁为凑字强行扩写 |
+| **Deterministic Runtime** | Python 确定性基础设施 | 动作授权过滤、Pydantic Schema 与引用校对、预算控制、不可变版本与状态机管理 | 唯一执行入口；只认经过校验的正式记录，不替代 Verification 做语义真伪判断 |
+| **Shared Task State & Evidence Store** | 共享状态与证据存储 | 持久化 `TextRevision`、`Claim`、`DocumentSnapshot`、`Evidence`、`Verdict`、`RepairRecord` 与决策轨迹 | 非独立 Agent；所有状态由 Runtime 以 `state_version` 事务控制统一读写 |
+| **Quality Gate** | 确定性验收门禁 | 校验 6 项发布条件并输出 `PASS / REPLAN / PARTIAL / CLARIFY / FAIL` 裁决 | 纯确定性规则验收，不调用 LLM 主观放行 |
+
+### 5.2 仓库目录导航（当前公开代码模块）
 
 | 目录 / 模块 | 定位与职责 | 核心文档 / 入口 |
 | --- | --- | --- |
-| `app/` | Trisight 服务端（FastAPI / ASGI）、静态前端（首页 / 工作台 / 案例库 / 历史 / 账号）与 EV 核验、局部定位、关系判定与文本修复引擎 | [`app/README.md`](app/README.md)、[`app/engine.py`](app/engine.py)、[`app/grounding.py`](app/grounding.py)、[`app/relations.py`](app/relations.py)、[`app/repair.py`](app/repair.py) |
+| `app/` | Trisight 服务端（FastAPI / ASGI）、静态前端（首页 / 工作台 / 案例库 / 历史 / 账号）与基础 EV 核验、局部定位、关系判定与修复引擎 | [`app/README.md`](app/README.md)、[`app/engine.py`](app/engine.py)、[`app/grounding.py`](app/grounding.py)、[`app/relations.py`](app/relations.py)、[`app/repair.py`](app/repair.py) |
 | `app/extension/` | Chrome MV3 侧边栏伴随插件（自动抓包、QA/上下文查看、审查/历史切换、预测一键填入） | [`app/extension/README.md`](app/extension/README.md) |
-| `api_edition/` | 基于 OpenAI-compatible 模型接口与向量检索的线上验证版本与评测基准脚本 | [`api_edition/README.md`](api_edition/README.md) |
+| `api_edition/` | 基于 OpenAI-compatible 模型接口与向量检索的线上验证版本与评测脚本 | [`api_edition/README.md`](api_edition/README.md) |
 | `sdk/` | 轻量 Python SDK 与公共校验入口 | [`sdk/README.md`](sdk/README.md) |
 | `functions/` & `edgeone.json` | 腾讯云 EdgeOne Pages 无服务器代理与线上部署配置 | [`docs/edgeone-deployment.md`](docs/edgeone-deployment.md) |
 | `scripts/` | 链路检查（`check_doc_links.py`）、隐私与发布门禁（`check_publication.py`）、基准评测与扩展同步脚本 | [`scripts/check_publication.py`](scripts/check_publication.py) |
@@ -145,17 +163,25 @@ Chrome MV3 侧边栏插件（[`app/extension/`](app/extension/README.md)）将�
 
 ---
 
-## 6. 技术细节：严格事实核验原则
+## 6. 核心技术机制、评测标准与策略演进（2.0）
 
-为确保插件与工作台输出对用户真正可信，三省在 `v0.6.x` 迭代中确立了以下核验与展示原则：
+除了在当前已上线版本（`v0.6.x`）落地的**红标零误报原则**（仅证实有误标红、未能核实按原回答绿卡确认）、**跨站结构化 QA/上下文透视**与**离线局部 EV 微核**外，Evidence Verifier 2.0 在可信多 Agent 系统方向进一步确立了五项核心工程与研究机制：
 
-1. **红标零误报原则（仅证实有误才标红）**：
-   - 核验器仅在权威/高质量证据明确反驳原断言时将其判为 `纠错` 并标红；
-   - 无法找到反证或无法完全核实的细节**不作为纠错项误报**，而是以大模型原回答为准纳入已核实展示，避免无依据的红色告警干扰阅读。
-2. **结构化 QA 与对话上文透视**：
-   - 自动审查时抽取当前轮次 `question` / `answer` 并支持 `history` 上下文片段传递，同时解决跨站点 DOM 换行与 Markdown 格式归一化问题（含 ChatGPT 长对话与自动审查参数一致性校验）。
-3. **局部 Evidence Verifier 离线微核（可独立运行）**：
-   - `app/inference.py`、`app/training.py` 与 `app/torch_training.py` 保留完整的声明拆分、三选一证据关系分类（`supported` / `contradicted` / `insufficient`）、局部片段定位（Grounding）与最小粒度修复（Repair）实现，可用于无外网环境或模型后训练研究（详见 [`docs/post-training.md`](docs/post-training.md)）。
+1. **所有权隔离与不可变版本流水线（`Draft → Record → ReleaseCandidate`）**：
+   - 任何 Agent 输出仅视为候选 `Draft`，必须经 `Deterministic Runtime` 校对原文索引（`source_span` / `quote_span`）、文档哈希（`document_sha256`）及 `state_version` 后才升级为正式不可变 `Record`；
+   - 基础答案与补充文本通过统一 `TextRevision`（`BASE_ANSWER` / `SUPPLEMENT`）隔离管理，任一事实修改后历史 `Verdict` 自动失效，杜绝旧结论误用于修订稿。
+2. **双阶段盲抽核验（Blind Evidence Extraction）与双维失败诊断（P2）**：
+   - `Verification Agent` 内部的证据抽取阶段接口级屏蔽待核验 Claim 与候选答案，先从证据文档中独立抽取出 `EvidenceFact`，再进行 `Claim–Evidence Matching` 与多跳桥接实体一致性检查；
+   - 诊断体系将**证据卡点位置**（`NOT_RETRIEVED` / `RETRIEVED_NOT_SELECTED` / `SELECTED_NOT_PRESENTED` / `PRESENTED_NOT_USED`）与**证据充分性**（`INSUFFICIENT`）解耦，为精准调度恢复动作提供明确信号。
+3. **基于证据位置的动态恢复与 Repair 双路径复核（P3）**：
+   - `Supervisor` 不走僵化固定流水线，而是按合法动作集合、失败位置、预期收益与剩余预算做分层调度与失败感知重规划；
+   - `Repair Agent` 修订后严格区分两类复核闭环：**仅修改数值、实体或关系**时局部回流 `Verification`；一旦**新增、删除或改变事实断言**，强制回流 `Claim Analysis → Retrieval（按需）→ Verification`，避免修好旧错却引入新幻觉。
+4. **必经增强分析、无前提风险追问与新增事实独立复核（P4）**：
+   - 每个任务必须完成一次完整性分析，允许在原回答充分时合法返回零补充/零追问；生成的下一问需通过事实前提安全性检查；
+   - 只要 `Enhancement Agent` 输出任何新增事实性补充（`review_scope = SUPPLEMENT`），必须经 `Claim Analysis → Retrieval（按需）→ Verification` 完整复核通过后方可进入 `ReleaseCandidate` 与 `Quality Gate`。
+5. **三层独立评测协议与 Supervisor 序列决策学习（P5 / P7）**：
+   - **三层评测基准与公平控制**：围绕公共事实验证/多跳集合（FEVER、AVeriTeC、2WikiMultiHopQA、MuSiQue、FActScore 思路）、自建 `Evidence Location & Recovery` 诊断集与端到端审阅集，推行 **Frozen Evidence 对照**、任务级配对统计检验与预算公平性审计，将 **False Trusted Publication Rate（不可信事实误放行率）** 与 **Recovery Success Rate** 作为核心主指标；
+   - **SFT → 多步 GRPO 策略优化建模**：在不放松 `Runtime` 与 `Quality Gate` 安全硬边界的前提下，将 `Supervisor` 建模为**受约束部分可观察序列决策问题（`Constrained POMDP`）**，通过 `Legal Action Mask` 与抗投机行为（Anti-reward-hacking）轨迹级奖励设计，优化长程核验恢复与算力成本效率。
 
 ---
 
@@ -237,7 +263,7 @@ python scripts/check_publication.py --root .
 
 ---
 
-## 8. 支持矩阵与验证说明
+## 8. 支持矩阵与交付状态
 
 | 模块 / 能力 | 状态 | 说明与验证依据 |
 | --- | --- | --- |
@@ -247,6 +273,7 @@ python scripts/check_publication.py --root .
 | Claude / Gemini 网页端适配器 | **代码已接入** | 已实现站点提取器与测试覆盖；跨站真实页面定期回归待持续补充 |
 | EdgeOne Serverless 代理部署 | **已上线** | 见 [`docs/edgeone-deployment.md`](docs/edgeone-deployment.md) |
 | 离线 Python EV 微核（Grounding / Relations / Repair） | **已验证** | `app/tests` 与公开评测文档见 [`docs/evaluation.md`](docs/evaluation.md) |
+| EV 2.0 多 Agent 架构与闭环规范（P0–P7） | **闭源已实现 / 架构已公开** | 完整 6 Agent 协议、确定性 Runtime、状态库、Quality Gate 与 SFT/GRPO 体系见第 5–6 节 |
 
 ---
 
@@ -261,5 +288,5 @@ python scripts/check_publication.py --root .
 
 ## 10. 开源许可与第三方致谢
 
-- 代码遵循 [`LICENSE`](LICENSE)（MIT License）。
+- 公开代码遵循 [`LICENSE`](LICENSE)（MIT License）。
 - 随仓库分发的字体与第三方组件许可清单见 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) 与 [`app/static/fonts/LICENSE.txt`](app/static/fonts/LICENSE.txt)。
