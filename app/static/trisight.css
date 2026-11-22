@@ -218,6 +218,21 @@ select.ts-field {
 .help-summary code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 12.5px; background: #f2f4f8; padding: 2px 6px; border-radius: 4px; }
 @media (max-width: 900px) { .help-hero { grid-template-columns: 1fr; gap: 24px; padding: 24px 0 32px; margin-bottom: 36px; } }
 
+.help-section { padding: 0 0 44px; }
+.help-section + .help-section { padding-top: 40px; border-top: 1px solid var(--rule); }
+.help-section:last-child { padding-bottom: 0; }
+.help-section-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px 20px; flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.help-section-head h2 { font-size: 20px; line-height: 1.35; margin: 0; }
+.help-section-head span { font-size: 13.5px; color: var(--ink-3); }
+.help-section p { color: var(--ink-2); }
+@media (max-width: 900px) {
+  .help-section { padding-bottom: 36px; }
+  .help-section + .help-section { padding-top: 32px; }
+}
+
 .help-stack { display: flex; flex-direction: column; gap: 18px; }
 .help-pillars { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .help-pillars article { padding: 20px; }
