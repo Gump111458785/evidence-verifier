@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>帮助与开源部署：Trisight 三省</title>
+  <meta name="description" content="Trisight 三省（Evidence Verifier）开源项目介绍、本地启动研究版、Chrome 插件安装与 EdgeOne 云端部署教程。">
+  <link rel="icon" href="/favicon.svg?v=053" type="image/svg+xml">
+  <link rel="stylesheet" href="/trisight.css">
+</head>
+<body>
+  <div class="ts-bar-wrap"><header id="ts-bar"></header></div>
+
+  <main class="ts-page home-main">
+    <section class="help-hero">
+      <div>
+        <h1>帮助与开源部署</h1>
+        <p class="lead">Trisight 三省（Evidence Verifier）是一个基于 MIT 协议开源的外置事实审查项目：不替换主模型，在对话或长文旁侧完成事实拆解、检索核验、遗漏补充与下一问预测。你可以直接使用在线版本，也可以按下方指南自行部署。</p>
+        <div class="home-actions">
+          <a class="ts-btn" href="https://github.com/Gump111458785/evidence-verifier" rel="noopener">在 GitHub 查看源码</a>
+          <a class="ts-btn quiet" href="/downloads/evidence-verifier-extension.zip">下载浏览器插件包</a>
+          <a class="ts-btn quiet" href="/library.html">浏览案例库</a>
+        </div>
+      </div>
+
+      <aside class="ts-sheet help-summary" aria-label="公开仓库构成">
+        <div class="help-sum-head">公开仓库概览</div>
+        <dl class="kv">
+          <dt>开源协议</dt><dd>MIT License</dd>
+          <dt>在线地址</dt><dd><code>evidence-verifier.edgeone.dev</code></dd>
+          <dt>运行依赖</dt><dd>本地研究版仅需 Python 3.11+ 标准库</dd>
+          <dt>插件支持</dt><dd>Chrome 116+（DeepSeek / ChatGPT / Claude / Gemini）</dd>
+          <dt>试用账号</dt><dd><a href="https://github.com/Gump111458785/evidence-verifier/issues" rel="noopener">在 GitHub 提 Issue 申请</a></dd>
+        </dl>
+      </aside>
+    </section>
+
+    <section class="home-section">
+      <h2>项目简介</h2>
+      <div class="help-stack">
+        <div class="help-pillars">
+          <article class="ts-sheet">
+            <div class="help-card-title"><span class="dot correct"></span><h3>纠错</h3></div>
+            <p>提取原回答中的原文事实断言并检索权威来源；只有被原文明确反驳的断言才标红并附更正与引文，未能核实的不伪报为有误。</p>
+          </article>
+          <article class="ts-sheet">
+            <div class="help-card-title"><span class="dot supplement"></span><h3>补充</h3></div>
+            <p>结合问题与前几轮对话查找对用户重要但回答遗漏的内容；事实类补充附原文出处，回答已充分时返回「无需补充」。</p>
+          </article>
+          <article class="ts-sheet">
+            <div class="help-card-title"><span class="dot predict"></span><h3>预测</h3></div>
+            <p>根据问题、回答和上下文预测用户接下来最可能的 1 到 3 个追问，只生成问题不替用户作答，在插件中可一键填入输入框。</p>
+          </article>
+        </div>
+
+        <div class="ts-sheet help-modules">
+          <h3>仓库目录说明</h3>
+          <div class="help-table-wrap">
+            <table class="help-table">
+              <thead><tr><th>目录</th><th>职责与说明</th></tr></thead>
+              <tbody>
+                <tr><td><code>app/</code></td><td>本地研究版 HTTP 服务（<code>app/server.py</code>）、静态页面、离线 EV 核验内核与补搜修复模块</td></tr>
+                <tr><td><code>app/extension/</code></td><td>Chrome MV3 伴随插件脚本与权限配置（打包脚本 <code>app/scripts/build_extension.py</code> 会合并侧栏页面）</td></tr>
+                <tr><td><code>cloud_runtime/</code> &amp; <code>deploy/edgeone/</code></td><td>云端审阅接口（<code>/api/assist</code> 分步任务、受邀账号、Redis 预算与 EdgeOne 配置）</td></tr>
+                <tr><td><code>api_edition/</code></td><td>基于 OpenAI-compatible 接口与远程检索的纯 API 验证版本</td></tr>
+                <tr><td><code>sdk/</code></td><td>轻量 Python 客户端与公开核验入口（<code>evidence-verifier-client</code>）</td></tr>
+                <tr><td><code>scripts/</code></td><td>文档链路检查、公开合规检查与 EdgeOne 构建打包脚本</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="home-section">
+      <h2>部署教程</h2>
+      <div class="help-stack">
+        <article class="ts-sheet help-step">
+          <div class="help-step-head">
+            <span class="help-step-num">01</span>
+            <div>
+              <h3>本地启动研究版</h3>
+              <p class="ts-meta" style="margin:2px 0 0">无需第三方依赖或 GPU · 使用 Python 3.11+ 标准库运行</p>
+            </div>
+          </div>
+          <p>克隆仓库后直接启动本地工作台服务，默认监听 <code>8790</code> 端口，数据写入本机 <code>app/data/workbench.sqlite</code>：</p>
+          <div class="help-code">
+            <pre><code>git clone https://github.com/Gump111458785/evidence-verifier.git
+cd evidence-verifier
+python3 app/server.py --port 8790</code></pre>
+            <button class="ts-btn quiet small" type="button" data-copy="git clone https://github.com/Gump111458785/evidence-verifier.git
+cd evidence-verifier
+python3 app/server.py --port 8790">复制</button>
+          </div>
+          <p class="ts-meta" style="margin:12px 0 0">启动后在浏览器打开 <code>http://127.0.0.1:8790</code>。注意：本地研究版用于回放诊断与离线核验接口（如 <code>/api/verifications</code>）；云端纠错 / 补充 / 预测三种模式仅在云端运行时开放（本地调用 <code>/api/assist</code> 会返回 <code>501 cloud_only</code>）。</p>
+        </article>
+
+        <article class="ts-sheet help-step">
+          <div class="help-step-head">
+            <span class="help-step-num">02</span>
+            <div>
+              <h3>安装或自行打包 Chrome 伴随插件</h3>
+              <p class="ts-meta" style="margin:2px 0 0">Chrome 116+ · MV3 侧边栏扩展</p>
+            </div>
+          </div>
+          <ol class="help-ol">
+            <li>直接下载已构建的 <a href="/downloads/evidence-verifier-extension.zip"><code>evidence-verifier-extension.zip</code></a> 并解压；如需从本地修改后的源码自行打包，请运行下方命令（不要直接加载 <code>app/extension/</code>，因为侧栏页面文件存放在 <code>app/static/</code>）：</li>
+          </ol>
+          <div class="help-code">
+            <pre><code>python3 app/scripts/build_extension.py --out dist/trisight-extension.zip</code></pre>
+            <button class="ts-btn quiet small" type="button" data-copy="python3 app/scripts/build_extension.py --out dist/trisight-extension.zip">复制</button>
+          </div>
+          <ol class="help-ol" start="2" style="margin-top:12px">
+            <li>打开 <code>chrome://extensions</code>，启用右上角<strong>开发者模式</strong>，点击<strong>加载已解压的扩展程序</strong>并选择解压目录。</li>
+            <li>打开 DeepSeek、ChatGPT、Claude 或 Gemini 对话页后点击扩展图标，使用受邀账号登录即可使用（插件固定连接在线服务 <code>https://evidence-verifier.edgeone.dev</code>）。</li>
+          </ol>
+        </article>
+
+        <article class="ts-sheet help-step">
+          <div class="help-step-head">
+            <span class="help-step-num">03</span>
+            <div>
+              <h3>自行部署云端版本（EdgeOne Pages + Redis + DeepSeek）</h3>
+              <p class="ts-meta" style="margin:2px 0 0">包含完整的网页端与 <code>/api/assist</code> 三种模式运行时</p>
+            </div>
+          </div>
+          <p>若希望独立托管在线审阅服务，需准备 EdgeOne Pages 项目、Upstash Redis REST 存储与 DeepSeek API Key，并在项目的 Production 环境中配置以下 5 项变量：</p>
+          <div class="help-table-wrap" style="margin-bottom:14px">
+            <table class="help-table">
+              <thead><tr><th>环境变量</th><th>用途</th></tr></thead>
+              <tbody>
+                <tr><td><code>EV_DEEPSEEK_API_KEY</code></td><td>服务端 DeepSeek API 密钥（模型推理与联网搜索）</td></tr>
+                <tr><td><code>EV_CLOUD_ACCESS_CODE</code></td><td>不少于 24 字符的服务端访问码（用于脚本 / 管理员鉴权）</td></tr>
+                <tr><td><code>EV_REDIS_REST_URL</code></td><td>Redis HTTPS REST 入口（存储任务、会话与费用账本）</td></tr>
+                <tr><td><code>EV_REDIS_REST_TOKEN</code></td><td>Redis REST 访问凭据</td></tr>
+                <tr><td><code>EV_CLOUD_BUDGET_ID</code></td><td>全局试用账本命名空间标识</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>变量配置完成后，使用白名单打包脚本生成静态资源与 Python 云函数压缩包，并通过 EdgeOne CLI 部署：</p>
+          <div class="help-code">
+            <pre><code>python3 scripts/build_edgeone.py --out /tmp/ev-edgeone-build
+edgeone makers deploy /tmp/ev-edgeone-build.zip \
+  --name evidence-verifier --env production --site global --area overseas \
+  --skip-ai-gateway-sync --json</code></pre>
+            <button class="ts-btn quiet small" type="button" data-copy="python3 scripts/build_edgeone.py --out /tmp/ev-edgeone-build
+edgeone makers deploy /tmp/ev-edgeone-build.zip \
+  --name evidence-verifier --env production --site global --area overseas \
+  --skip-ai-gateway-sync --json">复制</button>
+          </div>
+        </article>
+
+        <article class="ts-sheet help-step">
+          <div class="help-step-head">
+            <span class="help-step-num">04</span>
+            <div>
+              <h3>运行本地校验与测试</h3>
+              <p class="ts-meta" style="margin:2px 0 0">修改代码或二次开发后建议跑一遍离线检查</p>
+            </div>
+          </div>
+          <div class="help-code">
+            <pre><code>node --test app/tests/extension/*.test.cjs
+python3 -m unittest discover -s app/tests -p 'test_*.py'
+python3 -m unittest discover -s api_edition/tests -p 'test_*.py'
+python3 scripts/check_doc_links.py
+python3 scripts/check_publication.py</code></pre>
+            <button class="ts-btn quiet small" type="button" data-copy="node --test app/tests/extension/*.test.cjs
+python3 -m unittest discover -s app/tests -p 'test_*.py'
+python3 -m unittest discover -s api_edition/tests -p 'test_*.py'
+python3 scripts/check_doc_links.py
+python3 scripts/check_publication.py">复制</button>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="home-section">
+      <h2>试用与反馈</h2>
+      <div class="home-callout">
+        <p>在线审阅工作台、问答历史、插件登录与 <code>/api/assist</code> 目前采用邀请制账号。如果你只是想先试用在线版本，或遇到部署问题，请在 GitHub 提 Issue 联系。</p>
+        <a class="ts-btn quiet" href="https://github.com/Gump111458785/evidence-verifier/issues" rel="noopener">在 GitHub 提 Issue</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="ts-foot"><div><span>Trisight 三省</span><span>MIT License</span><a href="/">主页</a><a href="/library.html">案例库</a><a href="https://github.com/Gump111458785/evidence-verifier" rel="noopener">GitHub</a></div></footer>
+
+  <script src="/trisight.js"></script>
+  <script>
+    (async () => {
+      const user = await TS.me();
+      TS.bar('help', user);
+      document.querySelectorAll('[data-copy]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(btn.dataset.copy);
+            TS.danmaku('已复制到剪贴板', 'done', 2000);
+          } catch (_) {
+            TS.danmaku('复制失败，请手动选中复制', 'error', 2200);
+          }
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

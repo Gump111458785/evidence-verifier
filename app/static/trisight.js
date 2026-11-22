@@ -117,8 +117,8 @@
     const host = document.getElementById('ts-bar');
     if (!host) return;
     const links = user
-      ? [['assist', '/assist.html', '审阅'], ['library', '/library.html', '案例库'], ['history', '/history.html', '问答历史']]
-      : [['home', '/', '首页'], ['library', '/library.html', '案例库']];
+      ? [['home', '/', '主页'], ['assist', '/assist.html', '审阅'], ['library', '/library.html', '案例库'], ['history', '/history.html', '问答历史'], ['help', '/help.html', '帮助']]
+      : [['home', '/', '主页'], ['library', '/library.html', '案例库'], ['help', '/help.html', '帮助']];
     host.innerHTML = '<div class="ts-bar">' +
       '<a class="ts-brand" href="/">' + MARK + '<b>Trisight</b><span>三省</span></a>' +
       '<nav class="ts-nav" aria-label="主导航">' + links.map(([k, href, label]) =>
