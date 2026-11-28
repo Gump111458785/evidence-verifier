@@ -48,6 +48,19 @@ local amount = tonumber(ARGV[1])
 return redis.call('INCRBY', KEYS[1], amount)
 '''
 
+CREATE_COMPETITION_JOB = '''
+if redis.call('EXISTS', KEYS[1]) == 1 then return 0 end
+local visitor = tonumber(redis.call('GET', KEYS[2]) or '0')
+local total = tonumber(redis.call('GET', KEYS[3]) or '0')
+if visitor >= 2 then return -1 end
+if total >= 40 then return -2 end
+redis.call('INCR', KEYS[2])
+redis.call('EXPIRE', KEYS[2], 86400)
+redis.call('INCR', KEYS[3])
+redis.call('SET', KEYS[1], ARGV[1])
+return 1
+'''
+
 
 class Store:
     def __init__(self, env, transport=None):
@@ -56,6 +69,7 @@ class Store:
         self.namespace = env.get('EV_CLOUD_BUDGET_ID', 'makers-z7l7raqtginj-trial-01')
         self.transport = transport
         self.unlimited = False
+        self.competition_owner = None
 
     @property
     def configured(self):
@@ -97,6 +111,14 @@ class Store:
         # not an entire multi-call verification. IDs and cap are not client input.
         if type(amount_millicny) is not int or amount_millicny != 250:
             raise ValueError('Only the fixed audited reservation is allowed')
+        if self.competition_owner:
+            guest = self.command(['EVAL', RESERVE, '2',
+                                  self.key('competition_spent', self.competition_owner),
+                                  self.key('competition_initialized', self.competition_owner), '250', '1250'])
+            if guest == -1:
+                raise CloudError('guest_budget_exhausted', '本次访客会话的 5 次模型或检索调用已用完。', 429)
+            if type(guest) is not int or not 250 <= guest <= 1250 or guest % 250:
+                raise CloudError('budget_unavailable', '访客费用账本异常，付费调用已停止')
         if getattr(self, 'unlimited', False):
             result = self.command(['EVAL', RESERVE_UNLIMITED, '2', self.key('admin_spent'), self.key('admin_initialized'), '250'])
             if type(result) is not int or result < 250:
@@ -122,6 +144,20 @@ class Store:
         data = json.dumps(value, ensure_ascii=False)
         if len(data.encode()) > 2_000_000:
             raise CloudError('record_too_large', '审查记录超限', 413)
+        if new and owner == self.competition_owner and value.get('kind') == 'assist':
+            result = self.command(['EVAL', CREATE_COMPETITION_JOB, '3',
+                                   self.key('record', owner + ':' + ident),
+                                   self.key('competition_jobs', owner),
+                                   self.key('competition_jobs_total'), data])
+            if result == 1:
+                return
+            if result == 0:
+                raise CloudError('request_exists', '请求已存在，请读取原记录', 409)
+            if result == -1:
+                raise CloudError('guest_task_limit', '本次访客会话最多提交两次审阅。', 429)
+            if result == -2:
+                raise CloudError('competition_task_limit', '参赛站体验名额已用完，可继续查看案例库。', 429)
+            raise CloudError('storage_write_failed', '无法保存参赛审阅任务')
         command = ['SET', self.key('record', owner + ':' + ident), data]
         if new:
             command.append('NX')

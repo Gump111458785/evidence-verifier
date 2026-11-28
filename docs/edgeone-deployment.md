@@ -7,7 +7,9 @@
 - 答案审查：<https://evidence-verifier.edgeone.dev/#audit>
 - 独立审查助手：<https://evidence-verifier.edgeone.dev/sidecar.html>
 - 项目控制台：<https://console.tencentcloud.com/edgeone/pages/project/makers-z7l7raqtginj>
-- 项目 ID：`makers-z7l7raqtginj`；使用国际站账号、海外部署区域，更新同一项目（最新生产部署 ID：`dpuf2paozjkh`）。
+- 项目 ID：`makers-z7l7raqtginj`；使用国际站账号、海外部署区域，更新同一项目（[参赛接口部署 `dpl7cv7d7uk3`](https://console.tencentcloud.com/edgeone/pages/project/makers-z7l7raqtginj/deployment/dpl7cv7d7uk3)）。
+
+Qoder 参赛站使用独立的临时访客会话，详见 [参赛站接入](qoder-competition.md)。以下账号流程适用于 EdgeOne 上的原工作台。
 
 v0.4.0 起，网页端启用 **受邀账号登录与服务端不透明会话（Invitation-Only Accounts）**：未登录直接访问工作台主页会自动跳转至 `/login.html`（亦可通过 `/?preview=demo` 查看公开演示模式）。公开自助注册接口（`POST /api/auth/register`）固定返回 `403 invitation_only`。受邀账号密码经 PBKDF2-HMAC-SHA256（600,000 次迭代）加盐哈希存储于 Upstash Redis（`ev:makers-z7l7raqtginj-trial-01:auth:*`），每个受邀账号拥有独立私有记录命名空间（`acct:<user_id>`），同时保留对 Python SDK / 回归测试 `Authorization: Bearer <EV_CLOUD_ACCESS_CODE>` 的向后兼容。管理员可在顶栏「个人中心 → 受邀账号管理」或通过 `scripts/manage_accounts.py` 创建受邀账号、重置临时密码与启停账户。
 

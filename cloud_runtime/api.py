@@ -16,6 +16,7 @@ from .store import Store,CloudError,authorize
 from .model import DeepSeek
 from .pipeline import validate_input,planner_input
 from .orchestration import Orchestrator,FAMILIES
+from . import competition
 
 
 def _require_admin_or_operator(headers,env,accounts):
@@ -36,6 +37,22 @@ def route(method,path,headers,body,env=None,store=None,model=None):
     accounts=Accounts(store)
     url=urlsplit(path);path=url.path;query=parse_qs(url.query)
     configured=bool(env.get('EV_DEEPSEEK_API_KEY') and store.configured and len(env.get('EV_CLOUD_ACCESS_CODE',''))>=24)
+    request_headers={k.lower():v for k,v in (headers or {}).items()}
+    origin=request_headers.get('origin','').strip()
+    auth_header=request_headers.get('authorization','')
+    guest_token=auth_header[7:].strip() if auth_header.startswith('Bearer guest.') else ''
+    access_code=env.get('EV_CLOUD_ACCESS_CODE','')
+    if method=='POST' and path==competition.SESSION_PATH:
+        if origin!=competition.ORIGIN:
+            raise CloudError('competition_origin_required','请从参赛站点开启访客会话。',403)
+        if not configured:
+            raise CloudError('model_not_configured','模型或持久化存储尚未配置')
+        return competition.issue(access_code)
+    guest_owner=None
+    if guest_token or (origin==competition.ORIGIN and competition.review_route(method,path)):
+        if not competition.review_route(method,path):
+            raise CloudError('guest_scope_denied','访客会话仅能访问参赛审阅。',403)
+        guest_owner=competition.owner_from_token(access_code,guest_token)
     if method=='GET' and path=='/api/health':
         return {'ok':True,'edition':'pure_api','cloud_mode':'durable_step_jobs','live_configured':configured,
                 'invitation_only':True,'auth_mode':'invitation_account',
@@ -108,9 +125,13 @@ def route(method,path,headers,body,env=None,store=None,model=None):
     if method=='GET' and path=='/api/library':
         from .library_cases import catalog
         return catalog()
-    session_user=accounts.authenticate(headers) if (store.configured or hasattr(store,'_auth_kv')) else None
+    session_user=accounts.authenticate(headers) if not guest_owner and (store.configured or hasattr(store,'_auth_kv')) else None
     is_admin=bool(session_user and session_user.get('role')=='admin')
-    if session_user:
+    if guest_owner:
+        code,owner=access_code,guest_owner
+        store.competition_owner=guest_owner
+        store.unlimited=False
+    elif session_user:
         expected=env.get('EV_CLOUD_ACCESS_CODE','')
         if len(expected)<24:raise CloudError('access_not_configured','尚未配置服务端访问码')
         code=expected

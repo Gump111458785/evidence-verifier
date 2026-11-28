@@ -93,7 +93,7 @@ class DeepSeek:
                 except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, ValueError, KeyError, IndexError, TypeError) as first_err:
                     http_code = getattr(first_err, 'code', None)
                     detail = f' ({type(first_err).__name__}{" " + str(http_code) if http_code is not None else ""})'
-                    if http_code in (401, 402):
+                    if http_code in (401, 402) or getattr(self.store, 'competition_owner', None):
                         raise
                     fallback_body = {
                         'model': self.env.get('EV_DEEPSEEK_FALLBACK_MODEL', 'deepseek-chat'),
