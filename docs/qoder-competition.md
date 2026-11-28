@@ -1,6 +1,6 @@
 # Trisight 参赛站接入
 
-参赛页面使用 [现有 Qoder Sites 地址](https://trisight-o4mn67jtib8.qoder.zone/)。审阅 API 使用 [现有 EdgeOne 项目](https://console.tencentcloud.com/edgeone/pages/project/makers-z7l7raqtginj)，沿用 DeepSeek 与 Upstash。浏览案例无需调用模型。开始审阅时，页面自动获取有效期 24 小时的访客会话。该会话只能访问自己的参赛审阅记录。
+参赛页面使用 [Trisight 三省 · 参赛版](https://trisight-sansheng-laed2yludt9.qoder.website/)。审阅 API 使用 [现有 EdgeOne 项目](https://console.tencentcloud.com/edgeone/pages/project/makers-z7l7raqtginj)，沿用 DeepSeek 与 Upstash。浏览案例无需调用模型。开始审阅时，页面自动获取有效期 24 小时的访客会话。该会话只能访问自己的参赛审阅记录。
 
 ## 在原 Qoder 站点发布
 
@@ -15,7 +15,7 @@
 它在 trisight.js 前加载，并删除旧脚本中返回静态 501 的拦截及“静态演示”提示。
 
 页面面向无需登录的访客：顶部改为“访客体验”，隐藏登录、退出登录、个人资料、
-账号管理和研究授权入口。首页及案例库的审阅入口均留在当前 qoder.zone 站点，
+账号管理和研究授权入口。首页及案例库的审阅入口均留在当前 Qoder Sites 站点，
 点击后打开 /assist.html。/history.html 仅展示当前浏览器标签页会话的记录。
 
 实时任务使用附件提供的跨域接入：自动获取访客会话，向 EdgeOne 提交 /api/assist，

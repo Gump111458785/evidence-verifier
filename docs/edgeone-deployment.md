@@ -7,7 +7,7 @@
 - 答案审查：<https://evidence-verifier.edgeone.dev/#audit>
 - 独立审查助手：<https://evidence-verifier.edgeone.dev/sidecar.html>
 - 项目控制台：<https://console.tencentcloud.com/edgeone/pages/project/makers-z7l7raqtginj>
-- 项目 ID：`makers-z7l7raqtginj`；使用国际站账号、海外部署区域，更新同一项目（[参赛接口部署 `dpl7cv7d7uk3`](https://console.tencentcloud.com/edgeone/pages/project/makers-z7l7raqtginj/deployment/dpl7cv7d7uk3)）。
+- 项目 ID：`makers-z7l7raqtginj`；使用国际站账号、海外部署区域，更新同一项目（[参赛接口部署 `dpujl14jnsa4`](https://console.tencentcloud.com/edgeone/pages/project/makers-z7l7raqtginj/deployment/dpujl14jnsa4)）。
 
 Qoder 参赛站使用独立的临时访客会话，详见 [参赛站接入](qoder-competition.md)。以下账号流程适用于 EdgeOne 上的原工作台。
 

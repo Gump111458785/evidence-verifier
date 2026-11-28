@@ -43,13 +43,13 @@ def route(method,path,headers,body,env=None,store=None,model=None):
     guest_token=auth_header[7:].strip() if auth_header.startswith('Bearer guest.') else ''
     access_code=env.get('EV_CLOUD_ACCESS_CODE','')
     if method=='POST' and path==competition.SESSION_PATH:
-        if origin!=competition.ORIGIN:
+        if origin not in competition.ALLOWED_ORIGINS:
             raise CloudError('competition_origin_required','请从参赛站点开启访客会话。',403)
         if not configured:
             raise CloudError('model_not_configured','模型或持久化存储尚未配置')
         return competition.issue(access_code)
     guest_owner=None
-    if guest_token or (origin==competition.ORIGIN and competition.review_route(method,path)):
+    if guest_token or (origin in competition.ALLOWED_ORIGINS and competition.review_route(method,path)):
         if not competition.review_route(method,path):
             raise CloudError('guest_scope_denied','访客会话仅能访问参赛审阅。',403)
         guest_owner=competition.owner_from_token(access_code,guest_token)

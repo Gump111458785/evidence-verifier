@@ -8,7 +8,7 @@ from urllib.parse import urlsplit
 sys.path.insert(0,str(Path(__file__).parent/'evlib'))
 from cloud_runtime.api import route
 from cloud_runtime.auth import build_session_cookie,clear_session_cookie
-from cloud_runtime.competition import ORIGIN as COMPETITION_ORIGIN,browser_route
+from cloud_runtime.competition import ALLOWED_ORIGINS as COMPETITION_ORIGINS,browser_route
 from cloud_runtime.store import CloudError
 
 EXT_ORIGIN_RE=re.compile(r'^chrome-extension://[a-p]{32}$')
@@ -17,7 +17,7 @@ EXT_ORIGIN_RE=re.compile(r'^chrome-extension://[a-p]{32}$')
 def cors_policy(origin, method, path):
     if EXT_ORIGIN_RE.fullmatch(origin):
         return origin, 'GET, POST, OPTIONS'
-    if origin != COMPETITION_ORIGIN:
+    if origin not in COMPETITION_ORIGINS:
         return None, None
     if browser_route(method,urlsplit(path).path):
         return origin, method
@@ -45,7 +45,7 @@ class handler(BaseHTTPRequestHandler):
         request_origin=(self.headers.get('Origin') or '').strip()
         origin,_=cors_policy(request_origin,self.command,self.path)
         try:
-            if request_origin == COMPETITION_ORIGIN and not origin:
+            if request_origin in COMPETITION_ORIGINS and not origin:
                 raise CloudError('origin_route_denied','参赛站点未开放此接口',403)
             raw=self.headers.get('Content-Length','0')
             length=int(raw)
@@ -53,7 +53,7 @@ class handler(BaseHTTPRequestHandler):
             body=json.loads(self.rfile.read(length)) if length else {}
             if not isinstance(body,dict):raise CloudError('invalid_request','请求体须为JSON对象',400)
             headers=dict(self.headers.items())
-            if origin == COMPETITION_ORIGIN:
+            if origin in COMPETITION_ORIGINS:
                 # The competition site uses a scoped bearer token, independent of cookies.
                 headers={k:v for k,v in headers.items() if k.lower() not in ('cookie','x-ev-session')}
             value=route(self.command,self.path,headers,body)
@@ -61,7 +61,7 @@ class handler(BaseHTTPRequestHandler):
                 value=dict(value)
                 token=value.pop('_set_cookie',None)
                 cleared=value.pop('_clear_cookie',False)
-                if origin != COMPETITION_ORIGIN:
+                if origin not in COMPETITION_ORIGINS:
                     if token:cookie_hdr=build_session_cookie(token,secure=True)
                     elif cleared:cookie_hdr=clear_session_cookie(secure=True)
             status=200

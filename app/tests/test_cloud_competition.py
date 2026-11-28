@@ -6,7 +6,7 @@ from unittest.mock import patch
 from test_cloud_api import Storage
 from test_cloud_pipeline import FakeModel
 from cloud_runtime.api import route
-from cloud_runtime.competition import ORIGIN, SESSION_PATH, TTL_SECONDS
+from cloud_runtime.competition import ALLOWED_ORIGINS, ORIGIN, SESSION_PATH, TTL_SECONDS
 from cloud_runtime.store import CloudError, Store
 
 
@@ -73,7 +73,9 @@ class CompetitionTests(unittest.TestCase):
         spec = importlib.util.spec_from_file_location('test_edgeone_route', path)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        self.assertEqual(module.cors_policy(ORIGIN, 'POST', SESSION_PATH), (ORIGIN, 'POST'))
+        for origin in ALLOWED_ORIGINS:
+            self.assertEqual(module.cors_policy(origin, 'POST', SESSION_PATH), (origin, 'POST'))
         self.assertEqual(module.cors_policy(ORIGIN, 'GET', '/api/assist?limit=10'), (ORIGIN, 'GET'))
         self.assertEqual(module.cors_policy(ORIGIN, 'GET', '/api/auth/admin/users'), (None, None))
         self.assertEqual(module.cors_policy('https://other.qoder.zone', 'POST', SESSION_PATH), (None, None))
+        self.assertEqual(module.cors_policy('https://other.qoder.website', 'POST', SESSION_PATH), (None, None))

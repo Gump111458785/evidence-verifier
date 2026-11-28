@@ -7,7 +7,8 @@ import time
 
 from .store import CloudError
 
-ORIGIN = 'https://trisight-o4mn67jtib8.qoder.zone'
+ORIGIN = 'https://trisight-sansheng-laed2yludt9.qoder.website'
+ALLOWED_ORIGINS = frozenset({ORIGIN, 'https://trisight-o4mn67jtib8.qoder.zone'})
 SESSION_PATH = '/api/competition/session'
 TTL_SECONDS = 24 * 60 * 60
 TOKEN_RE = re.compile(r'guest\.([a-f0-9]{32})\.([0-9]{1,12})\.([a-f0-9]{64})')
