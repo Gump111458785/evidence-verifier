@@ -45,7 +45,7 @@ class Jobs:
 
     def advance(self, owner, ident, perform):
         job=self.get(owner,ident)
-        if job['state']=='failed' and job.get('kind')=='assist' and not getattr(self.store,'competition_owner',None):
+        if job['state']=='failed' and job.get('kind')=='assist':
             # Allow user-initiated retry of a failed assist phase
             claim_key=self.store.key('step',owner+':'+ident+':'+str(job['step']))
             try:self.store.command(['DEL',claim_key])

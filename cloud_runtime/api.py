@@ -129,8 +129,7 @@ def route(method,path,headers,body,env=None,store=None,model=None):
     is_admin=bool(session_user and session_user.get('role')=='admin')
     if guest_owner:
         code,owner=access_code,guest_owner
-        store.competition_owner=guest_owner
-        store.unlimited=False
+        store.unlimited=True
     elif session_user:
         expected=env.get('EV_CLOUD_ACCESS_CODE','')
         if len(expected)<24:raise CloudError('access_not_configured','尚未配置服务端访问码')

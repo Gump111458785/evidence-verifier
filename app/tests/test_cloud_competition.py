@@ -53,20 +53,17 @@ class CompetitionTests(unittest.TestCase):
             with self.assertRaises(CloudError):
                 self.call('GET', '/api/assist', token)
 
-    def test_guest_reservation_is_bounded_before_shared_reservation(self):
-        calls = []
-
-        def transport(command):
-            calls.append(command)
-            return {'result': -1}
-
-        store = Store({'EV_REDIS_REST_URL': 'https://redis.example.com', 'EV_REDIS_REST_TOKEN': 'fixture'}, transport)
-        store.competition_owner = 'test-guest'
-        with self.assertRaises(CloudError) as denied:
-            store.reserve()
-        self.assertEqual(denied.exception.code, 'guest_budget_exhausted')
-        self.assertEqual(len(calls), 1)
-        self.assertEqual(calls[0][-2:], ['250', '1250'])
+    def test_guests_have_no_call_or_task_limit(self):
+        token = self.call('POST', SESSION_PATH)['guest_token']
+        for idx in range(5):
+            job = self.call('POST', '/api/assist', token, {
+                'question': f'Q{idx}?', 'answer': 'It opened in 1889.', 'modes': ['predict'],
+            })
+            while job['state'] == 'queued':
+                job = self.call('POST', job['advance_path'], token)
+            self.assertEqual(job['state'], 'completed')
+        self.assertTrue(self.store.unlimited)
+        self.assertEqual(len(self.model.calls), 5)
 
     def test_browser_cors_only_allows_the_competition_routes(self):
         path = Path(__file__).resolve().parents[2] / 'deploy/edgeone/cloud-functions/api/[[route]].py'
