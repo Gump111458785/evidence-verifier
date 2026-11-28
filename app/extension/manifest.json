@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Trisight 三省",
-  "version": "0.6.7",
+  "version": "0.6.8",
   "minimum_chrome_version": "116",
   "description": "在 AI 对话页旁审阅回答：纠错、补充、预测。只读取页面可见问答，提示词只填入输入框，不自动发送。",
   "permissions": [
@@ -33,6 +33,6 @@
     "default_title": "Trisight 三省"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://trisight-sansheng-laed2yludt9.qoder.website;"
+    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://trisight-sansheng-laed2yludt9.qoder.website; frame-src https://trisight-sansheng-laed2yludt9.qoder.website;"
   }
 }

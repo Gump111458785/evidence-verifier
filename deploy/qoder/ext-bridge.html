@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>Trisight Extension Bridge</title>
+</head>
+<body>
+<script>
+(() => {
+  const BACKEND = '/functions/v1/app';
+  const EXT_ORIGIN = /^chrome-extension:\/\/[a-p]{32}$/;
+  const ALLOWED_ROUTE = /^\/api\/(?:health|competition\/session|assist(?:\/[a-f0-9]{24}(?:\/(?:advance|cancel|feedback))?)?)(?:\?.*)?$/;
+
+  function reply(target, origin, payload) {
+    if (target && EXT_ORIGIN.test(origin)) target.postMessage(payload, origin);
+  }
+
+  window.addEventListener('message', async (event) => {
+    if (event.source !== window.parent || !EXT_ORIGIN.test(event.origin)) return;
+    const msg = event.data;
+    if (!msg || typeof msg !== 'object') return;
+    if (msg.type === 'ts-bridge-ping') {
+      reply(event.source, event.origin, { type: 'ts-bridge-ready' });
+      return;
+    }
+    if (msg.type !== 'ts-bridge-req') return;
+    const id = msg.id;
+    const method = msg.method === 'POST' ? 'POST' : 'GET';
+    const path = typeof msg.path === 'string' ? msg.path : '';
+    if (!ALLOWED_ROUTE.test(path)) {
+      reply(event.source, event.origin, {
+        type: 'ts-bridge-res', id, ok: false, status: 403, isJson: true,
+        data: { code: 'route_not_found', error: '接口不存在。' },
+      });
+      return;
+    }
+    const headers = {};
+    if (typeof msg.token === 'string' && msg.token) headers.Authorization = 'Bearer ' + msg.token;
+    if (msg.body !== undefined) headers['Content-Type'] = 'application/json';
+    const timeoutMs = Number.isFinite(msg.timeoutMs) && msg.timeoutMs > 0 ? Math.min(msg.timeoutMs, 90000) : 60000;
+    try {
+      const res = await fetch(BACKEND + path, {
+        method,
+        headers,
+        credentials: 'omit',
+        redirect: 'error',
+        body: msg.body !== undefined ? JSON.stringify(msg.body) : undefined,
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      const text = await res.text();
+      let data = {};
+      let isJson = false;
+      try {
+        data = text ? JSON.parse(text) : {};
+        isJson = true;
+      } catch (_) {}
+      reply(event.source, event.origin, {
+        type: 'ts-bridge-res', id, ok: res.ok, status: res.status, isJson, data,
+      });
+    } catch (err) {
+      reply(event.source, event.origin, {
+        type: 'ts-bridge-res', id, ok: false, status: 0, isJson: false,
+        networkError: String((err && err.message) || 'Failed to fetch'),
+      });
+    }
+  });
+
+  if (window.parent && window.parent !== window) {
+    try { window.parent.postMessage({ type: 'ts-bridge-ready' }, '*'); } catch (_) {}
+  }
+})();
+</script>
+</body>
+</html>

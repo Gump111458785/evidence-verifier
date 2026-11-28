@@ -299,3 +299,112 @@ test('extension starts without login via Qoder relay and refreshes guest token o
   assert.equal(f.get('alert').hidden, true);
   assert.ok(f.get('pane').innerHTML.includes('1889年建成'));
 });
+
+test('extension bridges POST and GET requests via same-origin Qoder ext-bridge iframe', async () => {
+  const bridgeHtml = fs.readFileSync(path.resolve(__dirname, '../../../deploy/qoder/ext-bridge.html'), 'utf8');
+  const bridgeCode = bridgeHtml.match(/<script>([\s\S]*?)<\/script>/)[1];
+  const { createRelay } = await import(
+    require('node:url').pathToFileURL(path.resolve(__dirname, '../../../deploy/qoder/functions/relay.mjs')).href
+  );
+  const siteOrigin = 'https://trisight-sansheng-laed2yludt9.qoder.website';
+  const extOrigin = 'chrome-extension://' + 'a'.repeat(32);
+  const guestToken = 'guest.' + '0'.repeat(32) + '.9999999999.' + '1'.repeat(64);
+  const jobId = 'a'.repeat(24);
+  const seenRelay = [];
+  const relay = createRelay(siteOrigin, 'https://evidence-verifier.edgeone.dev', async (url) => {
+    const p = url.pathname;
+    if (p === '/api/competition/session') return Response.json({ guest_token: guestToken, expires_at: 9999999999 });
+    if (p === '/api/assist') return Response.json({ id: jobId, state: 'queued', advance_path: `/api/assist/${jobId}/advance`, progress: { phase: 'review' } });
+    if (p === `/api/assist/${jobId}/advance`) return Response.json({ id: jobId, state: 'completed', result: RESULT });
+    return Response.json({ ok: true });
+  });
+
+  const nodes = new Map();
+  const get = (id) => { if (!nodes.has(id)) nodes.set(id, node()); return nodes.get(id); };
+  const tabs = ['correct', 'supplement', 'predict'].map((t) => node({ dataset: { tab: t }, disabled: true }));
+  const htabs = ['correct', 'supplement', 'predict'].map((t) => node({ dataset: { tab: t }, disabled: true }));
+  const navs = ['review', 'history'].map((v) => node({ dataset: { view: v } }));
+  const chips = ['correct', 'supplement', 'predict'].map((m) => node({ dataset: { mode: m }, attrs: { 'aria-pressed': 'true' } }));
+  get('meter').querySelectorAll = () => [node(), node(), node()];
+  get('run-manual').parentElement = node();
+  const parentListeners = [];
+  const bridgeListeners = [];
+  const snapshot = { platform: 'DeepSeek', question: '铁塔哪年建成？', candidate: '1899年建成。', context: [], tab_id: 1 };
+  const storageData = {};
+
+  const parentWin = {
+    addEventListener(type, fn) { if (type === 'message') parentListeners.push(fn); },
+    postMessage(data, targetOrigin) {
+      if (targetOrigin !== '*' && targetOrigin !== extOrigin) throw new Error('bad parent targetOrigin ' + targetOrigin);
+      queueMicrotask(() => parentListeners.forEach((fn) => fn({ origin: siteOrigin, source: bridgeWin, data })));
+    },
+  };
+  const bridgeWin = {
+    parent: parentWin,
+    addEventListener(type, fn) { if (type === 'message') bridgeListeners.push(fn); },
+    postMessage(data, targetOrigin) {
+      if (targetOrigin !== siteOrigin) throw new Error('bad bridge targetOrigin ' + targetOrigin);
+      queueMicrotask(() => bridgeListeners.forEach((fn) => fn({ origin: extOrigin, source: parentWin, data })));
+    },
+  };
+  parentWin.window = parentWin;
+
+  const parentCtx = {
+    location: { protocol: 'chrome-extension:', origin: extOrigin },
+    window: parentWin,
+    AbortSignal: { timeout: () => undefined }, setTimeout, clearTimeout, console,
+    navigator: { clipboard: { writeText: async () => {} } },
+    module: { exports: {} },
+    document: {
+      getElementById: get,
+      querySelectorAll: (s) => (s === '.tab' ? tabs : s === '.htab' ? htabs : s === '.nav-btn' ? navs : s === '.chip' ? chips : []),
+      body: {
+        appendChild(el) {
+          if (el.tagName === 'iframe') {
+            assert.equal(el.src, siteOrigin + '/ext-bridge.html');
+            assert.equal(el.hidden, true);
+            vm.runInContext(bridgeCode, vm.createContext({
+              window: bridgeWin,
+              AbortSignal: { timeout: () => undefined },
+              fetch: async (pathUrl, opts = {}) => {
+                // Simulate Qoder gateway: ONLY same-origin Site requests reach relay!
+                const req = new Request(siteOrigin + pathUrl, {
+                  method: opts.method || 'GET',
+                  headers: { ...(opts.headers || {}), Origin: siteOrigin, 'Sec-Fetch-Site': 'same-origin' },
+                  body: opts.body,
+                });
+                seenRelay.push({ method: req.method, path: pathUrl, origin: req.headers.get('Origin'), secFetchSite: req.headers.get('Sec-Fetch-Site') });
+                return relay(req);
+              },
+            }));
+            queueMicrotask(() => (el.listeners.load || []).forEach((fn) => fn()));
+          }
+        },
+      },
+      createElement(tag) {
+        return node({ tagName: tag, contentWindow: bridgeWin, remove() {} });
+      },
+    },
+    chrome: {
+      storage: {
+        local: {
+          get: async (k) => (typeof k === 'string' ? (k in storageData ? { [k]: storageData[k] } : {}) : { ...storageData }),
+          set: async (obj) => Object.assign(storageData, obj),
+          remove: async (k) => { delete storageData[k]; },
+        },
+        session: { get: async () => ({ liveSnapshot: snapshot }) },
+        onChanged: { addListener() {} },
+      },
+      runtime: { sendMessage: async () => ({ ok: true, value: snapshot }) },
+    },
+    fetch: () => { throw new Error('extension must not call direct fetch when bridge iframe is available'); },
+  };
+  vm.runInContext(code, vm.createContext(parentCtx));
+  await settle();
+  get('run-auto').click();
+  await new Promise((r) => setTimeout(r, 80));
+  assert.equal(get('alert').hidden, true, 'unexpected alert: ' + get('alert').textContent);
+  assert.ok(get('pane').innerHTML.includes('1889年建成'));
+  assert.equal(seenRelay.length, 3);
+  assert.ok(seenRelay.every((r) => r.origin === siteOrigin && r.secFetchSite === 'same-origin'));
+});

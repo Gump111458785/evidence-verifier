@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](app/README.md)
 [![Live Workbench](https://img.shields.io/badge/Online-evidence--verifier.edgeone.dev-111827.svg)](https://evidence-verifier.edgeone.dev/)
-[![Extension v0.6.7](https://img.shields.io/badge/Chrome_Extension-v0.6.7-0f766e.svg)](app/extension/README.md)
+[![Extension v0.6.8](https://img.shields.io/badge/Chrome_Extension-v0.6.8-0f766e.svg)](app/extension/README.md)
 [![Architecture](https://img.shields.io/badge/Architecture-Multi--Agent-145e4c.svg)](docs/system-architecture.md)
 
 </div>
@@ -75,7 +75,7 @@
 
 ---
 
-## 3. Chrome 伴随插件（v0.6.7）
+## 3. Chrome 伴随插件（v0.6.8）
 
 Chrome MV3 侧边栏插件（[`app/extension/`](app/extension/README.md)）将审查能力直接嵌入日常 AI 对话工作流：
 

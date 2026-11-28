@@ -93,21 +93,137 @@
     }
     return pendingGuest;
   }
+  const BRIDGE_ORIGIN = 'https://trisight-sansheng-laed2yludt9.qoder.website';
+  const BRIDGE_URL = BRIDGE_ORIGIN + '/ext-bridge.html';
+  let bridgeFrame = null;
+  let bridgeReady = null;
+  let bridgeSeq = 0;
+  const bridgePending = new Map();
+  let bridgeListenerBound = false;
+
+  function resetBridge(reason) {
+    if (bridgeFrame && typeof bridgeFrame.remove === 'function') bridgeFrame.remove();
+    bridgeFrame = null;
+    bridgeReady = null;
+    for (const entry of bridgePending.values()) {
+      clearTimeout(entry.timer);
+      entry.reject(new TypeError(reason || 'Failed to fetch'));
+    }
+    bridgePending.clear();
+  }
+
+  function ensureBridge() {
+    if (bridgeReady) return bridgeReady;
+    bridgeReady = new Promise((resolve, reject) => {
+      const host = document.body || document.documentElement;
+      const frame = document.createElement('iframe');
+      frame.src = BRIDGE_URL;
+      frame.hidden = true;
+      frame.setAttribute('aria-hidden', 'true');
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        resetBridge('Failed to fetch');
+        reject(new TypeError('Failed to fetch'));
+      }, 15000);
+      const finishReady = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(frame);
+      };
+      if (!bridgeListenerBound && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+        bridgeListenerBound = true;
+        window.addEventListener('message', (event) => {
+          if (event.origin !== BRIDGE_ORIGIN || !bridgeFrame || event.source !== bridgeFrame.contentWindow) return;
+          const msg = event.data;
+          if (!msg || typeof msg !== 'object') return;
+          if (msg.type === 'ts-bridge-ready') {
+            if (typeof bridgeFrame.__onReady === 'function') bridgeFrame.__onReady();
+            return;
+          }
+          if (msg.type === 'ts-bridge-res') {
+            const entry = bridgePending.get(msg.id);
+            if (!entry) return;
+            bridgePending.delete(msg.id);
+            clearTimeout(entry.timer);
+            entry.resolve(msg);
+          }
+        });
+      }
+      frame.__onReady = finishReady;
+      frame.addEventListener('load', () => {
+        try { frame.contentWindow?.postMessage({ type: 'ts-bridge-ping' }, BRIDGE_ORIGIN); } catch (_) {}
+      });
+      frame.addEventListener('error', () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resetBridge('Failed to fetch');
+        reject(new TypeError('Failed to fetch'));
+      });
+      bridgeFrame = frame;
+      host.appendChild(frame);
+    });
+    return bridgeReady;
+  }
+
+  async function bridgeTransport(path, options = {}, token = '') {
+    const frame = await ensureBridge();
+    const id = ++bridgeSeq;
+    const timeoutMs = options.timeoutMs || 60000;
+    const msg = await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        bridgePending.delete(id);
+        reject(new TypeError('AbortError'));
+      }, timeoutMs + 2000);
+      bridgePending.set(id, { resolve, reject, timer });
+      try {
+        frame.contentWindow.postMessage({
+          type: 'ts-bridge-req',
+          id,
+          method: (options.method || 'GET').toUpperCase(),
+          path,
+          body: options.body,
+          token,
+          timeoutMs,
+        }, BRIDGE_ORIGIN);
+      } catch (err) {
+        bridgePending.delete(id);
+        clearTimeout(timer);
+        resetBridge('Failed to fetch');
+        reject(new TypeError('Failed to fetch'));
+      }
+    });
+    if (msg.networkError || msg.status === 0) {
+      throw new TypeError(msg.networkError || 'Failed to fetch');
+    }
+    return {
+      ok: Boolean(msg.ok),
+      status: msg.status,
+      json: async () => (msg.isJson ? (msg.data || {}) : Promise.reject(new Error('non-json'))),
+    };
+  }
+
   async function rawFetch(path, options = {}, token = '') {
     const headers = {};
     if (token) headers.Authorization = 'Bearer ' + token;
     if (options.body) headers['Content-Type'] = 'application/json';
     const method = (options.method || 'GET').toUpperCase();
+    const useBridge = isExtension && typeof document.createElement === 'function' && typeof window !== 'undefined' && typeof window.addEventListener === 'function';
     const maxAttempts = 3;
     let lastErr = null;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
-        const res = await fetch(API_BASE + path, {
-          method, headers,
-          credentials: isExtension ? 'omit' : 'same-origin',
-          body: options.body ? JSON.stringify(options.body) : undefined,
-          signal: AbortSignal.timeout(options.timeoutMs || 60000),
-        });
+        const res = useBridge
+          ? await bridgeTransport(path, options, token)
+          : await fetch(API_BASE + path, {
+            method, headers,
+            credentials: isExtension ? 'omit' : 'same-origin',
+            body: options.body ? JSON.stringify(options.body) : undefined,
+            signal: AbortSignal.timeout(options.timeoutMs || 60000),
+          });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
           const transient5xx = !data.code && [500, 502, 503, 504].includes(res.status);
