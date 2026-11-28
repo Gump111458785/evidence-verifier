@@ -15,21 +15,19 @@ class CloudStoreTests(unittest.TestCase):
         self.assertEqual(e.exception.code,'storage_not_configured')
 
     def test_failed_or_corrupt_ledger_never_allows_call(self):
-        for value in ({'error':'offline'}, {'result':-2}, {'result':True}, {'result':0}, {'result':10001}):
+        for value in ({'error':'offline'}, {'result':-2}, {'result':-1}, {'result':True}, {'result':0}, {'result':251}):
             with self.subTest(value=value),self.assertRaises(CloudError):
                 Store(self.env(),lambda _:value).reserve()
 
-    def test_budget_exhaustion_is_separate(self):
-        with self.assertRaises(CloudError) as e:Store(self.env(),lambda _: {'result':-1}).reserve()
-        self.assertEqual((e.exception.code,e.exception.status),('budget_exhausted',429))
-
-    def test_atomic_reservation_uses_shared_nonexpiring_keys(self):
+    def test_atomic_reservation_uses_shared_nonexpiring_keys_without_cap(self):
         calls=[]
-        store=Store(self.env(),lambda c:(calls.append(c) or {'result':250}))
-        self.assertEqual(store.reserve()['reserved_millicny'],250)
+        store=Store(self.env(),lambda c:(calls.append(c) or {'result':25000}))
+        reserved=store.reserve()
+        self.assertEqual(reserved['reserved_millicny'],25000)
+        self.assertIsNone(reserved['limit_millicny'])
+        self.assertTrue(reserved['unlimited'])
         self.assertEqual(calls[0][0],'EVAL')
-        self.assertEqual(calls[0][-2:],['250','10000'])
-        self.assertIn("PTTL", calls[0][1])
+        self.assertEqual(calls[0][-1],'250')
         self.assertIn('INCRBY',calls[0][1])
 
     def test_records_scoped_to_access_identity_and_new_request_not_overwritten(self):

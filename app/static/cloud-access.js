@@ -129,8 +129,12 @@
         return null;
       }
       const used = (data.reserved_millicny / 1000).toFixed(2);
-      const limit = (data.limit_millicny / 1000).toFixed(2);
-      pill.textContent = `试用额度 ¥${used} / ¥${limit}`;
+      if (data.unlimited || !data.limit_millicny) {
+        pill.textContent = `已用额度 ¥${used}（不限额）`;
+      } else {
+        const limit = (data.limit_millicny / 1000).toFixed(2);
+        pill.textContent = `试用额度 ¥${used} / ¥${limit}`;
+      }
       return data;
     } catch (_) {
       return null;

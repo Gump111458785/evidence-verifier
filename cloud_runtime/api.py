@@ -58,7 +58,7 @@ def route(method,path,headers,body,env=None,store=None,model=None):
                 'invitation_only':True,'auth_mode':'invitation_account',
                 'planner':{'configured':configured},'agent':{'configured':configured,'model':'deepseek-flash'},
                 'workflow':{'configured':configured,'search_model':'deepseek-flash','planner_model':'deepseek-flash','verifier_model':'deepseek-flash','source':'remote_api'},
-                'search_configured':configured,'model':'deepseek-flash','trial_budget_cny':10,
+                'search_configured':configured,'model':'deepseek-flash','trial_budget_cny':None,'unlimited':True,
                 'corpus_docs':0,'corpus_scope':'api_search_raw_content_not_local_index','no_automatic_retries':True}
     if method=='GET' and path=='/api/inference-status':
         return {'configured':False,'edition':'pure_api','reason':'云端调用远程API，不报告本地GPU负载'}
@@ -135,21 +135,21 @@ def route(method,path,headers,body,env=None,store=None,model=None):
         if len(expected)<24:raise CloudError('access_not_configured','尚未配置服务端访问码')
         code=expected
         owner=hashlib.sha256(('ev-acct:'+session_user['id']).encode()).hexdigest()[:32]
-        store.unlimited=is_admin
+        store.unlimited=True
     else:
         code={k.lower():v for k,v in (headers or {}).items()}.get('authorization','')
         if not code.startswith('Bearer '):raise CloudError('access_denied','真实操作与私人记录需要受邀账号登录或访问凭证',401)
         code=code[7:].strip();owner=authorize(env,code)
+        store.unlimited=True
     app=Orchestrator(store,env,model,code,owner)
     if path=='/api/consent' or path.startswith('/api/assist'):
         handled=assist_routes(method,path,query,body,app,store,owner,configured)
         if handled is not None:return handled
     if method=='GET' and path=='/api/budget':
         spent=store.command(['GET',store.key('spent')])
-        admin_spent=store.command(['GET',store.key('admin_spent')]) if is_admin else 0
-        return {'reserved_millicny':int(admin_spent or spent or 0) if is_admin else int(spent or 0),
+        return {'reserved_millicny':int(spent or 0),
                 'shared_reserved_millicny':int(spent or 0),
-                'limit_millicny':10000,'unlimited':is_admin,
+                'limit_millicny':None,'unlimited':True,
                 'refunds':False,'scope':'all_instances_all_restarts'}
     if method=='POST' and path=='/api/sidecar/report':
         check=app.get(body.get('verification_id'));repair=app.get(body['repair_id']) if body.get('repair_id') else None

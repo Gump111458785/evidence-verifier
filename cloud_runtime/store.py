@@ -55,7 +55,7 @@ class Store:
         self.token = env.get('EV_REDIS_REST_TOKEN', '')
         self.namespace = env.get('EV_CLOUD_BUDGET_ID', 'makers-z7l7raqtginj-trial-01')
         self.transport = transport
-        self.unlimited = False
+        self.unlimited = True
 
     @property
     def configured(self):
@@ -93,21 +93,13 @@ class Store:
             raise CloudError('storage_unavailable', '持久化存储不可用，未授权新增付费调用') from None
 
     def reserve(self, amount_millicny=250):
-        # 40 reservations × CNY .25 = CNY 10. A reservation bounds ONE HTTP call,
-        # not an entire multi-call verification. IDs and cap are not client input.
+        # Record every supplier HTTP call atomically with no spend cap.
         if type(amount_millicny) is not int or amount_millicny != 250:
             raise ValueError('Only the fixed audited reservation is allowed')
-        if getattr(self, 'unlimited', False):
-            result = self.command(['EVAL', RESERVE_UNLIMITED, '2', self.key('admin_spent'), self.key('admin_initialized'), '250'])
-            if type(result) is not int or result < 250:
-                raise CloudError('budget_unavailable', '费用账本异常，付费调用已停止')
-            return {'reserved_millicny': result, 'limit_millicny': None, 'unlimited': True}
-        result = self.command(['EVAL', RESERVE, '2', self.key('spent'), self.key('initialized'), '250', '10000'])
-        if result == -1:
-            raise CloudError('budget_exhausted', '本轮10元联调额度已耗尽', 429)
-        if type(result) is not int or not 250 <= result <= 10000 or result % 250:
+        result = self.command(['EVAL', RESERVE_UNLIMITED, '2', self.key('spent'), self.key('initialized'), '250'])
+        if type(result) is not int or result < 250 or result % 250:
             raise CloudError('budget_unavailable', '费用账本异常，付费调用已停止')
-        return {'reserved_millicny': result, 'limit_millicny': 10000}
+        return {'reserved_millicny': result, 'limit_millicny': None, 'unlimited': True}
 
     def get(self, owner, ident):
         raw = self.command(['GET', self.key('record', owner + ':' + ident)])
