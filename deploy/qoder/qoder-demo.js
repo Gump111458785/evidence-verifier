@@ -1,6 +1,6 @@
 // Replace the Qoder site's original static-demo shim. Load before trisight.js.
 (() => {
-  const backend = 'https://evidence-verifier.edgeone.dev';
+  const backend = '/functions/v1/app';
   const storageKey = 'trisight_competition_guest';
   const originalFetch = window.fetch.bind(window);
   let session;

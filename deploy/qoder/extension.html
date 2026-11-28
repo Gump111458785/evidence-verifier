@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Chrome 插件 · Trisight 三省</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/trisight.css">
+</head>
+<body>
+  <div class="ts-bar-wrap"><header id="ts-bar"></header></div>
+  <main class="ts-page">
+    <section class="ts-sheet ts-stack">
+      <h1>Trisight 三省 Chrome 插件</h1>
+      <p>在 AI 对话旁读取可见问答，检查事实、发现遗漏，并把建议填回输入框。</p>
+      <div><a class="ts-btn" href="/downloads/evidence-verifier-extension.zip" download>下载插件 v0.6.6</a></div>
+      <ol>
+        <li>解压 ZIP，确认解压目录中有 <code>manifest.json</code>。</li>
+        <li>打开 Chrome 的 <code>chrome://extensions</code>，开启「开发者模式」。</li>
+        <li>点击「加载已解压的扩展程序」，选择解压后的目录。</li>
+        <li>打开支持的 AI 对话页，点击扩展图标，使用受邀账号登录后审阅。</li>
+      </ol>
+      <p class="ts-meta">需要 Chrome 116 或以上。这个插件版本连接原 EdgeOne 服务。评审可直接使用免登录网页版。</p>
+      <div><a class="ts-btn quiet" href="/assist.html">打开网页版</a></div>
+    </section>
+  </main>
+  <script src="/qoder-demo.js"></script>
+  <script src="/trisight.js"></script>
+  <script>
+    (async () => { TS.bar('extension', await TS.me()); })();
+  </script>
+</body>
+</html>
