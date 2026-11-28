@@ -75,4 +75,36 @@ test('qoder relay handles logical and deployment-hashed function paths and isola
 
   responder = () => new Response('<html>401</html>', { status: 401, headers: { 'Content-Type': 'text/html' } });
   assert.equal((await relay(new Request(siteOrigin + '/functions/v1/app/api/health'))).status, 502);
+
+  responder = () => Response.json({ ok: true });
+  const extOrigin = 'chrome-extension://' + 'a'.repeat(32);
+  const preflight = await relay(new Request(siteOrigin + '/functions/v1/app/api/competition/session', {
+    method: 'OPTIONS',
+    headers: { Origin: extOrigin, 'Access-Control-Request-Method': 'POST' },
+  }));
+  assert.equal(preflight.status, 204);
+  assert.equal(preflight.headers.get('Access-Control-Allow-Origin'), extOrigin);
+
+  const extSession = await relay(new Request(siteOrigin + '/functions/v1/app/api/competition/session', {
+    method: 'POST',
+    headers: { Origin: extOrigin, 'Sec-Fetch-Site': 'cross-site' },
+  }));
+  assert.equal(extSession.status, 200);
+  assert.equal(extSession.headers.get('Access-Control-Allow-Origin'), extOrigin);
+  assert.equal(calls.at(-1)[1].headers.get('Origin'), siteOrigin);
+
+  assert.equal(
+    (await relay(new Request(siteOrigin + '/functions/v1/app/api/competition/session', {
+      method: 'OPTIONS',
+      headers: { Origin: 'https://elsewhere.example' },
+    }))).status,
+    403,
+  );
+  assert.equal(
+    (await relay(new Request(siteOrigin + '/functions/v1/app/api/competition/session', {
+      method: 'POST',
+      headers: { Origin: 'chrome-extension://q' + 'a'.repeat(31) },
+    }))).status,
+    403,
+  );
 });

@@ -40,6 +40,8 @@ function harness(opts = {}) {
   const chips = ['correct', 'supplement', 'predict'].map((m) => node({ dataset: { mode: m }, attrs: { 'aria-pressed': 'true' } }));
   get('meter').querySelectorAll = () => [node(), node(), node()];
   get('run-manual').parentElement = node();
+  const storageData = {};
+  const guestToken = 'guest.' + '0'.repeat(32) + '.9999999999.' + '1'.repeat(64);
   const requests = [], commands = [];
   const snapshot = opts.snapshot === undefined
     ? { platform: 'ChatGPT', question: '铁塔哪年建成？', candidate: '1899年建成。', context: [{ role: 'user', text: '介绍巴黎' }], tab_id: 7 }
@@ -55,15 +57,19 @@ function harness(opts = {}) {
     },
     chrome: {
       storage: {
-        local: { get: async () => ({ ev_session_token: 'a'.repeat(64) }), set: async () => {}, remove: async () => {} },
+        local: {
+          get: async (k) => (typeof k === 'string' ? (k in storageData ? { [k]: storageData[k] } : {}) : { ...storageData }),
+          set: async (obj) => Object.assign(storageData, obj),
+          remove: async (k) => { delete storageData[k]; },
+        },
         session: { get: async () => (snapshot ? { liveSnapshot: snapshot } : {}) },
         onChanged: { addListener(fn) { context.__onChanged = fn; } },
       },
       runtime: { sendMessage: async (m) => { commands.push(m); return { ok: true, value: m.mode === 'insert' ? { inserted: true, sent: false } : snapshot || {} }; } },
     },
     fetch: async (url, o = {}) => {
-      requests.push({ url, method: o.method || 'GET', body: o.body ? JSON.parse(o.body) : null });
-      if (url.endsWith('/api/auth/me')) return { ok: true, status: 200, json: async () => ({ authenticated: true }) };
+      requests.push({ url, method: o.method || 'GET', headers: o.headers || {}, body: o.body ? JSON.parse(o.body) : null });
+      if (url.endsWith('/api/competition/session')) return { ok: true, status: 200, json: async () => ({ guest_token: guestToken, expires_at: 9999999999 }) };
       if (url.includes('/api/assist?limit=')) return { ok: true, status: 200, json: async () => ({ total: 1, rows: [{ id: 'j1', state: 'completed', status: 'ok', created: 1794986000, question: '铁塔哪年建成？', correct: 'errors_found', supplement: 1, predict: 1 }] }) };
       if (url.endsWith('/api/assist/j1')) return { ok: true, status: 200, json: async () => ({ id: 'j1', state: 'completed', created: 1794986000, input: { question: '铁塔哪年建成？', answer: '1899年建成。', modes: 'auto' }, result: RESULT }) };
       if (url.endsWith('/api/assist')) return { ok: true, status: 200, json: async () => ({ id: 'j1', state: 'queued', advance_path: '/api/assist/j1/advance', progress: { phase: 'review' } }) };
@@ -160,11 +166,13 @@ test('pull-ctx button actively captures earlier conversation context and updates
 test('api retries transient Failed to fetch network drops before succeeding', async () => {
   const f = harness();
   await settle();
-  let calls = 0;
+  let assistDrops = 0;
   const origFetch = f.context.fetch;
   f.context.fetch = async (url, o) => {
-    calls += 1;
-    if (url.endsWith('/api/assist') && calls === 1) throw new TypeError('Failed to fetch');
+    if (url.endsWith('/api/assist') && assistDrops === 0) {
+      assistDrops += 1;
+      throw new TypeError('Failed to fetch');
+    }
     return origFetch(url, o);
   };
   f.get('run-auto').click();
@@ -262,4 +270,32 @@ test('unverified claims display as correct (green supported) and only contradict
   assert.ok(html.includes('<div class="item supported">未能核实断言A</div>'));
   assert.ok(html.includes('<div class="item contradicted"><del>有误断言B</del>'));
   assert.ok(html.includes('<div class="item supported">有证据支持的断言C'));
+});
+
+test('extension starts without login via Qoder relay and refreshes guest token on 401', async () => {
+  const f = harness();
+  await settle();
+  assert.equal(f.get('login').hidden, true);
+  assert.equal(f.get('logout').hidden, true);
+  assert.equal(f.get('work').hidden, false);
+  assert.equal(f.requests.length, 0);
+
+  let rejectedOnce = false;
+  const origFetch = f.context.fetch;
+  f.context.fetch = async (url, o = {}) => {
+    if (url.endsWith('/api/assist') && !rejectedOnce) {
+      rejectedOnce = true;
+      return { ok: false, status: 401, json: async () => ({ code: 'guest_session_invalid', error: '访客会话已失效' }) };
+    }
+    return origFetch(url, o);
+  };
+  f.get('run-auto').click();
+  await settle();
+  const sessionCalls = f.requests.filter((r) => r.url === 'https://trisight-sansheng-laed2yludt9.qoder.website/functions/v1/app/api/competition/session');
+  const assistCall = f.requests.find((r) => r.url === 'https://trisight-sansheng-laed2yludt9.qoder.website/functions/v1/app/api/assist');
+  assert.equal(sessionCalls.length, 2);
+  assert.ok(assistCall.headers.Authorization.startsWith('Bearer guest.'));
+  assert.equal(f.get('login').hidden, true);
+  assert.equal(f.get('alert').hidden, true);
+  assert.ok(f.get('pane').innerHTML.includes('1889年建成'));
 });

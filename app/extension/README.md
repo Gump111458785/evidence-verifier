@@ -1,6 +1,6 @@
 # Trisight 三省 Chrome 插件
 
-在 Chrome 扩展管理页打开“开发者模式”，选择“加载已解压的扩展程序”，指向包含 `manifest.json` 的目录。需要 Chrome 116+，使用受邀账号登录。
+在 Chrome 扩展管理页打开“开发者模式”，选择“加载已解压的扩展程序”，指向包含 `manifest.json` 的目录。需要 Chrome 116+，无需注册或登录，打开侧栏即可使用。
 
 打开 DeepSeek（`chat.deepseek.com`）、ChatGPT、Claude 或 Gemini 对话页后，插件自动读取页面上可见的最新问题、回答和前 3 轮上文；点击工具栏图标打开侧栏即可审查，不需要手动读取。2026-11-02 在 ChatGPT 上完成过单案例验收；DeepSeek、Claude、Gemini 自动读取兼容尚未在实机网页端全量回归验证。
 
@@ -12,8 +12,8 @@
 
 - `chat.deepseek.com`、`chatgpt.com`、`claude.ai`、`gemini.google.com` 站点权限与内容脚本：只读取可见 DOM 中的问答，过滤思维链与思考块，不发起网络请求。
 - scripting：为安装前已打开的对话页补注入同一脚本。
-- storage：会话内保存每个标签页的快照；登录令牌保存在本地。
+- storage：会话内保存每个标签页的快照；本地保存 24 小时免登录访客会话令牌。
 - sidePanel：侧栏界面。
-- 审查请求只发往 `https://evidence-verifier.edgeone.dev`，且只在点击审查时发送。
+- 审查请求通过 Qoder CN 中转发往审阅后端（`https://trisight-sansheng-laed2yludt9.qoder.website/functions/v1/app`），国内配合 DeepSeek 使用无需 VPN，且只在点击审查或查看历史时发送。
 
 接口说明见 [Trisight 审阅接口](../../docs/trisight-assist.md)。

@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](app/README.md)
 [![Live Workbench](https://img.shields.io/badge/Online-evidence--verifier.edgeone.dev-111827.svg)](https://evidence-verifier.edgeone.dev/)
-[![Extension v0.6.6](https://img.shields.io/badge/Chrome_Extension-v0.6.6-0f766e.svg)](app/extension/README.md)
+[![Extension v0.6.7](https://img.shields.io/badge/Chrome_Extension-v0.6.7-0f766e.svg)](app/extension/README.md)
 [![Architecture](https://img.shields.io/badge/Architecture-Multi--Agent-145e4c.svg)](docs/system-architecture.md)
 
 </div>
@@ -75,12 +75,12 @@
 
 ---
 
-## 3. Chrome 伴随插件（v0.6.6）
+## 3. Chrome 伴随插件（v0.6.7）
 
 Chrome MV3 侧边栏插件（[`app/extension/`](app/extension/README.md)）将审查能力直接嵌入日常 AI 对话工作流：
 
 - **自动读取，一键审查**：打开对话页即自动读取最新一轮问答与前几轮上文，点击时无需再等待页面提取；点击 `自动审查` 运行纠错、补充、预测三种模式，或用 `手动审查` 勾选其中几种再运行。
-- **隐私边界**：只读取页面可见问答，不读取隐藏思维链；只有点击审查时才把问答发送到 `evidence-verifier.edgeone.dev`；提示词只填入输入框，不自动发送。
+- **隐私边界与免登录直连**：只读取页面可见问答，不读取隐藏思维链；无需注册或登录，只有点击审查或查看历史时才通过国内可直连的 Qoder 中转把问答发送到审阅服务（配合 DeepSeek 使用无需 VPN）；提示词只填入输入框，不自动发送。
 - **QA 与上下文按需透视**：工作区默认隐藏冗长原文，点击 `查看 QA` 可展开本次自动提取的完整 `问` / `答` 文本便于校验抓取准确度；点击 `获取上下文` / `查看上文` 可抓取并查看当前对话前序历史片段。
 - **内置审查与历史双视图**：顶栏提供 `审查 ｜ 历史` 切换（对齐 Web 端右侧抽屉体验），可随时查阅过往审查条目，按「发现错误 / 未发现错误」标签快速回溯原文核验结论。
 - **多站点适配器架构**：内置 `DeepSeek`（`chat.deepseek.com`）、`ChatGPT`（`chatgpt.com`）、`Claude`（`claude.ai`）、`Gemini`（`gemini.google.com`）页面提取器与统一规范化模块（注：DeepSeek 与 ChatGPT 已完成实网端到端验证，Claude / Gemini 为结构化适配器实现）。
@@ -212,7 +212,7 @@ curl -s -X POST $BASE/api/assist/<id>/advance -H "Authorization: Bearer $TOKEN"
    - 点击 **加载已解压的扩展程序（Load unpacked）**，选择解压后的插件目录。
 3. **打开任意 AI 对话页并开始伴随审查**
    - 访问 [DeepSeek](https://chat.deepseek.com/)、[ChatGPT](https://chatgpt.com/)、[Claude](https://claude.ai/) 或 [Gemini](https://gemini.google.com/)，点击浏览器右上角扩展图标打开 Trisight 侧边栏。
-   - 插件只连接在线服务 `https://evidence-verifier.edgeone.dev`，首次使用需用受邀账号登录（申请方式见 [6.0](#60-线上体验或启动本地服务)）。
+   - 插件通过国内可直连的 Qoder 中转（`https://trisight-sansheng-laed2yludt9.qoder.website/functions/v1/app`）访问审阅服务，配合 DeepSeek 使用**无需 VPN**，且**无需注册或登录**，打开侧栏即可开始审查。
    - 在顶部可切换 **审查**（查看 `查看 QA`、`获取上下文`、`自动/手动审查` 与 `纠错/补充/预测`）或 **历史**（回看历次审查记录）；点击预测结果旁的填入按钮可直接将追问写入聊天输入框。
 
 更多细节见 [`docs/conversation-sidecar.md`](docs/conversation-sidecar.md) 与 [`app/extension/README.md`](app/extension/README.md)。

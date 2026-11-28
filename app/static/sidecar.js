@@ -2,8 +2,11 @@
    background -> storage.session.liveSnapshot); a review posts it immediately. */
 (() => {
   const isExtension = location.protocol === 'chrome-extension:';
-  const API_BASE = isExtension ? 'https://evidence-verifier.edgeone.dev' : location.origin;
+  const API_BASE = isExtension
+    ? 'https://trisight-sansheng-laed2yludt9.qoder.website/functions/v1/app'
+    : location.origin;
   const TOKEN_KEY = 'ev_session_token';
+  const GUEST_KEY = 'ev_guest_session';
   const MODES = ['correct', 'supplement', 'predict'];
   const PHASES = ['review', 'search', 'verify'];
   const $ = (id) => document.getElementById(id);
@@ -26,6 +29,8 @@
   };
   const histCache = new Map();
   let memToken = '';
+  let guestSession = null;
+  let pendingGuest = null;
   let toastTimer = null;
 
   // ------------------------------------------------------------ auth + api
@@ -48,10 +53,49 @@
       if (globalThis.sessionStorage) tok ? sessionStorage.setItem(TOKEN_KEY, tok) : sessionStorage.removeItem(TOKEN_KEY);
     } catch (_) {}
   }
-  async function api(path, options = {}) {
-    const tok = await getToken();
+  function validGuest(saved) {
+    return Boolean(
+      saved &&
+      typeof saved.guest_token === 'string' &&
+      saved.guest_token.startsWith('guest.') &&
+      Number.isFinite(saved.expires_at) &&
+      saved.expires_at * 1000 > Date.now() + 30_000,
+    );
+  }
+  async function clearGuestSession() {
+    guestSession = null;
+    try {
+      if (isExtension && chrome.storage?.local) await chrome.storage.local.remove(GUEST_KEY);
+    } catch (_) {}
+  }
+  async function ensureGuestSession(forceRefresh = false) {
+    if (!forceRefresh && validGuest(guestSession)) return guestSession.guest_token;
+    if (!forceRefresh && isExtension && chrome.storage?.local) {
+      try {
+        const res = await chrome.storage.local.get(GUEST_KEY);
+        if (validGuest(res[GUEST_KEY])) {
+          guestSession = res[GUEST_KEY];
+          return guestSession.guest_token;
+        }
+      } catch (_) {}
+    }
+    if (forceRefresh) guestSession = null;
+    if (!pendingGuest) {
+      pendingGuest = (async () => {
+        const data = await rawFetch('/api/competition/session', { method: 'POST' });
+        if (!validGuest(data)) throw new Error('访客会话未能初始化');
+        guestSession = { guest_token: data.guest_token, expires_at: data.expires_at };
+        try {
+          if (isExtension && chrome.storage?.local) await chrome.storage.local.set({ [GUEST_KEY]: guestSession });
+        } catch (_) {}
+        return guestSession.guest_token;
+      })().finally(() => { pendingGuest = null; });
+    }
+    return pendingGuest;
+  }
+  async function rawFetch(path, options = {}, token = '') {
     const headers = {};
-    if (tok) headers.Authorization = 'Bearer ' + tok;
+    if (token) headers.Authorization = 'Bearer ' + token;
     if (options.body) headers['Content-Type'] = 'application/json';
     const method = (options.method || 'GET').toUpperCase();
     const maxAttempts = 3;
@@ -90,6 +134,24 @@
       ? '网络连接暂时中断，请重试'
       : (raw || '网络请求失败');
     throw new Error(msg);
+  }
+  async function api(path, options = {}) {
+    if (isExtension) {
+      const needsGuest = path.startsWith('/api/assist');
+      const tok = needsGuest ? await ensureGuestSession(false) : '';
+      try {
+        return await rawFetch(path, options, tok);
+      } catch (err) {
+        if (needsGuest && err && err.status === 401 && !options._retriedGuest) {
+          await clearGuestSession();
+          const fresh = await ensureGuestSession(true);
+          return rawFetch(path, options, fresh);
+        }
+        throw err;
+      }
+    }
+    const tok = await getToken();
+    return rawFetch(path, options, tok);
   }
   async function pageCmd(mode, prompt) {
     const r = await chrome.runtime.sendMessage({ type: 'ev-page-command', mode, prompt });
@@ -309,7 +371,7 @@
     } catch (e) {
       $('meter').hidden = true;
       renderTab(state.tab);
-      if (e.status === 401) { await saveToken(''); showLogin(); return; }
+      if (!isExtension && e.status === 401) { await saveToken(''); showLogin(); return; }
       alertMsg(e.message);
     } finally {
       state.busy = false; syncButtons();
@@ -382,7 +444,7 @@
       if ($('hist-meta')) $('hist-meta').textContent = '共 ' + (d.total ?? state.histRows.length) + ' 条审查记录';
       renderHistList(state.histRows);
     } catch (e) {
-      if (e.status === 401) { await saveToken(''); showLogin(); return; }
+      if (!isExtension && e.status === 401) { await saveToken(''); showLogin(); return; }
       list.className = 'pane';
       list.innerHTML = '<div class="head err">' + ICON.cross + esc(e.message) + '</div>';
     }
@@ -418,7 +480,7 @@
       if (job.result.status === 'ok') counts(job.result, 'hn-');
       renderHistTab(firstTab(job.result, reqModes));
     } catch (e) {
-      if (e.status === 401) { await saveToken(''); showLogin(); return; }
+      if (!isExtension && e.status === 401) { await saveToken(''); showLogin(); return; }
       hpane.className = 'pane';
       hpane.innerHTML = '<div class="head err">' + ICON.cross + esc(e.message) + '</div>';
     }
@@ -439,7 +501,7 @@
   }
 
   function showLogin() { $('views').hidden = true; $('work').hidden = true; $('history').hidden = true; $('drawer').hidden = true; if ($('ctx-drawer')) $('ctx-drawer').hidden = true; $('src').hidden = true; $('logout').hidden = true; $('login').hidden = false; }
-  async function showWork() { $('login').hidden = true; $('views').hidden = false; $('logout').hidden = false; switchView('review'); reset(); await attach(); }
+  async function showWork() { $('login').hidden = true; $('views').hidden = false; $('logout').hidden = isExtension; switchView('review'); reset(); await attach(); }
 
   function toggleDrawer(forceOpen) {
     const open = typeof forceOpen === 'boolean' ? forceOpen : $('drawer').hidden;
@@ -534,6 +596,7 @@
 
   async function init() {
     bind();
+    if (isExtension) { await showWork(); return; }
     try { const me = await api('/api/auth/me'); me && me.authenticated ? await showWork() : showLogin(); }
     catch (_) { showLogin(); }
   }
